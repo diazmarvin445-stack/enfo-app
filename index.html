@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <title>ENFO</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg: #060a12;
+      --surface: #0a1020;
+      --card: #0d1628;
+      --card2: #111e35;
+      --border: #1a2d50;
+      --border2: #243d6a;
+      --accent: #1d6aff;
+      --accent2: #00c8ff;
+      --gold: #f0a500;
+      --green: #00d48a;
+      --red: #ff4560;
+      --text: #e8f0ff;
+      --text2: #7a9acc;
+      --text3: #3d5a8a;
+    }
+
+    html,
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      bottom: 72px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .screen.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .screen::-webkit-scrollbar {
+      display: none;
+    }
+
+    #nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: rgba(6, 10, 18, 0.97);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+
+    .nb {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      padding-bottom: 6px;
+      position: relative;
+      font-family: "DM Sans", sans-serif;
+      transition: color 0.2s;
+    }
+
+    .nb.on {
+      color: var(--accent2);
+    }
+
+    .nb.on::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 25%;
+      right: 25%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    }
+
+    .nb-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .nb-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glow {
+      0%,
+      100% {
+        box-shadow: 0 0 8px var(--accent2);
+      }
+      50% {
+        box-shadow: 0 0 20px var(--accent2), 0 0 40px rgba(0, 200, 255, 0.25);
+      }
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 20px 12px;
+    }
+
+    .logo {
+      font-family: "Orbitron", monospace;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: #fff;
+    }
+
+    .logo-o {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 2px solid var(--accent2);
+      border-radius: 6px;
+      position: relative;
+      margin-left: 2px;
+    }
+
+    .logo-o-inner {
+      width: 12px;
+      height: 12px;
+      background: var(--accent2);
+      border-radius: 2px;
+      animation: glow 2s infinite;
+    }
+
+    .date-txt {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 0 16px 14px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .clabel {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cl-cyan {
+      color: var(--accent2);
+    }
+
+    .cl-white {
+      color: var(--text2);
+    }
+
+    .cl-gold {
+      color: var(--gold);
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      background: rgba(10, 16, 32, 0.8);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      resize: none;
+      -webkit-appearance: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    textarea {
+      line-height: 1.55;
+      min-height: 80px;
+    }
+
+    textarea:focus,
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    ::placeholder {
+      color: var(--text3);
+    }
+
+    select option {
+      background: var(--card2);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      border-radius: 12px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 12px 18px;
+      transition: all 0.18s;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-p {
+      background: linear-gradient(135deg, var(--accent), #0045cc);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(29, 106, 255, 0.35);
+      width: 100%;
+    }
+
+    .btn-g {
+      background: var(--surface);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+
+    .btn-d {
+      background: rgba(255, 69, 96, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(255, 69, 96, 0.25);
+    }
+
+    .btn-dash-blue {
+      background: transparent;
+      color: var(--accent2);
+      border: 1.5px dashed var(--accent);
+      width: 100%;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-dash-gold {
+      background: transparent;
+      color: var(--gold);
+      border: 1.5px dashed var(--gold);
+      width: 100%;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-sm {
+      padding: 7px 13px;
+      font-size: 12px;
+      border-radius: 9px;
+      width: auto;
+    }
+
+    .btn-add {
+      background: linear-gradient(135deg, var(--accent), #0045cc);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 16px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(29, 106, 255, 0.12);
+      border: none;
+      color: var(--text2);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .page-title {
+      font-family: "Orbitron", monospace;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .si {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 16px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      animation: fadeUp 0.3s ease both;
+      transition: border-color 0.2s;
+    }
+
+    .si:active {
+      transform: scale(0.98);
+    }
+
+    .pw {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(0, 212, 138, 0.15);
+      color: var(--green);
+    }
+
+    .pl {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(255, 69, 96, 0.12);
+      color: var(--red);
+    }
+
+    #strat-detail {
+      position: absolute;
+      inset: 0;
+      bottom: 72px;
+      background: var(--bg);
+      z-index: 50;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #strat-detail.open {
+      transform: translateX(0);
+    }
+
+    #strat-detail::-webkit-scrollbar {
+      display: none;
+    }
+
+    .dtop {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 16px 16px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dname {
+      font-family: "Orbitron", monospace;
+      font-size: 17px;
+      font-weight: 700;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rinp {
+      font-family: "Orbitron", monospace;
+      font-size: 16px;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid var(--accent);
+      color: var(--text);
+      outline: none;
+      flex: 1;
+      padding: 2px 0;
+    }
+
+    .srow {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin: 14px 16px 10px;
+    }
+
+    .sbox {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+
+    .sval {
+      font-family: "Orbitron", monospace;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .slbl {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .wbar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 0 16px 12px;
+    }
+
+    .wlabels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+
+    .wtrack {
+      height: 8px;
+      background: rgba(255, 69, 96, 0.2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .wfill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), #00ffaa);
+      border-radius: 4px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tabs {
+      display: flex;
+      margin: 0 16px 14px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 9px;
+      background: var(--surface);
+      color: var(--text3);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: "DM Sans", sans-serif;
+      transition: all 0.2s;
+    }
+
+    .tab.on {
+      background: rgba(29, 106, 255, 0.15);
+      color: var(--accent2);
+    }
+
+    .frow {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 10px;
+      overflow-x: auto;
+    }
+
+    .frow::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      flex-shrink: 0;
+      padding: 5px 13px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text3);
+      transition: all 0.2s;
+    }
+
+    .chip.on {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(0, 200, 255, 0.08);
+    }
+
+    .opc {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .otop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .oasset {
+      font-family: "Orbitron", monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .otype {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .call {
+      background: rgba(0, 212, 138, 0.15);
+      color: var(--green);
+    }
+
+    .put {
+      background: rgba(255, 69, 96, 0.12);
+      color: var(--red);
+    }
+
+    .ogrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .ores {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .olearn {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 6px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    .fr2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .fr3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .flbl {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .rtog {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .rb {
+      padding: 11px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text3);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      font-family: "DM Sans", sans-serif;
+    }
+
+    .rb.rw {
+      border-color: var(--green);
+      background: rgba(0, 212, 138, 0.1);
+      color: var(--green);
+    }
+
+    .rb.rl {
+      border-color: var(--red);
+      background: rgba(255, 69, 96, 0.1);
+      color: var(--red);
+    }
+
+    .dentry {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .ddate {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 8px;
+    }
+
+    .slabel {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 10px 20px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qcard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px 42px 14px 16px;
+      margin: 0 16px 10px;
+      position: relative;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .qdel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 52px 24px;
+      color: var(--text3);
+    }
+
+    .empty-icon {
+      font-size: 44px;
+      margin-bottom: 14px;
+      opacity: 0.4;
+    }
+
+    #confirm {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    #confirm.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .cfbox {
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 26px 20px;
+      text-align: center;
+      max-width: 300px;
+      width: 100%;
+      transform: scale(0.9);
+      transition: transform 0.2s;
+    }
+
+    #confirm.open .cfbox {
+      transform: scale(1);
+    }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .modal.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .msheet {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 24px 24px 0 0;
+      padding: 18px 16px 36px;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 88dvh;
+      overflow-y: auto;
+    }
+
+    .msheet::-webkit-scrollbar {
+      display: none;
+    }
+
+    .modal.open .msheet {
+      transform: translateY(0);
+    }
+
+    .mhandle {
+      width: 40px;
+      height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+
+    .mtitle {
+      font-family: "Orbitron", monospace;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="s-inicio" class="screen active">
+      <div class="logo-row">
+        <div class="logo">
+          ENF<span class="logo-o"><span class="logo-o-inner"></span></span>
+        </div>
+        <div class="date-txt" id="date-lbl"></div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top: 4px;">
+        <div class="clabel cl-cyan">✦ PENSAMIENTO DEL DÍA</div>
+        <textarea id="thought" rows="3" placeholder="Escribe tu pensamiento del día..."></textarea>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-white">🗒 NOTAS DEL DÍA</div>
+        <textarea id="notes" rows="3" placeholder="¿Cómo está tu mente hoy?"></textarea>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-gold">⚡ ¿QUÉ APRENDISTE DE TUS TRADES HOY?</div>
+        <textarea id="learn" rows="3" placeholder="Tu aprendizaje del día..."></textarea>
+      </div>
+
+      <div style="height: 16px;"></div>
+    </div>
+
+    <div id="s-estrategias" class="screen">
+      <div class="page-header">
+        <button class="back-btn" onclick="nav('inicio')">‹</button>
+        <div class="page-title">ESTRATEGIAS</div>
+      </div>
+
+      <div id="strat-list"></div>
+
+      <div style="padding: 8px 16px 16px;">
+        <button class="btn-dash-blue" onclick="openModal('m-ns')">+ Añadir nueva estrategia</button>
+      </div>
+    </div>
+
+    <div id="strat-detail">
+      <div class="dtop">
+        <button class="back-btn" onclick="closeDetail()">‹</button>
+        <div id="dname" class="dname"></div>
+        <input
+          id="rinp"
+          class="rinp"
+          style="display: none;"
+          onblur="saveRename()"
+          onkeydown="if(event.key==='Enter') saveRename()"
+        />
+        <button class="btn btn-g btn-sm" onclick="startRename()" style="margin-left: 4px;">✏️</button>
+        <button class="btn btn-d btn-sm" onclick="askDelStrat()">🗑</button>
+      </div>
+
+      <div class="srow" id="srow"></div>
+
+      <div class="wbar">
+        <div class="wlabels">
+          <span id="ww">Ganadas: 0</span>
+          <span id="wp" style="font-weight: 700;">0%</span>
+          <span id="wl">Perdidas: 0</span>
+        </div>
+        <div class="wtrack">
+          <div id="wf" class="wfill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab on" id="t-ops" onclick="stab('ops')">📊 Operaciones</button>
+        <button class="tab" id="t-rules" onclick="stab('rules')">📋 Reglas</button>
+        <button class="tab" id="t-mesa" onclick="stab('mesa')">🗒 Mesa</button>
+      </div>
+
+      <div id="tc-ops">
+        <div class="frow">
+          <div class="chip on" onclick="setF('all', this)">Todas</div>
+          <div class="chip" onclick="setF('win', this)">✅ Ganadas</div>
+          <div class="chip" onclick="setF('lose', this)">❌ Perdidas</div>
+          <div class="chip" onclick="setF('call', this)">📈 Call</div>
+          <div class="chip" onclick="setF('put', this)">📉 Put</div>
+        </div>
+
+        <div style="display: flex; gap: 8px; padding: 0 16px 10px; align-items: center;">
+          <input
+            type="date"
+            id="df"
+            style="flex: 1; font-size: 12px; padding: 8px 10px;"
+            onchange="renderOps()"
+          />
+          <span style="color: var(--text3); font-size: 12px;">→</span>
+          <input
+            type="date"
+            id="dt"
+            style="flex: 1; font-size: 12px; padding: 8px 10px;"
+            onchange="renderOps()"
+          />
+          <button class="btn btn-g btn-sm" onclick="clrDates()">✕</button>
+        </div>
+
+        <div style="display: flex; gap: 8px; padding: 0 16px 12px;">
+          <button class="btn-add" onclick="openAddOp()">+ Añadir</button>
+          <button class="btn btn-g btn-sm" onclick="expCSV()">📤 CSV</button>
+        </div>
+
+        <div id="ops-list"></div>
+      </div>
+
+      <div id="tc-rules" style="display: none;">
+        <div class="card" style="margin-top: 4px;">
+          <div class="clabel cl-white">🗂 RESUMEN DE LA ESTRATEGIA</div>
+          <textarea
+            id="st-rules"
+            rows="7"
+            placeholder="Describe las reglas y condiciones..."
+            oninput="svRules()"
+          ></textarea>
+        </div>
+      </div>
+
+      <div id="tc-mesa" style="display: none;">
+        <div class="card" style="margin-top: 4px;">
+          <div class="clabel cl-white">🗒 MESA DE TRABAJO</div>
+          <textarea
+            id="st-mesa"
+            rows="9"
+            placeholder="Notas libres, ideas, observaciones..."
+            oninput="svMesa()"
+          ></textarea>
+        </div>
+      </div>
+
+      <div style="height: 20px;"></div>
+    </div>
+
+    <div id="s-diario" class="screen">
+      <div class="page-header">
+        <button class="back-btn" onclick="nav('inicio')">‹</button>
+        <div class="page-title">DIARIO</div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top: 4px;">
+        <div class="clabel cl-cyan" id="dlbl"></div>
+        <textarea id="dinp" rows="6" placeholder="Este es tu espacio personal. Escribe libremente..."></textarea>
+        <div style="height: 12px;"></div>
+        <button
+          class="btn btn-p"
+          onclick="saveDiary()"
+          style="text-transform: uppercase; letter-spacing: 1.5px; font-size: 13px;"
+        >
+          Guardar entrada
+        </button>
+      </div>
+
+      <div class="slabel">📅 ENTRADAS ANTERIORES</div>
+      <div id="diary-list"></div>
+      <div style="height: 16px;"></div>
+    </div>
+
+    <div id="s-biblioteca" class="screen">
+      <div class="page-header">
+        <button class="back-btn" onclick="nav('inicio')">‹</button>
+        <div class="page-title">BIBLIOTECA</div>
+      </div>
+
+      <div style="padding: 4px 16px 16px;">
+        <button class="btn-dash-gold" onclick="openModal('m-aq')">📚 Añadir frase o cita</button>
+      </div>
+
+      <div id="quotes-list"></div>
+      <div style="height: 16px;"></div>
+    </div>
+
+    <nav id="nav">
+      <button class="nb on" id="nb-inicio" onclick="nav('inicio')">
+        <span class="nb-icon">🏠</span>
+        <span class="nb-lbl">INICIO</span>
+      </button>
+
+      <button class="nb" id="nb-estrategias" onclick="nav('estrategias')">
+        <span class="nb-icon">⊞</span>
+        <span class="nb-lbl">ESTRATEGIAS</span>
+      </button>
+
+      <button class="nb" id="nb-diario" onclick="nav('diario')">
+        <span class="nb-icon">☰</span>
+        <span class="nb-lbl">DIARIO</span>
+      </button>
+
+      <button class="nb" id="nb-biblioteca" onclick="nav('biblioteca')">
+        <span class="nb-icon">📚</span>
+        <span class="nb-lbl">BIBLIOTECA</span>
+      </button>
+    </nav>
+
+    <div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
+      <div class="msheet">
+        <div class="mhandle"></div>
+        <div class="mtitle">NUEVA ESTRATEGIA</div>
+
+        <div style="margin-bottom: 14px;">
+          <label class="flbl">Nombre</label>
+          <input type="text" id="ns-n" placeholder="Ej: Breakout en apertura" />
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label class="flbl">Reglas iniciales (opcional)</label>
+          <textarea id="ns-r" rows="3" placeholder="Condiciones de entrada, salida..."></textarea>
+        </div>
+
+        <button class="btn btn-p" onclick="crStrat()">Crear estrategia</button>
+      </div>
+    </div>
+
+    <div class="modal" id="m-ao" onclick="bgc(event, 'm-ao')">
+      <div class="msheet">
+        <div class="mhandle"></div>
+        <div class="mtitle" id="op-modal-title">NUEVA OPERACIÓN</div>
+
+        <div class="fr2">
+          <div>
+            <label class="flbl">ACTIVO</label>
+            <input type="text" id="oa" placeholder="SPY, QQQ..." />
+          </div>
+          <div>
+            <label class="flbl">TIPO</label>
+            <select id="ot">
+              <option>Call</option>
+              <option>Put</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fr2">
+          <div>
+            <label class="flbl">ENTRADA</label>
+            <input type="text" id="oen" placeholder="$0.00" />
+          </div>
+          <div>
+            <label class="flbl">SALIDA</label>
+            <input type="text" id="oex" placeholder="$0.00" />
+          </div>
+        </div>
+
+        <div class="fr2">
+          <div>
+            <label class="flbl">CONTRATOS</label>
+            <input type="text" id="oc" placeholder="1" />
+          </div>
+          <div>
+            <label class="flbl">FECHA</label>
+            <input type="date" id="od" />
+          </div>
+        </div>
+
+        <div class="rtog">
+          <div class="rb" id="rw" onclick="setR('win')">✓ Ganó</div>
+          <div class="rb" id="rl" onclick="setR('lose')">✗ Perdió</div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label class="flbl">¿QUÉ APRENDISTE DE ESTA OPERACIÓN?</label>
+          <textarea id="ol" rows="2" placeholder="Escribe tu aprendizaje..."></textarea>
+        </div>
+
+        <button class="btn btn-p" id="op-save-btn" onclick="addOp()">Guardar operación</button>
+      </div>
+    </div>
+
+    <div class="modal" id="m-aq" onclick="bgc(event, 'm-aq')">
+      <div class="msheet">
+        <div class="mhandle"></div>
+        <div class="mtitle">AÑADIR CITA</div>
+
+        <div style="margin-bottom: 12px;">
+          <label class="flbl">Frase o cita</label>
+          <textarea id="qt" rows="3" placeholder="Escribe la frase..."></textarea>
+        </div>
+
+        <div class="fr2" style="margin-bottom: 16px;">
+          <div>
+            <label class="flbl">Libro</label>
+            <input type="text" id="qb" placeholder="Título" />
+          </div>
+          <div>
+            <label class="flbl">Autor</label>
+            <input type="text" id="qa" placeholder="Autor" />
+          </div>
+        </div>
+
+        <button class="btn btn-p" onclick="addQ()">Guardar cita</button>
+      </div>
+    </div>
+
+    <div id="confirm">
+      <div class="cfbox">
+        <div id="ci" style="font-size: 38px; margin-bottom: 12px;">⚠️</div>
+        <div id="ct" style="font-size: 16px; font-weight: 700; margin-bottom: 6px;"></div>
+        <div id="cm" style="font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5;"></div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button class="btn btn-g" onclick="clsConf()">Cancelar</button>
+          <button class="btn btn-d" onclick="doConf()">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let D = {
+      inicio: { thought: "", notes: "", learn: "" },
+      strategies: [],
+      diary: [],
+      quotes: []
+    };
+
+    let cur = null;
+    let cf = "all";
+    let cr = null;
+    let cfcb = null;
+    let editingOpId = null;
+
+    function sv() {
+      try {
+        localStorage.setItem("enfo", JSON.stringify(D));
+      } catch (e) {}
+    }
+
+    function ld() {
+      try {
+        const r = localStorage.getItem("enfo");
+        if (r) D = JSON.parse(r);
+      } catch (e) {}
+
+      D.inicio = D.inicio || {};
+      D.strategies = D.strategies || [];
+      D.diary = D.diary || [];
+      D.quotes = D.quotes || [];
+
+      D.strategies.forEach((s) => {
+        s.ops = s.ops || [];
+        s.rules = s.rules || "";
+        s.mesa = s.mesa || "";
+      });
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    }
+
+    function e(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function nav(id) {
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      document.querySelectorAll(".nb").forEach((b) => b.classList.remove("on"));
+
+      document.getElementById("s-" + id).classList.add("active");
+      document.getElementById("nb-" + id).classList.add("on");
+      document.getElementById("strat-detail").classList.remove("open");
+
+      if (id === "estrategias") rstrat();
+      if (id === "diario") rdiary();
+      if (id === "biblioteca") rquotes();
+    }
+
+    function setDates() {
+      const d = new Date();
+      const dn = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
+      const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+      const mn2 = [
+        "ENERO",
+        "FEBRERO",
+        "MARZO",
+        "ABRIL",
+        "MAYO",
+        "JUNIO",
+        "JULIO",
+        "AGOSTO",
+        "SEPTIEMBRE",
+        "OCTUBRE",
+        "NOVIEMBRE",
+        "DICIEMBRE"
+      ];
+
+      document.getElementById("date-lbl").textContent =
+        `${dn[d.getDay()]}, ${d.getDate()} ${mn[d.getMonth()]}`;
+
+      document.getElementById("dlbl").textContent =
+        `${dn[d.getDay()]}, ${d.getDate()} DE ${mn2[d.getMonth()]} DE ${d.getFullYear()}`;
+
+      const od = document.getElementById("od");
+      if (od) od.value = d.toISOString().split("T")[0];
+    }
+
+    function initI() {
+      const g = (id) => document.getElementById(id);
+
+      g("thought").value = D.inicio.thought || "";
+      g("notes").value = D.inicio.notes || "";
+      g("learn").value = D.inicio.learn || "";
+
+      g("thought").oninput = () => {
+        D.inicio.thought = g("thought").value;
+        sv();
+      };
+
+      g("notes").oninput = () => {
+        D.inicio.notes = g("notes").value;
+        sv();
+      };
+
+      g("learn").oninput = () => {
+        D.inicio.learn = g("learn").value;
+        sv();
+      };
+    }
+
+    function rstrat() {
+      const l = document.getElementById("strat-list");
+
+      if (!D.strategies.length) {
+        l.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">⊞</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">
+              No tienes estrategias aún.
+            </div>
+            <div style="font-size:13px">Crea tu primera estrategia abajo.</div>
+          </div>
+        `;
+        return;
+      }
+
+      l.innerHTML = D.strategies
+        .map((s, i) => {
+          const w = (s.ops || []).filter((o) => o.result === "win").length;
+          const t = (s.ops || []).length;
+
+          return `
+            <div class="si" style="animation-delay:${i * 0.05}s" onclick="openS('${s.id}')">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:15px">${e(s.name)}</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:3px">
+                  ${t} operacion${t !== 1 ? "es" : ""}
+                </div>
+              </div>
+
+              <div style="display:flex;gap:7px;align-items:center;flex-shrink:0">
+                ${
+                  t
+                    ? `<span class="pw">${w}W</span><span class="pl">${t - w}L</span>`
+                    : ""
+                }
+
+                <button
+                  class="btn btn-g btn-sm"
+                  onclick="event.stopPropagation(); startEditStratFromList('${s.id}')"
+                  title="Editar"
+                >✏️</button>
+
+                <button
+                  class="btn btn-d btn-sm"
+                  onclick="event.stopPropagation(); askDelStratById('${s.id}')"
+                  title="Borrar"
+                >🗑</button>
+
+                <span style="color:var(--text3);font-size:22px">›</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function crStrat() {
+      const n = document.getElementById("ns-n").value.trim();
+      if (!n) return;
+
+      D.strategies.unshift({
+        id: uid(),
+        name: n,
+        rules: document.getElementById("ns-r").value,
+        mesa: "",
+        ops: []
+      });
+
+      sv();
+      closeModal("m-ns");
+      document.getElementById("ns-n").value = "";
+      document.getElementById("ns-r").value = "";
+      rstrat();
+    }
+
+    function gS() {
+      return D.strategies.find((s) => s.id === cur);
+    }
+
+    function gSById(id) {
+      return D.strategies.find((s) => s.id === id);
+    }
+
+    function openS(id) {
+      cur = id;
+      cf = "all";
+      cr = null;
+      editingOpId = null;
+
+      const s = gS();
+      if (!s) return;
+
+      document.getElementById("dname").textContent = s.name;
+      document.getElementById("dname").style.display = "";
+      document.getElementById("rinp").style.display = "none";
+      document.getElementById("st-rules").value = s.rules || "";
+      document.getElementById("st-mesa").value = s.mesa || "";
+      document.getElementById("df").value = "";
+      document.getElementById("dt").value = "";
+
+      document.querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("on", i === 0));
+
+      stab("ops");
+      rStats();
+      renderOps();
+      document.getElementById("strat-detail").classList.add("open");
+    }
+
+    function closeDetail() {
+      document.getElementById("strat-detail").classList.remove("open");
+      rstrat();
+    }
+
+    function startRename() {
+      const s = gS();
+      if (!s) return;
+
+      document.getElementById("dname").style.display = "none";
+      const i = document.getElementById("rinp");
+      i.style.display = "block";
+      i.value = s.name;
+      i.focus();
+      i.select();
+    }
+
+    function saveRename() {
+      const v = document.getElementById("rinp").value.trim();
+      const s = gS();
+      if (!s) return;
+
+      if (v) {
+        s.name = v;
+        sv();
+        document.getElementById("dname").textContent = v;
+      }
+
+      document.getElementById("rinp").style.display = "none";
+      document.getElementById("dname").style.display = "";
+      rstrat();
+    }
+
+    function startEditStratFromList(id) {
+      openS(id);
+      setTimeout(() => startRename(), 60);
+    }
+
+    function askDelStrat() {
+      opConf(
+        "⚠️",
+        "Eliminar estrategia",
+        "Se eliminarán la estrategia y todas sus operaciones. No se puede deshacer.",
+        () => {
+          D.strategies = D.strategies.filter((s) => s.id !== cur);
+          sv();
+          closeDetail();
+        }
+      );
+    }
+
+    function askDelStratById(id) {
+      const s = gSById(id);
+      if (!s) return;
+
+      opConf(
+        "⚠️",
+        "Eliminar estrategia",
+        `Se eliminará "${s.name}" y todas sus operaciones.`,
+        () => {
+          D.strategies = D.strategies.filter((x) => x.id !== id);
+          if (cur === id) {
+            cur = null;
+            document.getElementById("strat-detail").classList.remove("open");
+          }
+          sv();
+          rstrat();
+        }
+      );
+    }
+
+    function svRules() {
+      const s = gS();
+      if (s) {
+        s.rules = document.getElementById("st-rules").value;
+        sv();
+      }
+    }
+
+    function svMesa() {
+      const s = gS();
+      if (s) {
+        s.mesa = document.getElementById("st-mesa").value;
+        sv();
+      }
+    }
+
+    function rStats() {
+      const s = gS();
+      if (!s) return;
+
+      const ops = s.ops || [];
+      const t = ops.length;
+      const w = ops.filter((o) => o.result === "win").length;
+      const l = t - w;
+      const pct = t ? Math.round((w / t) * 100) : 0;
+
+      document.getElementById("srow").innerHTML = `
+        <div class="sbox">
+          <div class="sval" style="color:var(--accent2)">${t}</div>
+          <div class="slbl">TOTAL</div>
+        </div>
+        <div class="sbox">
+          <div class="sval" style="color:var(--green)">${w}</div>
+          <div class="slbl">GANADAS</div>
+        </div>
+        <div class="sbox">
+          <div class="sval" style="color:var(--red)">${l}</div>
+          <div class="slbl">PERDIDAS</div>
+        </div>
+      `;
+
+      document.getElementById("ww").textContent = "Ganadas: " + w;
+      document.getElementById("wl").textContent = "Perdidas: " + l;
+      document.getElementById("wp").textContent = pct + "%";
+
+      setTimeout(() => {
+        document.getElementById("wf").style.width = pct + "%";
+      }, 80);
+    }
+
+    function stab(t) {
+      ["ops", "rules", "mesa"].forEach((id) => {
+        document.getElementById("tc-" + id).style.display = id === t ? "block" : "none";
+        document.getElementById("t-" + id).classList.toggle("on", id === t);
+      });
+    }
+
+    function setF(f, el) {
+      cf = f;
+      document.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      el.classList.add("on");
+      renderOps();
+    }
+
+    function clrDates() {
+      document.getElementById("df").value = "";
+      document.getElementById("dt").value = "";
+      renderOps();
+    }
+
+    function renderOps() {
+      const s = gS();
+      if (!s) return;
+
+      let ops = s.ops || [];
+
+      if (cf === "win") ops = ops.filter((o) => o.result === "win");
+      else if (cf === "lose") ops = ops.filter((o) => o.result === "lose");
+      else if (cf === "call") ops = ops.filter((o) => o.type === "Call");
+      else if (cf === "put") ops = ops.filter((o) => o.type === "Put");
+
+      const df = document.getElementById("df").value;
+      const dt = document.getElementById("dt").value;
+
+      if (df) ops = ops.filter((o) => o.date >= df);
+      if (dt) ops = ops.filter((o) => o.date <= dt);
+
+      const l = document.getElementById("ops-list");
+
+      if (!ops.length) {
+        l.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">📋</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">
+              Sin operaciones
+            </div>
+            <div style="font-size:13px">Registra tu primera operación.</div>
+          </div>
+        `;
+        return;
+      }
+
+      l.innerHTML = ops
+        .map((op, i) => {
+          const resultColor = op.result === "win" ? "var(--green)" : "var(--red)";
+          const resultText = op.result === "win" ? "✅ Ganó" : "❌ Perdió";
+          const typeClass = op.type === "Call" ? "call" : "put";
+          const typeIcon = op.type === "Call" ? "📈" : "📉";
+
+          return `
+            <div class="opc" style="animation-delay:${i * 0.04}s">
+              <div class="otop">
+                <span class="oasset">${e(op.asset)}</span>
+                <span class="otype ${typeClass}">${typeIcon} ${e(op.type)}</span>
+              </div>
+
+              <div class="ogrid">
+                <div>
+                  <div style="font-size:10px;color:var(--text3);margin-bottom:2px">ENTRADA</div>
+                  <div style="font-size:13px;font-weight:600">${e(op.entry) || "—"}</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--text3);margin-bottom:2px">SALIDA</div>
+                  <div style="font-size:13px;font-weight:600">${e(op.exit) || "—"}</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--text3);margin-bottom:2px">CONTRATOS</div>
+                  <div style="font-size:13px;font-weight:600">${e(op.contracts) || "—"}</div>
+                </div>
+              </div>
+
+              <div class="ores" style="color:${resultColor}">
+                ${resultText}
+                <span style="color:var(--text3);font-size:11px;margin-left:auto">${fd(op.date)}</span>
+
+                <button
+                  onclick="editOp('${op.id}')"
+                  style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px;padding:0 4px"
+                  title="Editar"
+                >
+                  ✏️
+                </button>
+
+                <button
+                  onclick="askDelOp('${op.id}')"
+                  style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 4px"
+                  title="Borrar"
+                >
+                  🗑
+                </button>
+              </div>
+
+              ${op.learn ? `<div class="olearn">"${e(op.learn)}"</div>` : ""}
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    function resetOpForm() {
+      editingOpId = null;
+      cr = null;
+      ["oa", "oen", "oex", "oc", "ol"].forEach((id) => (document.getElementById(id).value = ""));
+      document.getElementById("ot").value = "Call";
+      document.getElementById("od").value = new Date().toISOString().split("T")[0];
+      document.getElementById("rw").className = "rb";
+      document.getElementById("rl").className = "rb";
+      document.getElementById("op-modal-title").textContent = "NUEVA OPERACIÓN";
+      document.getElementById("op-save-btn").textContent = "Guardar operación";
+    }
+
+    function openAddOp() {
+      resetOpForm();
+      openModal("m-ao");
+    }
+
+    function setR(r) {
+      cr = r;
+      document.getElementById("rw").className = "rb" + (r === "win" ? " rw" : "");
+      document.getElementById("rl").className = "rb" + (r === "lose" ? " rl" : "");
+    }
+
+    function editOp(id) {
+      const s = gS();
+      if (!s) return;
+
+      const op = (s.ops || []).find((o) => o.id === id);
+      if (!op) return;
+
+      editingOpId = id;
+      document.getElementById("oa").value = op.asset || "";
+      document.getElementById("ot").value = op.type || "Call";
+      document.getElementById("oen").value = op.entry || "";
+      document.getElementById("oex").value = op.exit || "";
+      document.getElementById("oc").value = op.contracts || "";
+      document.getElementById("od").value = op.date || "";
+      document.getElementById("ol").value = op.learn || "";
+      setR(op.result || "win");
+
+      document.getElementById("op-modal-title").textContent = "EDITAR OPERACIÓN";
+      document.getElementById("op-save-btn").textContent = "Actualizar operación";
+
+      openModal("m-ao");
+    }
+
+    function addOp() {
+      const a = document.getElementById("oa").value.trim();
+      if (!a || !cr) return;
+
+      const s = gS();
+      if (!s) return;
+
+      const opData = {
+        asset: a,
+        type: document.getElementById("ot").value,
+        entry: document.getElementById("oen").value,
+        exit: document.getElementById("oex").value,
+        contracts: document.getElementById("oc").value,
+        date: document.getElementById("od").value,
+        result: cr,
+        learn: document.getElementById("ol").value.trim()
+      };
+
+      s.ops = s.ops || [];
+
+      if (editingOpId) {
+        const idx = s.ops.findIndex((o) => o.id === editingOpId);
+        if (idx !== -1) {
+          s.ops[idx] = {
+            ...s.ops[idx],
+            ...opData
+          };
+        }
+      } else {
+        s.ops.unshift({
+          id: uid(),
+          ...opData
+        });
+      }
+
+      editingOpId = null;
+      sv();
+      closeModal("m-ao");
+      resetOpForm();
+      rStats();
+      renderOps();
+      rstrat();
+    }
+
+    function askDelOp(id) {
+      opConf("🗑", "Eliminar operación", "¿Eliminar esta operación?", () => {
+        const s = gS();
+        if (!s) return;
+
+        s.ops = (s.ops || []).filter((o) => o.id !== id);
+
+        if (editingOpId === id) editingOpId = null;
+
+        sv();
+        rStats();
+        renderOps();
+        rstrat();
+      });
+    }
+
+    function expCSV() {
+      const s = gS();
+      if (!s) return;
+
+      const escCsv = (v) => {
+        const str = String(v || "");
+        return `"${str.replace(/"/g, '""')}"`;
+      };
+
+      const rows = ["Activo,Tipo,Entrada,Salida,Contratos,Fecha,Resultado,Aprendizaje"];
+      (s.ops || []).forEach((o) => {
+        rows.push(
+          [
+            escCsv(o.asset),
+            escCsv(o.type),
+            escCsv(o.entry),
+            escCsv(o.exit),
+            escCsv(o.contracts),
+            escCsv(o.date),
+            escCsv(o.result === "win" ? "Ganó" : "Perdió"),
+            escCsv(o.learn || "")
+          ].join(",")
+        );
+      });
+
+      const a = document.createElement("a");
+      a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.join("\n"));
+      a.download = "ENFO_" + s.name + ".csv";
+      a.click();
+    }
+
+    function saveDiary() {
+      const t = document.getElementById("dinp").value.trim();
+      if (!t) return;
+
+      D.diary.unshift({
+        id: uid(),
+        date: new Date().toISOString(),
+        text: t
+      });
+
+      sv();
+      document.getElementById("dinp").value = "";
+      rdiary();
+    }
+
+    function rdiary() {
+      const l = document.getElementById("diary-list");
+      if (!D.diary.length) {
+        l.innerHTML = "";
+        return;
+      }
+
+      l.innerHTML = D.diary
+        .map(
+          (en, i) => `
+          <div class="dentry" style="animation-delay:${i * 0.04}s">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="ddate">${ff(en.date)}</div>
+              <button
+                onclick="askDelDiary('${en.id}')"
+                style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px"
+              >
+                🗑
+              </button>
+            </div>
+            <div style="font-size:14px;line-height:1.6;color:var(--text2);white-space:pre-wrap">
+              ${e(en.text)}
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function askDelDiary(id) {
+      opConf("🗑", "Eliminar entrada", "¿Eliminar esta entrada del diario?", () => {
+        D.diary = D.diary.filter((en) => en.id !== id);
+        sv();
+        rdiary();
+      });
+    }
+
+    function addQ() {
+      const t = document.getElementById("qt").value.trim();
+      if (!t) return;
+
+      D.quotes.unshift({
+        id: uid(),
+        text: t,
+        book: document.getElementById("qb").value.trim(),
+        author: document.getElementById("qa").value.trim()
+      });
+
+      sv();
+      closeModal("m-aq");
+      ["qt", "qb", "qa"].forEach((id) => (document.getElementById(id).value = ""));
+      rquotes();
+    }
+
+    function rquotes() {
+      const l = document.getElementById("quotes-list");
+
+      if (!D.quotes.length) {
+        l.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">📚</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">
+              Tu biblioteca está vacía.
+            </div>
+            <div style="font-size:13px">Añade frases que te inspiren.</div>
+          </div>
+        `;
+        return;
+      }
+
+      l.innerHTML = D.quotes
+        .map(
+          (q, i) => `
+          <div class="qcard" style="animation-delay:${i * 0.04}s">
+            <button class="qdel" onclick="askDelQ('${q.id}')">×</button>
+            <div style="font-size:14px;line-height:1.6;font-style:italic;margin-bottom:6px">
+              "${e(q.text)}"
+            </div>
+            ${
+              q.book || q.author
+                ? `<div style="font-size:11px;color:var(--text3);font-weight:600">
+                    ${q.book ? "📖 " + e(q.book) + " " : ""}
+                    ${q.author ? "· " + e(q.author) : ""}
+                  </div>`
+                : ""
+            }
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function askDelQ(id) {
+      opConf("×", "Eliminar cita", "¿Eliminar esta cita de tu biblioteca?", () => {
+        D.quotes = D.quotes.filter((q) => q.id !== id);
+        sv();
+        rquotes();
+      });
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add("open");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("open");
+    }
+
+    function bgc(ev, id) {
+      if (ev.target.id === id) {
+        closeModal(id);
+        if (id === "m-ao") resetOpForm();
+      }
+    }
+
+    function opConf(icon, title, msg, cb) {
+      document.getElementById("ci").textContent = icon;
+      document.getElementById("ct").textContent = title;
+      document.getElementById("cm").textContent = msg;
+      cfcb = cb;
+      document.getElementById("confirm").classList.add("open");
+    }
+
+    function clsConf() {
+      document.getElementById("confirm").classList.remove("open");
+    }
+
+    function doConf() {
+      const cb = cfcb;
+      cfcb = null;
+      clsConf();
+      if (typeof cb === "function") cb();
+    }
+
+    function fd(s) {
+      if (!s) return "";
+      const [y, m, d] = s.split("-");
+      return d + "/" + m + "/" + y;
+    }
+
+    function ff(iso) {
+      const d = new Date(iso);
+      const dn = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+      const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+
+      return (
+        dn[d.getDay()] +
+        " " +
+        d.getDate() +
+        " " +
+        mn[d.getMonth()] +
+        " · " +
+        String(d.getHours()).padStart(2, "0") +
+        ":" +
+        String(d.getMinutes()).padStart(2, "0")
+      );
+    }
+
+    ld();
+    setDates();
+    initI();
+    rstrat();
+    rdiary();
+    rquotes();
+  </script>
+</body>
+</html>
