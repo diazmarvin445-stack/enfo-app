@@ -518,7 +518,71 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <div id="app">
+  <body>
+
+<!-- LOGIN ENFO -->
+<div id="auth-wrap" style="position:fixed;inset:0;background:#060a12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:420px;background:#0d1628;border:1px solid #243d6a;border-radius:18px;padding:22px;">
+
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-family:Orbitron;font-size:26px;font-weight:900;letter-spacing:3px;color:#1d6aff;">
+        ENFO
+      </div>
+      <div style="font-size:12px;color:#7a9acc;">ACCESS SYSTEM</div>
+    </div>
+
+    <input id="auth-email" type="email" placeholder="Correo" 
+      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+
+    <input id="auth-pass" type="password" placeholder="Contraseña" 
+      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;">
+        Entrar
+      </button>
+      <button onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;">
+        Crear
+      </button>
+    </div>
+
+    <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
+
+  </div>
+</div>
+<body>
+
+<!-- LOGIN ENFO -->
+<div id="auth-wrap" style="position:fixed;inset:0;background:#060a12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:420px;background:#0d1628;border:1px solid #243d6a;border-radius:18px;padding:22px;">
+
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-family:Orbitron;font-size:26px;font-weight:900;letter-spacing:3px;color:#1d6aff;">
+        ENFO
+      </div>
+      <div style="font-size:12px;color:#7a9acc;">ACCESS SYSTEM</div>
+    </div>
+
+    <input id="auth-email" type="email" placeholder="Correo" 
+      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+
+    <input id="auth-pass" type="password" placeholder="Contraseña" 
+      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;">
+        Entrar
+      </button>
+      <button onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;">
+        Crear
+      </button>
+    </div>
+
+    <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
+
+  </div>
+</div>
+  <div id="app" style="display:none;">
     <div id="s-inicio" class="screen active">
       <div class="logo-row">
         <div class="logo">ENF<span class="logo-o"><span class="logo-o-inner"></span></span></div>
@@ -2210,6 +2274,59 @@ function getUserDocRef() {
       saveLocalLegacy();
     }
 
+    function showMsg(msg, color="lightblue") {
+  const el = document.getElementById("auth-msg");
+  if (!el) return;
+  el.innerText = msg;
+  el.style.color = color;
+}
+
+function loginUser() {
+  const email = document.getElementById("auth-email").value;
+  const pass = document.getElementById("auth-pass").value;
+
+  if (!email || !pass) {
+    showMsg("Completa los campos", "orange");
+    return;
+  }
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      showMsg("Entrando...", "lightgreen");
+    })
+    .catch(err => {
+      showMsg(err.message, "red");
+    });
+}
+
+function registerUser() {
+  const email = document.getElementById("auth-email").value;
+  const pass = document.getElementById("auth-pass").value;
+
+  if (!email || !pass) {
+    showMsg("Completa los campos", "orange");
+    return;
+  }
+
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(() => {
+      showMsg("Cuenta creada correctamente", "lightgreen");
+    })
+    .catch(err => {
+      showMsg(err.message, "red");
+    });
+}
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById("auth-wrap").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    console.log("Usuario logueado:", user.uid);
+  } else {
+    document.getElementById("auth-wrap").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+  }
+});
     bootstrap();
   </script>
 </body>
