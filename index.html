@@ -537,12 +537,14 @@
       style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;">
-        Entrar
-      </button>
-      <button onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;">
-        Crear
-      </button>
+      
+      <button id="btn-login" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;">
+  Entrar
+</button>
+
+<button id="btn-register" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;">
+  Crear
+</button>
     </div>
 
     <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
@@ -2298,52 +2300,56 @@ function registerUser() {
 }
 
 function loginUser() {
-  const email = document.getElementById("auth-email").value;
-  const pass = document.getElementById("auth-pass").value;
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-pass").value.trim();
+  const msg = document.getElementById("auth-msg");
 
-  if (!email || !pass) {
-    showMsg("Completa los campos", "orange");
+  if (!email || !password) {
+    if (msg) msg.innerText = "Completa correo y contraseña";
     return;
   }
 
-  auth.signInWithEmailAndPassword(email, pass)
+  signInWithEmailAndPassword(auth, email, password)
     .then(() => {
-      showMsg("Entrando...", "lightgreen");
+      if (msg) msg.innerText = "Entrando...";
+      document.getElementById("auth-wrap").style.display = "none";
+      document.getElementById("app").style.display = "block";
     })
-    .catch(err => {
-      showMsg(err.message, "red");
+    .catch((error) => {
+      if (msg) msg.innerText = "Firebase: " + error.message;
+      console.error(error);
     });
 }
 
 function registerUser() {
-  const email = document.getElementById("auth-email").value;
-  const pass = document.getElementById("auth-pass").value;
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-pass").value.trim();
+  const msg = document.getElementById("auth-msg");
 
-  if (!email || !pass) {
-    showMsg("Completa los campos", "orange");
+  if (!email || !password) {
+    if (msg) msg.innerText = "Completa correo y contraseña";
     return;
   }
 
-  auth.createUserWithEmailAndPassword(email, pass)
+  createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
-      showMsg("Cuenta creada correctamente", "lightgreen");
+      if (msg) msg.innerText = "Cuenta creada correctamente";
+      document.getElementById("auth-wrap").style.display = "none";
+      document.getElementById("app").style.display = "block";
     })
-    .catch(err => {
-      showMsg(err.message, "red");
+    .catch((error) => {
+      if (msg) msg.innerText = "Firebase: " + error.message;
+      console.error(error);
     });
 }
 
-auth.onAuthStateChanged(user => {
-  if (user) {
-    document.getElementById("auth-wrap").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    console.log("Usuario logueado:", user.uid);
-  } else {
-    document.getElementById("auth-wrap").style.display = "flex";
-    document.getElementById("app").style.display = "none";
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  const btnLogin = document.getElementById("btn-login");
+  const btnRegister = document.getElementById("btn-register");
+
+  if (btnLogin) btnLogin.addEventListener("click", loginUser);
+  if (btnRegister) btnRegister.addEventListener("click", registerUser);
 });
-    bootstrap();
-  </script>
+</script> 
 </body>
 </html>
