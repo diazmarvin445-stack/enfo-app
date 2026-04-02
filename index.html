@@ -865,8 +865,12 @@ function loginUser() {
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
       if (msg) msg.innerText = "Entrando...";
-      document.getElementById("auth-wrap").style.display = "none";
-      document.getElementById("app").style.display = "block";
+      console.log("LOGIN OK");  
+      console.log(document.getElementById("app"));
+
+document.getElementById("auth-wrap").style.display = "none";
+document.getElementById("app").style.opacity = "1";
+document.getElementById("app").style.display = "block";
     })
     .catch((error) => {
       if (msg) msg.innerText = "Firebase: " + error.message;
