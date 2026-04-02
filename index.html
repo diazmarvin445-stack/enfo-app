@@ -871,9 +871,9 @@ function loginUser() {
 document.getElementById("auth-wrap").style.display = "none";
 document.getElementById("app").style.opacity = "1";
 document.getElementById("app").style.display = "block";
-      document.body.style.background = "lime";
-document.body.style.margin = "0";
-document.body.innerHTML = '<div style="background:red;color:white;min-height:100vh;font-size:40px;padding:40px;">APP TEST</div>';
+document.getElementById("s-inicio").classList.add("active");
+document.getElementById("s-inicio").style.display = "block";
+
     })
     .catch((error) => {
       if (msg) msg.innerText = "Firebase: " + error.message;
