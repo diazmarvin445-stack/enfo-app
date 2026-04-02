@@ -844,7 +844,27 @@ function getUserDocRef() {
   if (!uid) throw new Error("No hay usuario autenticado.");
   return db.collection("enfo").doc(uid);
 }
+function loginUser() {
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-pass").value.trim();
+  const msg = document.getElementById("auth-msg");
 
+  if (!email || !password) {
+    if (msg) msg.innerText = "Completa correo y contraseña";
+    return;
+  }
+
+  signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+      if (msg) msg.innerText = "Entrando...";
+      document.getElementById("auth-wrap").style.display = "none";
+      document.getElementById("app").style.display = "block";
+    })
+    .catch((error) => {
+      if (msg) msg.innerText = "Firebase: " + error.message;
+      console.error(error);
+    });
+}
 function registerUser() {
   const email = document.getElementById("auth-email").value.trim();
   const password = document.getElementById("auth-pass").value.trim();
@@ -852,6 +872,7 @@ function registerUser() {
 
   if (!email || !password) {
     if (msg) msg.innerText = "Completa correo y contraseña";
+ 
     return;
   }
 
