@@ -518,7 +518,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
-  <body>
 
 <!-- LOGIN ENFO -->
 <div id="auth-wrap" style="position:fixed;inset:0;background:#060a12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
@@ -549,39 +548,7 @@
     <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
 
   </div>
-</div>
-<body>
 
-<!-- LOGIN ENFO -->
-<div id="auth-wrap" style="position:fixed;inset:0;background:#060a12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="width:100%;max-width:420px;background:#0d1628;border:1px solid #243d6a;border-radius:18px;padding:22px;">
-
-    <div style="text-align:center;margin-bottom:20px;">
-      <div style="font-family:Orbitron;font-size:26px;font-weight:900;letter-spacing:3px;color:#1d6aff;">
-        ENFO
-      </div>
-      <div style="font-size:12px;color:#7a9acc;">ACCESS SYSTEM</div>
-    </div>
-
-    <input id="auth-email" type="email" placeholder="Correo" 
-      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
-
-    <input id="auth-pass" type="password" placeholder="Contraseña" 
-      style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;">
-        Entrar
-      </button>
-      <button onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;">
-        Crear
-      </button>
-    </div>
-
-    <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
-
-  </div>
-</div>
   <div id="app" style="display:none;">
     <div id="s-inicio" class="screen active">
       <div class="logo-row">
@@ -869,6 +836,35 @@ function getUserDocRef() {
   if (!uid) throw new Error("No hay usuario autenticado.");
   return db.collection("enfo").doc(uid);
 }
+  // LOGIN
+function loginUser() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  auth.signInWithEmailAndPassword(email, password)
+    .then(() => {
+      alert("Login exitoso");
+      location.reload();
+    })
+    .catch(error => {
+      alert(error.message);
+    });
+}
+
+// REGISTRO
+function registerUser() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(() => {
+      alert("Usuario creado");
+      location.reload();
+    })
+    .catch(error => {
+      alert(error.message);
+    });
+}  
 
     let D = {
       inicio: { thought: "", notes: "", learn: "" },
