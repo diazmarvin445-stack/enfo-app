@@ -815,20 +815,28 @@
   </div>
 
   <script type="module">
-    const firebaseConfig = {
-      apiKey: "AIzaSyCbkYQSoWzpjwI82dnQ3qtxVX_mFuB1RQg",
-      authDomain: "enfo-ee211.firebaseapp.com",
-      projectId: "enfo-ee211",
-      storageBucket: "enfo-ee211.firebasestorage.app",
-      messagingSenderId: "952456554355",
-      appId: "1:952456554355:web:d3294e8e7351e1d73c07b6"
-    };
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getStorage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-    
-const app = initializeApp(firebaseConfig);
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCbkYQ5oWrpjwI82dnQ3qtxVX_mfuB1RQg",
+    authDomain: "enfo-ee211.firebaseapp.com",
+    projectId: "enfo-ee211",
+    storageBucket: "enfo-ee211.firebasestorage.app",
+    messagingSenderId: "952456554355",
+    appId: "1:952456554355:web:d3294e8e7351e1d73c0706"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
