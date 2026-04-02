@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ENFO</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #060a12;
+      color: white;
+    }
+
+    .container {
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #1d6aff;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px;
+    }
+
+    input {
+      padding: 10px;
+      margin: 5px;
+      width: 80%;
+      border-radius: 5px;
+      border: none;
+    }
+
+    .login-box {
+      max-width: 300px;
+      margin: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>ENFO</h1>
+
+    <div class="login-box">
+      <input type="email" id="email" placeholder="Correo" />
+      <input type="password" id="password" placeholder="Contraseña" />
+
+      <button onclick="login()">Entrar</button>
+    </div>
+
+    <p id="status"></p>
+
+  </div>
+
+  <script>
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        document.getElementById("status").innerText = "Completa los campos";
+        return;
+      }
+
+      // Simulación (sin Firebase)
+      document.getElementById("status").innerText = "Login básico funcionando ✅";
+    }
+  </script>
+
+</body>
+</html>
