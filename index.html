@@ -812,7 +812,7 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
     const firebaseConfig = {
       apiKey: "AIzaSyCbkYQSoWzpjwI82dnQ3qtxVX_mFuB1RQg",
       authDomain: "enfo-ee211.firebaseapp.com",
@@ -821,11 +821,17 @@
       messagingSenderId: "952456554355",
       appId: "1:952456554355:web:d3294e8e7351e1d73c07b6"
     };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-    const auth = firebase.auth();
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+    window.loginUser = loginUser;
+window.registerUser = registerUser;
 
 function getUserUid() {
   return auth.currentUser ? auth.currentUser.uid : null;
@@ -836,33 +842,47 @@ function getUserDocRef() {
   if (!uid) throw new Error("No hay usuario autenticado.");
   return db.collection("enfo").doc(uid);
 }
-  // LOGIN
-function loginUser() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+ function loginUser() {
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-pass").value.trim();
+  const msg = document.getElementById("auth-msg");
 
-  auth.signInWithEmailAndPassword(email, password)
+  if (!email || !password) {
+    if (msg) msg.innerText = "Completa correo y contraseña";
+    return;
+  }
+
+  signInWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Login exitoso");
-      location.reload();
+      if (msg) msg.innerText = "Entrando...";
+      document.getElementById("auth-wrap").style.display = "none";
+      document.getElementById("app").style.display = "block";
     })
-    .catch(error => {
-      alert(error.message);
+    .catch((error) => {
+      if (msg) msg.innerText = "Firebase: " + error.message;
+      console.error(error);
     });
-}
+} 
 
-// REGISTRO
 function registerUser() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("auth-email").value.trim();
+  const password = document.getElementById("auth-pass").value.trim();
+  const msg = document.getElementById("auth-msg");
 
-  auth.createUserWithEmailAndPassword(email, password)
+  if (!email || !password) {
+    if (msg) msg.innerText = "Completa correo y contraseña";
+    return;
+  }
+
+  createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Usuario creado");
-      location.reload();
+      if (msg) msg.innerText = "Cuenta creada correctamente";
+      document.getElementById("auth-wrap").style.display = "none";
+      document.getElementById("app").style.display = "block";
     })
-    .catch(error => {
-      alert(error.message);
+    .catch((error) => {
+      if (msg) msg.innerText = "Firebase: " + error.message;
+      console.error(error);
     });
 }  
 
