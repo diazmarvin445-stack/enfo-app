@@ -2299,28 +2299,6 @@ function registerUser() {
   el.style.color = color;
 }
 
-function registerUser() {
-  const email = document.getElementById("auth-email").value.trim();
-  const password = document.getElementById("auth-pass").value.trim();
-  const msg = document.getElementById("auth-msg");
-
-  if (!email || !password) {
-    if (msg) msg.innerText = "Completa correo y contraseña";
-    return;
-  }
-
-  createUserWithEmailAndPassword(auth, email, password)
-    .then(() => {
-      if (msg) msg.innerText = "Cuenta creada correctamente";
-      document.getElementById("auth-wrap").style.display = "none";
-      document.getElementById("app").style.display = "block";
-    })
-    .catch((error) => {
-      if (msg) msg.innerText = "Firebase: " + error.message;
-      console.error(error);
-    });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const btnLogin = document.getElementById("btn-login");
   const btnRegister = document.getElementById("btn-register");
