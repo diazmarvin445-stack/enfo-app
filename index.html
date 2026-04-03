@@ -3116,7 +3116,7 @@ function updateHorarioBanner() {
             '<div style="font-size:13px;font-weight:700;color:' + bColor + ';">' + e(b.name) + '</div>' +
             '<div style="font-size:11px;color:var(--text3);">' + formatTime(b.start) + ' — ' + formatTime(b.end) + (bMissed ? ' · No cumplido' : isDone ? ' · Cumplido ✓' : '') + '</div>' +
           '</div>' +
-          '<button onclick="event.stopPropagation();toggleBlockDone('' + b.id + '')" style="width:30px;height:30px;border-radius:50%;border:2px solid ' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--border2)") + ';background:' + (isDone ? "rgba(0,212,138,0.15)" : bMissed ? "rgba(255,69,96,0.1)" : "transparent") + ';color:' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--text3)") + ';font-size:14px;cursor:pointer;">' + (isDone ? "✓" : bMissed ? "😠" : "") + '</button>' +
+          '<button onclick="event.stopPropagation();toggleBlockDone(' + b.id + ')" style="width:30px;height:30px;border-radius:50%;border:2px solid ' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--border2)") + ';background:' + (isDone ? "rgba(0,212,138,0.15)" : bMissed ? "rgba(255,69,96,0.1)" : "transparent") + ';color:' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--text3)") + ';font-size:14px;cursor:pointer;">' + (isDone ? "✓" : bMissed ? "😠" : "") + '</button>' +
         '</div>';
       }).join("");
     }
