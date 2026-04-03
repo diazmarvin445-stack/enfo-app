@@ -3040,12 +3040,12 @@ function renderBlocks() {
           '<div class="block-name" style="color:' + (isMissed ? "var(--red)" : isDone ? "var(--green)" : "var(--text)") + '">' + e(b.name) + '</div>' +
           '<div class="block-time">' + formatTime(b.start) + ' — ' + formatTime(b.end) + (isActive ? ' · <span style="color:var(--accent2)">EN CURSO</span>' : isMissed ? ' · <span style="color:var(--red)">No cumplido</span>' : isDone ? ' · <span style="color:var(--green)">Cumplido ✓</span>' : '') + '</div>' +
         '</div>' +
-        '<button class="block-check ' + (isDone ? "checked" : "") + '" onclick="toggleBlockDone(\'' + b.id + '\')" style="' + (isMissed ? "border-color:var(--red);color:var(--red);" : "") + '">' + (isDone ? "✓" : isMissed ? "😠" : "") + '</button>' +
+        '<button class="block-check ' + (isDone ? "checked" : "") + '" onclick="toggleBlockDone(' + b.id + ')" style="' + (isMissed ? "border-color:var(--red);color:var(--red);" : "") + '">' + (isDone ? "✓" : isMissed ? "😠" : "") + '</button>' +
       '</div>' +
       (isMissed ? '<div class="block-missed-label">😠 No cumpliste este bloque</div>' : '') +
       '<div style="display:flex;gap:8px;margin-top:10px;">' +
-        '<button class="btn btn-g btn-sm" onclick="editBlock(\'' + b.id + '\')" >✏️</button>' +
-        '<button class="btn btn-d btn-sm" onclick="deleteBlock(\'' + b.id + '\')" >🗑</button>' +
+        '<button class="btn btn-g btn-sm" onclick="editBlock(' + b.id + ')" >✏️</button>' +
+        '<button class="btn btn-d btn-sm" onclick="deleteBlock(' + b.id + ')" >🗑</button>' +
       '</div>' +
     '</div>';
   }).join("");
