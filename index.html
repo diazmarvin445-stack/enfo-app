@@ -3364,7 +3364,7 @@ function renderBlocks() {
     const isActive = nowMin >= startMin && nowMin < endMin;
     const isDone   = log[b.id];
     const isPast   = nowMin >= endMin;
-    const isMissed = isPast && !isDone && !isActive;
+    const isMissed = isPast && !isDone && !isActive && !verTodosMode;
     let cardClass  = "block-card";
     if (isDone)        cardClass += " done-block";
     else if (isActive) cardClass += " active-block";
