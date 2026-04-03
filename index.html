@@ -1,0 +1,3766 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+  <title>ENFO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #060a12;
+      --surface: #0a1020;
+      --card: #0d1628;
+      --card2: #111e35;
+      --border: #1a2d50;
+      --border2: #243d6a;
+      --accent: #1d6aff;
+      --accent2: #00c8ff;
+      --gold: #f0a500;
+      --green: #00d48a;
+      --red: #ff4560;
+      --text: #e8f0ff;
+      --text2: #7a9acc;
+      --text3: #3d5a8a;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      height: 100dvh;
+      display: none;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      opacity: 1;
+      background: var(--bg);
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      bottom: 72px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      -webkit-overflow-scrolling: touch;
+      display: block;
+      background: var(--bg);
+    }
+
+    .screen.active { opacity: 1; pointer-events: all; }
+    .screen::-webkit-scrollbar, .msheet::-webkit-scrollbar, #strat-detail::-webkit-scrollbar, .frow::-webkit-scrollbar { display: none; }
+
+    #nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      background: rgba(6, 10, 18, 0.97);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+    }
+
+    .nb {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      padding-bottom: 6px;
+      position: relative;
+      font-family: "DM Sans", sans-serif;
+      transition: color 0.2s;
+    }
+
+    .nb.on { color: var(--accent2); }
+
+    .nb.on::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 25%;
+      right: 25%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent2), transparent);
+    }
+
+    .nb-icon { font-size: 22px; line-height: 1; }
+    .nb-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 8px var(--accent2); }
+      50% { box-shadow: 0 0 20px var(--accent2), 0 0 40px rgba(0, 200, 255, 0.25); }
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 20px 12px;
+    }
+
+    .logo {
+      font-family: "Orbitron", monospace;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: #fff;
+    }
+
+    .logo-o {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 2px solid var(--accent2);
+      border-radius: 6px;
+      position: relative;
+      margin-left: 2px;
+    }
+
+    .logo-o-inner {
+      width: 12px;
+      height: 12px;
+      background: var(--accent2);
+      border-radius: 2px;
+      animation: glow 2s infinite;
+    }
+
+    .date-txt {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+
+    .date-time-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.15;
+    }
+
+    .time-txt {
+      font-size: 11px;
+      color: var(--accent2);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .user-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border2);
+      background: rgba(17, 30, 53, 0.95);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .user-menu {
+      position: absolute;
+      top: 44px;
+      right: 0;
+      width: 220px;
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+      padding: 10px;
+      display: none;
+      z-index: 500;
+    }
+
+    .user-menu.open { display: block; }
+
+    .user-email {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.45;
+      padding: 8px 10px 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .user-menu-btn {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      padding: 10px;
+      border-radius: 10px;
+      font-family: "DM Sans", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .user-menu-btn:hover { background: rgba(255,255,255,0.04); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 0 16px 14px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .clabel {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cl-cyan { color: var(--accent2); }
+    .cl-white { color: var(--text2); }
+    .cl-gold { color: var(--gold); }
+
+    textarea, input[type="text"], input[type="date"], input[type="email"], input[type="password"], select {
+      width: 100%;
+      background: rgba(10, 16, 32, 0.8);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      resize: none;
+      -webkit-appearance: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    textarea { line-height: 1.55; min-height: 80px; }
+    textarea:focus, input:focus, select:focus { border-color: var(--accent); }
+    ::placeholder { color: var(--text3); }
+    select option { background: var(--card2); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      border-radius: 12px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 12px 18px;
+      transition: all 0.18s;
+    }
+
+    .btn:active { transform: scale(0.96); }
+
+    .btn-p {
+      background: linear-gradient(135deg, var(--accent), #0045cc);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(29, 106, 255, 0.35);
+      width: 100%;
+    }
+
+    .btn-g { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+    .btn-d { background: rgba(255, 69, 96, 0.1); color: var(--red); border: 1px solid rgba(255, 69, 96, 0.25); }
+
+    .btn-dash-blue, .btn-dash-gold {
+      background: transparent;
+      width: 100%;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-dash-blue { color: var(--accent2); border: 1.5px dashed var(--accent); }
+    .btn-dash-gold { color: var(--gold); border: 1.5px dashed var(--gold); }
+    .btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 9px; width: auto; }
+
+    .btn-add {
+      background: linear-gradient(135deg, var(--accent), #0045cc);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 16px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+    }
+
+    .back-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(29, 106, 255, 0.12);
+      border: none;
+      color: var(--text2);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .page-title { font-family: "Orbitron", monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+
+    .si {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 16px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      animation: fadeUp 0.3s ease both;
+      transition: border-color 0.2s;
+    }
+
+    .si:active { transform: scale(0.98); }
+
+    .pw, .pl, .side-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+    }
+
+    .pw { background: rgba(0, 212, 138, 0.15); color: var(--green); }
+    .pl { background: rgba(255, 69, 96, 0.12); color: var(--red); }
+    .side-pill.call { background: rgba(0, 212, 138, 0.12); color: var(--green); }
+    .side-pill.put { background: rgba(255, 69, 96, 0.12); color: var(--red); }
+    .section-group { margin-bottom: 16px; }
+
+    #strat-detail {
+      position: absolute;
+      inset: 0;
+      bottom: 72px;
+      background: var(--bg);
+      z-index: 50;
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #strat-detail.open { transform: translateX(0); }
+
+    .dtop {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 16px 16px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dname {
+      font-family: "Orbitron", monospace;
+      font-size: 17px;
+      font-weight: 700;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rinp {
+      font-family: "Orbitron", monospace;
+      font-size: 16px;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid var(--accent);
+      color: var(--text);
+      outline: none;
+      flex: 1;
+      padding: 2px 0;
+    }
+
+    .srow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 14px 16px 10px; }
+    .sbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; }
+    .sval { font-family: "Orbitron", monospace; font-size: 22px; font-weight: 700; line-height: 1; }
+    .slbl { font-size: 10px; color: var(--text3); margin-top: 4px; letter-spacing: 0.5px; }
+
+    .wbar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin: 0 16px 12px; }
+    .wlabels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+    .wtrack { height: 8px; background: rgba(255, 69, 96, 0.2); border-radius: 4px; overflow: hidden; }
+    .wfill { height: 100%; background: linear-gradient(90deg, var(--green), #00ffaa); border-radius: 4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      margin: 0 16px 14px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 9px 6px;
+      background: var(--surface);
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: "DM Sans", sans-serif;
+      transition: all 0.2s;
+    }
+
+    .tab.on { background: rgba(29, 106, 255, 0.15); color: var(--accent2); }
+    .frow { display: flex; gap: 8px; padding: 0 16px 10px; overflow-x: auto; }
+
+    .chip {
+      flex-shrink: 0;
+      padding: 5px 13px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text3);
+      transition: all 0.2s;
+    }
+
+    .chip.on { border-color: var(--accent2); color: var(--accent2); background: rgba(0, 200, 255, 0.08); }
+
+    .opc {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .otop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .oasset { font-family: "Orbitron", monospace; font-size: 13px; font-weight: 700; }
+    .otype { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
+    .call { background: rgba(0, 212, 138, 0.15); color: var(--green); }
+    .put { background: rgba(255, 69, 96, 0.12); color: var(--red); }
+    .ogrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .ores { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border); }
+    .olearn { font-size: 12px; color: var(--text2); margin-top: 6px; font-style: italic; line-height: 1.5; }
+
+    .fr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .flbl {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .rtog { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+
+    .rb {
+      padding: 11px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text3);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      font-family: "DM Sans", sans-serif;
+    }
+
+    .rb.rw { border-color: var(--green); background: rgba(0, 212, 138, 0.1); color: var(--green); }
+    .rb.rl { border-color: var(--red); background: rgba(255, 69, 96, 0.1); color: var(--red); }
+
+    .dentry, .mind-history-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .ddate {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 8px;
+    }
+
+    .slabel {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text3);
+      padding: 10px 20px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .qcard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px 42px 14px 16px;
+      margin: 0 16px 10px;
+      position: relative;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .qdel {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+
+    .empty { text-align: center; padding: 52px 24px; color: var(--text3); }
+    .empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.4; }
+
+    .wk-card, .mind-panel {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 0 16px 12px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .wk-title {
+      font-size: 11px;
+      color: var(--accent2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .wk-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+
+    .wk-box {
+      background: rgba(10, 16, 32, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 6px;
+      text-align: center;
+    }
+
+    .wk-num { font-family: "Orbitron", monospace; font-size: 18px; font-weight: 700; line-height: 1; }
+    .wk-lbl { font-size: 9px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .chart { margin-top: 12px; display: grid; gap: 10px; }
+    .chart-row { display: grid; grid-template-columns: 70px 1fr 44px; align-items: center; gap: 10px; font-size: 11px; color: var(--text2); }
+    .chart-bar-wrap { height: 10px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; position: relative; }
+    .chart-bar { height: 100%; border-radius: 999px; }
+    .chart-bar.win { background: linear-gradient(90deg, var(--green), #00ffaa); }
+    .chart-bar.lose { background: linear-gradient(90deg, var(--red), #ff758f); }
+
+    .week-archive {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .week-archive-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .week-badge { font-size: 10px; padding: 4px 8px; border-radius: 999px; background: rgba(0, 200, 255, 0.12); color: var(--accent2); font-weight: 700; }
+    .week-archive.clickable { cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+    .week-archive.clickable:active { transform: scale(0.99); }
+    .week-archive.open { border-color: var(--accent2); }
+    .week-open-indicator { font-size: 12px; color: var(--accent2); font-weight: 700; margin-top: 6px; }
+    .archive-ops-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .archive-op-card { background: rgba(10, 16, 32, 0.8); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .archive-op-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .archive-op-asset { font-family: "Orbitron", monospace; font-size: 13px; font-weight: 700; }
+    .archive-op-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .archive-op-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
+    .archive-op-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 1px; }
+    .archive-op-value { font-size: 12px; color: var(--text); font-weight: 600; line-height: 1.4; word-break: break-word; }
+    .archive-op-foot { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+    .archive-empty { text-align: center; color: var(--text3); font-size: 13px; padding: 12px 6px 4px; }
+
+    .mind-panel {
+      background: linear-gradient(135deg, #0a1525, #0d1e38);
+      border-color: var(--border2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .mind-block {
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: rgba(6, 10, 18, 0.45);
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+
+    .mind-q {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      color: var(--accent2);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .mind-a {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .mind-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin: 0 16px 12px;
+    }
+
+    .tiny-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text2);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(0, 200, 255, 0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(0, 200, 255, 0.16);
+    }
+
+    .mind-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+    .strategy-image-box {
+      background: rgba(10, 16, 32, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .strategy-image-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #0a1020;
+      display: block;
+    }
+
+    .strategy-image-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    #confirm {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.9);
+      backdrop-filter: blur(10px);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    #confirm.open { opacity: 1; pointer-events: all; }
+
+    .cfbox {
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 26px 20px;
+      text-align: center;
+      max-width: 300px;
+      width: 100%;
+      transform: scale(0.9);
+      transition: transform 0.2s;
+    }
+
+    #confirm.open .cfbox { transform: scale(1); }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .modal.open { opacity: 1; pointer-events: all; }
+
+    .msheet {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 24px 24px 0 0;
+      padding: 18px 16px 36px;
+      transform: translateY(100%);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 88dvh;
+      overflow-y: auto;
+    }
+
+    .modal.open .msheet { transform: translateY(0); }
+    .mhandle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
+    .mtitle { font-family: "Orbitron", monospace; font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 18px; }
+
+    /* Animación de celebración */
+    #celebration {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #celebration.show { opacity: 1; }
+    .celebration-emoji {
+      font-size: 100px;
+      animation: celebBounce 0.5s ease infinite alternate;
+    }
+    @keyframes celebBounce {
+      from { transform: scale(0.8) rotate(-10deg); }
+      to   { transform: scale(1.2) rotate(10deg); }
+    }
+
+    /* Horario */
+    .block-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 0 16px 10px;
+      animation: fadeUp 0.3s ease both;
+    }
+    .block-card.active-block { border-color: var(--accent2); background: rgba(0,200,255,0.06); }
+    .block-card.done-block   { border-color: var(--green);  opacity: 0.7; }
+    .block-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .block-name { font-size: 15px; font-weight: 700; flex: 1; }
+    .block-time { font-size: 11px; color: var(--text3); margin-top: 3px; }
+    .block-check {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2px solid var(--border2);
+      background: transparent;
+      color: var(--text3);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: rgba(0,200,255,0.2);
+      touch-action: manipulation;
+      position: relative;
+      z-index: 10;
+    }
+    .block-check.checked { border-color: var(--green); background: rgba(0,212,138,0.15); color: var(--green); }
+    .block-card.missed-block { border-color: var(--red); background: rgba(255,69,96,0.05); }
+    .block-missed-label { font-size: 11px; color: var(--red); font-weight: 700; margin-top: 6px; letter-spacing: 0.5px; }
+    .day-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid var(--border2);
+      background: var(--surface);
+      color: var(--text3);
+      font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      font-family: "DM Sans", sans-serif;
+      transition: all 0.2s;
+    }
+    .day-btn.on { border-color: var(--accent2); background: rgba(0,200,255,0.12); color: var(--accent2); }
+
+    /* Resumen semanal */
+    .week-summary-card {
+      background: linear-gradient(135deg, #0a1525, #0d1e38);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 0 16px 12px;
+      animation: fadeUp 0.3s ease both;
+    }
+    .week-day-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+    }
+    .week-day-col { text-align: center; }
+    .week-day-label { font-size: 9px; color: var(--text3); text-transform: uppercase; margin-bottom: 4px; font-weight: 700; }
+    .week-day-bar-wrap { height: 50px; background: rgba(255,255,255,0.05); border-radius: 4px; position: relative; overflow: hidden; display: flex; align-items: flex-end; }
+    .week-day-bar { width: 100%; border-radius: 4px; transition: height 0.6s ease; }
+    .week-day-pct { font-size: 9px; color: var(--text3); margin-top: 3px; }
+    .week-day-today .week-day-label { color: var(--accent2); }
+
+    /* Historial anual */
+    #stats-panel {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 400;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    #stats-panel.open { transform: translateY(0); }
+    .stats-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 20px 16px 16px;
+      position: sticky; top: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    .mini-bar-wrap {
+      display: inline-block;
+      width: 100%; height: 28px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 4px;
+      overflow: hidden;
+      vertical-align: bottom;
+      position: relative;
+    }
+    .mini-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      border-radius: 4px;
+      transition: height 0.5s ease;
+    }
+    .week-hist-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-top: 8px;
+    }
+    .week-hist-col { text-align: center; }
+    .month-label {
+      font-size: 10px; font-weight: 700;
+      color: var(--accent2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 14px 16px 6px;
+    }
+    .block-emoji { font-size: 22px; flex-shrink: 0; }
+    .add-block-form { background: var(--card2); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin: 0 16px 14px; }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+</head>
+<body>
+
+  <!-- LOGIN ENFO -->
+
+  <div id="auth-wrap" style="position:fixed;inset:0;background:#060a12;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="width:100%;max-width:420px;background:#0d1628;border:1px solid #243d6a;border-radius:18px;padding:22px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-family:Orbitron;font-size:26px;font-weight:900;letter-spacing:3px;color:#1d6aff;">ENFO</div>
+        <div style="font-size:12px;color:#7a9acc;">ACCESS SYSTEM</div>
+      </div>
+
+
+  <input id="auth-email" type="email" placeholder="Correo" onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()" style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+  <input id="auth-pass" type="password" placeholder="Contraseña" onkeydown="if(event.key==='Enter')loginUser()" style="width:100%;margin-bottom:10px;padding:12px;border-radius:10px;border:1px solid #243d6a;background:#0a1020;color:#fff;">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <button id="btn-login" onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;cursor:pointer;">Entrar</button>
+    <button id="btn-register" onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;cursor:pointer;">Crear</button>
+  </div>
+
+  <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
+  <div style="text-align:center;margin-top:10px;">
+    <button onclick="forgotPassword()" style="background:none;border:none;color:#3d5a8a;font-size:12px;cursor:pointer;text-decoration:underline;">¿Olvidaste tu contraseña?</button>
+  </div>
+</div>
+
+
+  </div>
+
+  <!-- APP REAL -->
+
+  <div id="app">
+    <div id="s-inicio" class="screen active">
+      <div class="logo-row">
+        <div class="logo">ENF<span class="logo-o"><span class="logo-o-inner"></span></span></div>
+
+
+    <div class="top-right">
+      <div class="date-time-wrap">
+        <div class="date-txt" id="date-lbl"></div>
+        <div class="time-txt" id="time-lbl"></div>
+      </div>
+
+      <button class="user-btn" onclick="toggleUserMenu()">👤</button>
+
+      <div class="user-menu" id="user-menu">
+        <div class="user-email" id="user-email">Sin usuario</div>
+        <button class="user-menu-btn" onclick="openProfile()">👤 Perfil</button>
+        <button class="user-menu-btn" onclick="openStats(); closeUserMenu()">📊 Estadísticas</button>
+        <button class="user-menu-btn" onclick="logoutUser()">🚪 Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mind-toolbar">
+    <span class="status-pill" id="mind-status-pill">EMPTY</span>
+    <button class="tiny-btn" onclick="toggleMindHistory()">Historial</button>
+  </div>
+
+  <!-- Banner de horario -->
+  <div id="horario-banner" onclick="toggleHorarioBanner()" style="margin:0 16px 12px;cursor:pointer;">
+    <div id="horario-banner-collapsed" style="background:linear-gradient(135deg,#0a1525,#0d1e38);border:1px solid var(--border2);border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+        <span style="font-size:20px;" id="banner-emoji">⏱</span>
+        <div style="flex:1;min-width:0;">
+          <div id="banner-block-name" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Sin bloques configurados</div>
+          <div id="banner-block-time" style="font-size:11px;color:var(--text3);margin-top:2px;">Toca para configurar tu horario</div>
+        </div>
+      </div>
+      <span id="banner-arrow" style="color:var(--text3);font-size:16px;flex-shrink:0;">v</span>
+    </div>
+    <div id="horario-banner-expanded" style="display:none;background:linear-gradient(135deg,#0a1525,#0d1e38);border:1px solid var(--accent2);border-radius:14px;padding:14px;margin-top:4px;">
+      <div id="banner-blocks-full"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+        <button onclick="event.stopPropagation();nav('horario')" style="padding:10px;border:1.5px dashed var(--accent);border-radius:10px;background:transparent;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;">+ Gestionar</button>
+        <button onclick="event.stopPropagation();openStats()" style="padding:10px;border:1.5px solid var(--gold);border-radius:10px;background:transparent;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">📊 Estadísticas</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mindset-root"></div>
+
+  <div id="mindset-history-wrap" style="display:none;">
+    <div class="slabel">🧠 HISTORIAL DE MENTALIDAD</div>
+    <div id="mindset-history-list"></div>
+  </div>
+
+  <div style="height:16px;"></div>
+</div>
+
+<div id="s-horario" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="nav('inicio')">‹</button>
+    <div class="page-title">HORARIO</div>
+  </div>
+  <div style="padding:0 16px 10px;display:flex;align-items:center;justify-content:space-between;">
+    <div id="horario-today-label" style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;"></div>
+    <button onclick="toggleVerTodos()" id="btn-ver-todos" style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;">Ver todos</button>
+  </div>
+  <div id="week-summary-wrap"></div>
+  <div id="blocks-list"></div>
+  <div style="padding:0 16px 14px;">
+    <button class="btn-dash-blue" onclick="toggleAddBlockForm()">+ Añadir bloque</button>
+  </div>
+  <div class="add-block-form" id="add-block-form" style="display:none;">
+    <div class="clabel cl-cyan">NUEVO BLOQUE</div>
+    <div style="margin-bottom:10px;">
+      <label class="flbl">Emoji</label>
+      <input type="text" id="blk-emoji" placeholder="🟢" style="width:70px;" />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="flbl">Nombre del bloque</label>
+      <input type="text" id="blk-name" placeholder="Trading, Descanso..." />
+    </div>
+    <div class="fr2" style="margin-bottom:14px;">
+      <div>
+        <label class="flbl">Hora inicio</label>
+        <input type="time" id="blk-start" />
+      </div>
+      <div>
+        <label class="flbl">Hora fin</label>
+        <input type="time" id="blk-end" />
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="flbl">Días activos</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        <button type="button" class="day-btn on" data-day="1" onclick="toggleDay(this)">L</button>
+        <button type="button" class="day-btn on" data-day="2" onclick="toggleDay(this)">M</button>
+        <button type="button" class="day-btn on" data-day="3" onclick="toggleDay(this)">X</button>
+        <button type="button" class="day-btn on" data-day="4" onclick="toggleDay(this)">J</button>
+        <button type="button" class="day-btn on" data-day="5" onclick="toggleDay(this)">V</button>
+        <button type="button" class="day-btn" data-day="6" onclick="toggleDay(this)">S</button>
+        <button type="button" class="day-btn" data-day="0" onclick="toggleDay(this)">D</button>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="saveBlock()">Guardar bloque</button>
+  </div>
+  <div style="height:16px;"></div>
+</div>
+
+<div id="s-estrategias" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="nav('inicio')">‹</button>
+    <div class="page-title">ESTRATEGIAS</div>
+  </div>
+  <div id="strat-list"></div>
+  <div style="padding:8px 16px 16px;">
+    <button class="btn-dash-blue" onclick="openModal('m-ns')">+ Añadir nueva estrategia</button>
+  </div>
+</div>
+
+<div id="strat-detail">
+  <div class="dtop">
+    <button class="back-btn" onclick="closeDetail()">‹</button>
+    <div id="dname" class="dname"></div>
+    <input id="rinp" class="rinp" style="display:none;" onblur="saveRename()" onkeydown="if(event.key==='Enter') saveRename()" />
+    <button class="btn btn-g btn-sm" onclick="startRename()">✏️</button>
+    <button class="btn btn-d btn-sm" onclick="askDelStrat()">🗑</button>
+  </div>
+
+  <div class="srow" id="srow"></div>
+  <div class="wbar">
+    <div class="wlabels">
+      <span id="ww">Ganadas: 0</span>
+      <span id="wp" style="font-weight:700;">0%</span>
+      <span id="wl">Perdidas: 0</span>
+    </div>
+    <div class="wtrack"><div id="wf" class="wfill" style="width:0%;"></div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="t-ops" onclick="stab('ops')">📊 Operaciones</button>
+    <button class="tab" id="t-analysis" onclick="stab('analysis')">📈 Análisis</button>
+    <button class="tab" id="t-rules" onclick="stab('rules')">📋 Reglas</button>
+    <button class="tab" id="t-mesa" onclick="stab('mesa')">🗒 Mesa</button>
+  </div>
+
+  <div id="tc-ops">
+    <div class="frow">
+      <div class="chip on" onclick="setF('all', this)">Todas</div>
+      <div class="chip" onclick="setF('win', this)">✅ Ganadas</div>
+      <div class="chip" onclick="setF('lose', this)">❌ Perdidas</div>
+      <div class="chip" onclick="setF('call', this)">📈 Call</div>
+      <div class="chip" onclick="setF('put', this)">📉 Put</div>
+    </div>
+
+    <div class="wk-card">
+      <div class="wk-title">Semana actual</div>
+      <div id="current-week-label" style="font-size:13px;color:var(--text2);line-height:1.5;">—</div>
+    </div>
+
+    <div style="display:flex; gap:8px; padding:0 16px 10px; align-items:center;">
+      <input type="date" id="df" style="flex:1; font-size:12px; padding:8px 10px;" onchange="renderOps()" />
+      <span style="color:var(--text3); font-size:12px;">→</span>
+      <input type="date" id="dt" style="flex:1; font-size:12px; padding:8px 10px;" onchange="renderOps()" />
+      <button class="btn btn-g btn-sm" onclick="clrDates()">✕</button>
+    </div>
+
+    <div style="display:flex; gap:8px; padding:0 16px 12px;">
+      <button class="btn-add" onclick="openAddOp()">+ Añadir</button>
+      <button class="btn btn-g btn-sm" onclick="expCSV()">📤 CSV</button>
+    </div>
+
+    <div id="ops-list"></div>
+  </div>
+
+  <div id="tc-analysis" style="display:none;">
+    <div class="wk-card">
+      <div class="wk-title">Cierre semanal automático</div>
+      <div id="weekly-status" style="font-size:13px;color:var(--text2);line-height:1.6;">—</div>
+    </div>
+    <div class="wk-card">
+      <div class="wk-title">Resumen de la semana actual</div>
+      <div id="analysis-current"></div>
+    </div>
+    <div class="wk-card">
+      <div class="wk-title">Gráfico semanal actual</div>
+      <div id="analysis-chart"></div>
+    </div>
+    <div class="slabel">🗂 HISTORIAL SEMANAL</div>
+    <div id="weekly-history"></div>
+  </div>
+
+  <div id="tc-rules" style="display:none;">
+    <div class="card" style="margin-top:4px;">
+      <div class="clabel cl-white">🖼 REFERENCIA VISUAL</div>
+      <div id="strategy-image-wrap"></div>
+    </div>
+    <div class="card" style="margin-top:4px;">
+      <div class="clabel cl-white">🗂 RESUMEN DE LA ESTRATEGIA</div>
+      <textarea id="st-rules" rows="7" placeholder="Describe las reglas y condiciones..." oninput="svRules()"></textarea>
+    </div>
+  </div>
+
+  <div id="tc-mesa" style="display:none;">
+    <div class="card" style="margin-top:4px;">
+      <div class="clabel cl-white">🗒 MESA DE TRABAJO</div>
+      <textarea id="st-mesa" rows="9" placeholder="Notas libres, ideas, observaciones..." oninput="svMesa()"></textarea>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+</div>
+
+<div id="s-diario" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="nav('inicio')">‹</button>
+    <div class="page-title">DIARIO</div>
+  </div>
+  <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
+    <div class="clabel cl-cyan" id="dlbl"></div>
+    <textarea id="dinp" rows="6" placeholder="Este es tu espacio personal. Escribe libremente..."></textarea>
+    <div style="height:12px;"></div>
+    <button class="btn btn-p" onclick="saveDiary()" style="text-transform:uppercase; letter-spacing:1.5px; font-size:13px;">Guardar entrada</button>
+  </div>
+  <div class="slabel">📅 ENTRADAS ANTERIORES</div>
+  <div id="diary-list"></div>
+  <div style="height:16px;"></div>
+</div>
+
+<div id="s-biblioteca" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="nav('inicio')">‹</button>
+    <div class="page-title">BIBLIOTECA</div>
+  </div>
+  <div style="padding:4px 16px 16px;">
+    <button class="btn-dash-gold" onclick="openAddQuoteModal()">📚 Añadir frase o cita</button>
+  </div>
+  <div id="quotes-list"></div>
+  <div style="height:16px;"></div>
+</div>
+
+<nav id="nav">
+  <button class="nb on" id="nb-inicio" onclick="nav('inicio')"><span class="nb-icon">🏠</span><span class="nb-lbl">INICIO</span></button>
+  <button class="nb" id="nb-estrategias" onclick="nav('estrategias')"><span class="nb-icon">⊞</span><span class="nb-lbl">ESTRATEGIAS</span></button>
+  <button class="nb" id="nb-diario" onclick="nav('diario')"><span class="nb-icon">☰</span><span class="nb-lbl">DIARIO</span></button>
+  <button class="nb" id="nb-biblioteca" onclick="nav('biblioteca')"><span class="nb-icon">📚</span><span class="nb-lbl">BIBLIOTECA</span></button>
+</nav>
+
+<div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="strat-modal-title">NUEVA ESTRATEGIA</div>
+    <div style="margin-bottom:14px;">
+      <label class="flbl">Nombre</label>
+      <input type="text" id="ns-n" placeholder="Ej: Breakout en apertura" />
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="flbl">Lado</label>
+      <select id="ns-side">
+        <option>Call</option>
+        <option>Put</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label class="flbl">Reglas iniciales (opcional)</label>
+      <textarea id="ns-r" rows="3" placeholder="Condiciones de entrada, salida..."></textarea>
+    </div>
+    <button class="btn btn-p" id="strat-save-btn" onclick="crStrat()">Crear estrategia</button>
+  </div>
+</div>
+
+<div class="modal" id="m-ao" onclick="bgc(event, 'm-ao')">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="op-modal-title">NUEVA OPERACIÓN</div>
+    <div class="fr2">
+      <div>
+        <label class="flbl">ACTIVO</label>
+        <input type="text" id="oa" placeholder="SPY, QQQ..." />
+      </div>
+      <div>
+        <label class="flbl">TIPO</label>
+        <select id="ot">
+          <option>Call</option>
+          <option>Put</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr2">
+      <div>
+        <label class="flbl">ENTRADA</label>
+        <input type="text" id="oen" placeholder="$0.00" />
+      </div>
+      <div>
+        <label class="flbl">SALIDA</label>
+        <input type="text" id="oex" placeholder="$0.00" />
+      </div>
+    </div>
+    <div class="fr2">
+      <div>
+        <label class="flbl">CONTRATOS</label>
+        <input type="text" id="oc" placeholder="1" />
+      </div>
+      <div>
+        <label class="flbl">FECHA</label>
+        <input type="date" id="od" />
+      </div>
+    </div>
+    <div class="rtog">
+      <div class="rb" id="rw" onclick="setR('win')">✓ Ganó</div>
+      <div class="rb" id="rl" onclick="setR('lose')">✗ Perdió</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label class="flbl">¿QUÉ APRENDISTE DE ESTA OPERACIÓN?</label>
+      <textarea id="ol" rows="2" placeholder="Escribe tu aprendizaje..."></textarea>
+    </div>
+    <button class="btn btn-p" id="op-save-btn" onclick="addOp()">Guardar operación</button>
+  </div>
+</div>
+
+<div class="modal" id="m-aq" onclick="bgc(event, 'm-aq')">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="quote-modal-title">AÑADIR CITA</div>
+    <div style="margin-bottom:12px;">
+      <label class="flbl">Frase o cita</label>
+      <textarea id="qt" rows="3" placeholder="Escribe la frase..."></textarea>
+    </div>
+    <div class="fr2" style="margin-bottom:16px;">
+      <div>
+        <label class="flbl">Libro</label>
+        <input type="text" id="qb" placeholder="Título" />
+      </div>
+      <div>
+        <label class="flbl">Autor</label>
+        <input type="text" id="qa" placeholder="Autor" />
+      </div>
+    </div>
+    <button class="btn btn-p" id="quote-save-btn" onclick="addQ()">Guardar cita</button>
+  </div>
+</div>
+
+<!-- Panel de Estadísticas -->
+<div id="stats-panel">
+  <div class="stats-header">
+    <button class="back-btn" onclick="closeStats()">‹</button>
+    <div class="page-title">ESTADÍSTICAS</div>
+  </div>
+  <div id="stats-content" style="padding-bottom:30px;"></div>
+</div>
+
+<!-- Celebración -->
+<div id="celebration">
+  <div class="celebration-emoji" id="celebration-emoji">🎉</div>
+</div>
+
+<div id="confirm">
+  <div class="cfbox">
+    <div id="ci" style="font-size:38px; margin-bottom:12px;">⚠️</div>
+    <div id="ct" style="font-size:16px; font-weight:700; margin-bottom:6px;"></div>
+    <div id="cm" style="font-size:13px; color:var(--text2); margin-bottom:20px; line-height:1.5;"></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <button class="btn btn-g" onclick="clsConf()">Cancelar</button>
+      <button class="btn btn-d" onclick="doConf()">Eliminar</button>
+    <div>
+  </div>
+</div>
+
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCbkYQ5oWrpjwI82dnQ3qtxVX_mfuB1RQg",
+      authDomain: "enfo-ee211.firebaseapp.com",
+      projectId: "enfo-ee211",
+      storageBucket: "enfo-ee211.firebasestorage.app",
+      messagingSenderId: "952456554355",
+      appId: "1:952456554355:web:d3294e8e7351e1d73c0706"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let enfoRef = null;
+    let currentUserData = { uid: "", email: "" };
+    let liveClockTimer = null;
+
+    // ─── Helpers de UID ────────────────────────────────────────────────────────
+
+    function getUserUid() {
+      return auth.currentUser ? auth.currentUser.uid : null;
+    }
+
+    function getUserRootRef() {
+      const uid = getUserUid();
+      if (!uid) throw new Error("No hay usuario autenticado.");
+      return db.collection("users").doc(uid);
+    }
+
+    function getUserDocRef() {
+      const uid = getUserUid();
+      if (!uid) throw new Error("No hay usuario autenticado.");
+      return db.collection("users").doc(uid).collection("app").doc("main");
+    }
+
+    // ─── localStorage con aislamiento por UID ──────────────────────────────────
+
+    function lsKey(uid)       { return `enfo_${uid}`; }
+    function lsKeyBk(uid)     { return `enfo_backup_${uid}`; }
+
+    /**
+     * Elimina las claves globales legacy (enfo / enfo_backup) que no
+     * pertenecen a ningún UID específico. Se llama una sola vez al
+     * iniciar sesión para sanear el almacenamiento.
+     */
+    function clearLegacyUnsafeLocalData() {
+      try { localStorage.removeItem("enfo"); }       catch (_) {}
+      try { localStorage.removeItem("enfo_backup"); } catch (_) {}
+    }
+
+    /** Estructura vacía garantizada para un usuario nuevo. */
+    function emptyAppData() {
+      return {
+        inicio:     { thought: "", notes: "", learn: "" },
+        mindset:    [],
+        strategies: [],
+        diary:      [],
+        quotes:     [],
+        blocks:     [],
+        blockLogs:  {}
+      };
+    }
+
+    /** Guarda copia de seguridad local vinculada al UID. */
+    function localBackup() {
+      const uid = getUserUid();
+      if (!uid) return;
+      try { localStorage.setItem(lsKeyBk(uid), JSON.stringify(D)); } catch (_) {}
+    }
+
+    /** Persiste localmente vinculado al UID + genera backup. */
+    function saveLocalLegacy() {
+      const uid = getUserUid();
+      if (!uid) return;
+      try { localStorage.setItem(lsKey(uid), JSON.stringify(D)); } catch (_) {}
+      localBackup();
+    }
+
+    // ─── Utilidades de UI ──────────────────────────────────────────────────────
+
+    function showMsg(msg, color = "#7a9acc") {
+      const el = document.getElementById("auth-msg");
+      if (!el) return;
+      el.innerText = msg;
+      el.style.color = color;
+    }
+
+    function updateUserUI() {
+      const emailEl = document.getElementById("user-email");
+      if (emailEl) emailEl.textContent = currentUserData.email || "Sin usuario";
+    }
+
+    function startLiveClock() {
+      if (liveClockTimer) clearInterval(liveClockTimer);
+
+      const renderClock = () => {
+        const now = new Date();
+        const dn = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
+        const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+        const mn2 = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+
+        const hours12 = now.getHours() % 12 || 12;
+        const ampm = now.getHours() >= 12 ? "PM" : "AM";
+        const hh = String(hours12).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+
+        const dateLbl = document.getElementById("date-lbl");
+        const timeLbl = document.getElementById("time-lbl");
+        const dlbl    = document.getElementById("dlbl");
+        const od      = document.getElementById("od");
+
+        if (dateLbl) dateLbl.textContent = `${dn[now.getDay()]}, ${now.getDate()} ${mn[now.getMonth()]}`;
+        if (timeLbl) timeLbl.textContent = `${hh}:${mm}:${ss} ${ampm}`;
+        if (dlbl)    dlbl.textContent    = `${dn[now.getDay()]}, ${now.getDate()} DE ${mn2[now.getMonth()]} DE ${now.getFullYear()}`;
+        if (od && !od.value) od.value = fmtDateYMD(now);
+      };
+
+      renderClock();
+      liveClockTimer = setInterval(() => {
+        renderClock();
+        updateHorarioBanner();
+      }, 60000);
+      renderClock();
+    }
+
+    function toggleUserMenu() {
+      const menu = document.getElementById("user-menu");
+      if (!menu) return;
+      menu.classList.toggle("open");
+    }
+
+    function closeUserMenu() {
+      const menu = document.getElementById("user-menu");
+      if (menu) menu.classList.remove("open");
+    }
+
+    function openProfile() {
+      alert(`Usuario: ${currentUserData.email || "Sin correo"}\nUID: ${currentUserData.uid || "Sin UID"}`);
+      closeUserMenu();
+    }
+
+    // ─── Auth ──────────────────────────────────────────────────────────────────
+
+    async function logoutUser() {
+      try {
+        closeUserMenu();
+
+        // Reset completo del estado en memoria antes de salir
+        resetAppState();
+
+        await auth.signOut();
+      } catch (err) {
+        console.error("Error cerrando sesión:", err);
+        alert("No se pudo cerrar sesión.");
+      }
+    }
+
+    /**
+     * Limpia completamente el estado en memoria.
+     * Evita que los datos de un usuario persistan cuando llega otro.
+     */
+    function resetAppState() {
+      D = emptyAppData();
+      cur = null;
+      cf = "all";
+      cr = null;
+      cfcb = null;
+      editingOpId = null;
+      openedArchiveWeek = null;
+      editingDiaryId = null;
+      editingQuoteId = null;
+      editingStrategyId = null;
+      editingMindsetId = null;
+      mindHistoryOpen = false;
+      const statsPanel = document.getElementById("stats-panel");
+      if (statsPanel) statsPanel.classList.remove("open");
+      enfoRef = null;
+      currentUserData = { uid: "", email: "" };
+
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      savingNow = false;
+      pendingCloudSave = false;
+      skipAutoSave = false;
+      strategyImageUploading = false;
+    }
+
+    document.addEventListener("click", (event) => {
+      const menu = document.getElementById("user-menu");
+      if (!menu) return;
+      const topRight = event.target.closest(".top-right");
+      if (!topRight) closeUserMenu();
+    });
+
+    async function showMainApp() {
+      const authWrap = document.getElementById("auth-wrap");
+      const appEl    = document.getElementById("app");
+      const inicio   = document.getElementById("s-inicio");
+
+      if (authWrap) authWrap.style.display = "none";
+      if (appEl) {
+        appEl.style.display     = "flex";
+        appEl.style.opacity     = "1";
+        appEl.style.visibility  = "visible";
+      }
+
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      if (inicio) {
+        inicio.classList.add("active");
+        inicio.style.display = "block";
+      }
+
+      updateUserUI();
+      startLiveClock();
+
+      await bootstrap();
+      nav("inicio");
+    }
+
+    async function loginUser() {
+      const email    = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-pass").value.trim();
+
+      if (!email || !password) {
+        showMsg("Completa correo y contraseña", "#ff758f");
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        showMsg("Entrando...", "#00d48a");
+      } catch (error) {
+        console.error(error);
+        showMsg("Firebase: " + error.message, "#ff758f");
+      }
+    }
+
+    async function forgotPassword() {
+      const email = document.getElementById("auth-email").value.trim();
+      if (!email) {
+        showMsg("Escribe tu correo primero", "#ff758f");
+        return;
+      }
+      try {
+        await auth.sendPasswordResetEmail(email);
+        showMsg("Correo de recuperación enviado. Revisa tu bandeja.", "#00d48a");
+      } catch (error) {
+        showMsg("Firebase: " + error.message, "#ff758f");
+      }
+    }
+
+    async function registerUser() {
+      const email    = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-pass").value.trim();
+
+      if (!email || !password) {
+        showMsg("Completa correo y contraseña", "#ff758f");
+        return;
+      }
+
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        showMsg("Cuenta creada correctamente", "#00d48a");
+      } catch (error) {
+        console.error(error);
+        showMsg("Firebase: " + error.message, "#ff758f");
+      }
+    }
+
+    // ─── Estado de la app ──────────────────────────────────────────────────────
+
+    let D = emptyAppData();
+
+    let cur = null;
+    let cf = "all";
+    let cr = null;
+    let cfcb = null;
+    let editingOpId = null;
+    let openedArchiveWeek = null;
+    let editingDiaryId = null;
+    let editingQuoteId = null;
+    let editingStrategyId = null;
+    let editingMindsetId = null;
+    let mindHistoryOpen = false;
+
+    let saveTimer = null;
+    let savingNow = false;
+    let pendingCloudSave = false;
+    let skipAutoSave = false;
+    let strategyImageUploading = false;
+
+    // ─── Utilidades generales ──────────────────────────────────────────────────
+
+    function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function e(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function safeFileName(name) {
+      return String(name || "imagen")
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, "_");
+    }
+
+    function parseLocalDate(dateStr) {
+      if (!dateStr) return new Date();
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+    }
+
+    function fmtDateYMD(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function fmtDateHuman(dateStr) {
+      if (!dateStr) return "";
+      const d  = parseLocalDate(dateStr);
+      const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+      return `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    function getDayKey() { return fmtDateYMD(new Date()); }
+    function getMindsetRecord(dayKey = getDayKey()) { return D.mindset.find((r) => r.dayKey === dayKey) || null; }
+
+    function mindsetState(rec) {
+      if (!rec || (!(rec.thought || "").trim() && !(rec.notes || "").trim() && !(rec.learn || "").trim())) return "EMPTY";
+      if ((rec.thought || "").trim() && (rec.notes || "").trim() && (rec.learn || "").trim()) return "COMPLETE";
+      if ((rec.thought || "").trim() && (rec.notes || "").trim()) return "PARTIAL";
+      return "EMPTY";
+    }
+
+    function getStrategyImageUrl(strategy) {
+      if (!strategy) return "";
+      return strategy.image || strategy.imageUrl || "";
+    }
+
+    function sanitizeData(raw) {
+      const data = raw || {};
+      data.inicio     = data.inicio     || { thought: "", notes: "", learn: "" };
+      data.mindset    = Array.isArray(data.mindset)    ? data.mindset    : [];
+      data.strategies = Array.isArray(data.strategies) ? data.strategies : [];
+      data.diary      = Array.isArray(data.diary)      ? data.diary      : [];
+      data.quotes     = Array.isArray(data.quotes)     ? data.quotes     : [];
+
+      data.strategies.forEach((s) => {
+        s.id            = s.id            || uid();
+        s.name          = s.name          || "";
+        s.ops           = Array.isArray(s.ops)           ? s.ops           : [];
+        s.rules         = s.rules         || "";
+        s.mesa          = s.mesa          || "";
+        s.weeklyArchives = Array.isArray(s.weeklyArchives) ? s.weeklyArchives : [];
+        s.side          = s.side          || "Call";
+        s.image         = s.image         || s.imageUrl  || "";
+        s.imageUrl      = s.image         || s.imageUrl  || "";
+        s.imagePath     = s.imagePath     || "";
+      });
+
+      data.mindset.forEach((r) => {
+        r.id        = r.id        || uid();
+        r.dayKey    = r.dayKey    || getDayKey();
+        r.createdAt = r.createdAt || new Date().toISOString();
+        r.thought   = r.thought   || "";
+        r.notes     = r.notes     || "";
+        r.learn     = r.learn     || "";
+      });
+
+      data.diary.forEach((x) => {
+        x.id   = x.id   || uid();
+        x.date = x.date || new Date().toISOString();
+        x.text = x.text || "";
+      });
+
+      data.quotes.forEach((x) => {
+        x.id     = x.id     || uid();
+        x.text   = x.text   || "";
+        x.book   = x.book   || "";
+        x.author = x.author || "";
+      });
+
+      data.blocks    = Array.isArray(data.blocks)    ? data.blocks    : [];
+      data.blockLogs = data.blockLogs && typeof data.blockLogs === "object" ? data.blockLogs : {};
+
+      return data;
+    }
+
+    function serializeForCloud() {
+      return JSON.parse(JSON.stringify(D));
+    }
+
+    // ─── Guardado ──────────────────────────────────────────────────────────────
+
+    function sv() {
+      if (skipAutoSave || !enfoRef) return;
+      saveLocalLegacy();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { saveCloudNow(); }, 450);
+    }
+
+    async function saveCloudNow() {
+      if (!enfoRef) return;
+
+      if (savingNow) {
+        pendingCloudSave = true;
+        return;
+      }
+
+      savingNow = true;
+      try {
+        do {
+          pendingCloudSave = false;
+          await enfoRef.set({
+            ...serializeForCloud(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } while (pendingCloudSave);
+      } catch (err) {
+        console.error("Error guardando en Firestore:", err);
+      } finally {
+        savingNow = false;
+      }
+    }
+
+    // ─── Storage ───────────────────────────────────────────────────────────────
+
+    async function uploadStrategyImageFile(file, strategyId) {
+      if (!file)       throw new Error("No se recibió ningún archivo.");
+      if (!strategyId) throw new Error("No se encontró la estrategia.");
+      if (!file.type || !file.type.startsWith("image/")) throw new Error("El archivo seleccionado no es una imagen.");
+
+      const extSafeName = safeFileName(file.name || "imagen.jpg");
+      const filePath    = `users/${getUserUid()}/strategies/${strategyId}/${Date.now()}_${extSafeName}`;
+      const ref         = storage.ref().child(filePath);
+
+      const metadata = { contentType: file.type || "image/jpeg", cacheControl: "public,max-age=3600" };
+      const snapshot  = await ref.put(file, metadata);
+      const url       = await snapshot.ref.getDownloadURL();
+
+      return { url, filePath };
+    }
+
+    async function deleteStorageFileByPath(path) {
+      if (!path) return;
+      try { await storage.ref().child(path).delete(); }
+      catch (err) { console.warn("No se pudo borrar archivo en Storage:", err); }
+    }
+
+    // ─── Carga de datos ────────────────────────────────────────────────────────
+
+    /**
+     * Carga datos desde Firestore.
+     * - Si existe el documento → usa esos datos.
+     * - Si NO existe (usuario nuevo o sin datos) → inicia con emptyAppData().
+     *   NO usa fallback global de localStorage para evitar fuga entre usuarios.
+     * - Sólo en caso de error de red → intenta localStorage del UID actual.
+     */
+    async function ld() {
+      const uid = getUserUid();
+      if (!uid) return;
+
+      try {
+        const snap = await enfoRef.get();
+
+        if (snap.exists) {
+          // Datos en la nube: cargar directamente
+          const cloudData = snap.data() || {};
+          delete cloudData.updatedAt;
+          D = sanitizeData(cloudData);
+        } else {
+          // Usuario nuevo o sin documento: datos vacíos, sin fallback global
+          D = sanitizeData(emptyAppData());
+          await saveCloudNow();
+        }
+      } catch (err) {
+        // Error de red: usar backup local del UID actual únicamente
+        console.error("Error cargando Firestore:", err);
+        try {
+          const raw = localStorage.getItem(lsKeyBk(uid)) || localStorage.getItem(lsKey(uid));
+          D = sanitizeData(raw ? JSON.parse(raw) : emptyAppData());
+        } catch (_) {
+          D = sanitizeData(emptyAppData());
+        }
+      }
+
+      migrateMindsetFromInicio();
+    }
+
+    function migrateMindsetFromInicio() {
+      const legacy   = D.inicio || {};
+      const hasLegacy = (legacy.thought || "").trim() || (legacy.notes || "").trim() || (legacy.learn || "").trim();
+      if (!hasLegacy) return;
+
+      const todayKey = getDayKey();
+      const exists   = D.mindset.find((r) => r.dayKey === todayKey);
+
+      if (!exists) {
+        D.mindset.unshift({
+          id:        uid(),
+          dayKey:    todayKey,
+          createdAt: new Date().toISOString(),
+          thought:   legacy.thought || "",
+          notes:     legacy.notes   || "",
+          learn:     legacy.learn   || ""
+        });
+      }
+
+      D.inicio = { thought: "", notes: "", learn: "" };
+      sv();
+    }
+
+    // ─── Semanas ───────────────────────────────────────────────────────────────
+
+    function getWeekInfo(input) {
+      const date = typeof input === "string" ? parseLocalDate(input) : new Date(input);
+      const d    = new Date(date);
+      const day  = d.getDay();
+      const mondayShift = day === 0 ? -6 : 1 - day;
+
+      const start = new Date(d);
+      start.setDate(d.getDate() + mondayShift);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+
+      const fridayCutoff = new Date(start);
+      fridayCutoff.setDate(start.getDate() + 4);
+      fridayCutoff.setHours(16, 15, 0, 0);
+
+      return {
+        key:         fmtDateYMD(start),
+        startISO:    fmtDateYMD(start),
+        endISO:      fmtDateYMD(end),
+        startDate:   start,
+        endDate:     end,
+        fridayCutoff
+      };
+    }
+
+    function getCurrentWeekInfo() { return getWeekInfo(new Date()); }
+    function getWeekLabel(weekInfo) { return `Semana del ${fmtDateHuman(weekInfo.startISO)} al ${fmtDateHuman(weekInfo.endISO)}`; }
+
+    function normalizeOperationWeek(op) {
+      const info  = getWeekInfo(op.date || new Date());
+      op.weekKey   = info.key;
+      op.weekStart = info.startISO;
+      op.weekEnd   = info.endISO;
+      return op;
+    }
+
+    function summarizeOps(ops, weekInfo = null) {
+      const total   = ops.length;
+      const wins    = ops.filter((o) => o.result === "win").length;
+      const losses  = ops.filter((o) => o.result === "lose").length;
+      const winRate = total ? Math.round((wins  / total) * 100) : 0;
+      const lossRate = total ? 100 - winRate : 0;
+      return {
+        key:       weekInfo ? weekInfo.key      : "",
+        weekStart: weekInfo ? weekInfo.startISO : "",
+        weekEnd:   weekInfo ? weekInfo.endISO   : "",
+        total, wins, losses, winRate, lossRate
+      };
+    }
+
+    function getStrategyWeeks(strategy) {
+      const map = {};
+      (strategy.ops || []).forEach((op) => {
+        normalizeOperationWeek(op);
+        if (!map[op.weekKey]) map[op.weekKey] = [];
+        map[op.weekKey].push(op);
+      });
+      return map;
+    }
+
+    function getCurrentWeekOps(strategy) {
+      const current = getCurrentWeekInfo();
+      return (strategy.ops || []).filter((op) => {
+        normalizeOperationWeek(op);
+        return op.weekKey === current.key;
+      });
+    }
+
+    function sortArchivesDesc(list) {
+      return [...list].sort((a, b) => (a.weekKey < b.weekKey ? 1 : -1));
+    }
+
+    function ensureWeeklyArchives() {
+      const now         = new Date();
+      const currentWeek = getCurrentWeekInfo();
+
+      D.strategies.forEach((s) => {
+        s.weeklyArchives = s.weeklyArchives || [];
+        s.ops            = s.ops            || [];
+        s.side           = s.side           || "Call";
+        s.image          = s.image          || s.imageUrl || "";
+        s.imageUrl       = s.image          || s.imageUrl || "";
+        s.imagePath      = s.imagePath      || "";
+        s.ops.forEach(normalizeOperationWeek);
+
+        const weekMap     = getStrategyWeeks(s);
+        const archivedKeys = new Set((s.weeklyArchives || []).map((x) => x.weekKey));
+
+        Object.keys(weekMap).forEach((weekKey) => {
+          const info          = getWeekInfo(weekKey);
+          const isCurrentWeek = weekKey === currentWeek.key;
+          const canCloseCurrent = now >= currentWeek.fridayCutoff;
+
+          if (!isCurrentWeek || canCloseCurrent) {
+            const summary = summarizeOps(weekMap[weekKey], info);
+            if (!archivedKeys.has(weekKey)) {
+              s.weeklyArchives.push({ ...summary, weekKey, closedAt: new Date().toISOString() });
+            } else {
+              const idx = s.weeklyArchives.findIndex((x) => x.weekKey === weekKey);
+              s.weeklyArchives[idx] = { ...s.weeklyArchives[idx], ...summary };
+            }
+          }
+        });
+
+        s.weeklyArchives = sortArchivesDesc(s.weeklyArchives);
+      });
+
+      if (!skipAutoSave) sv();
+    }
+
+    // ─── Navegación ────────────────────────────────────────────────────────────
+
+    function nav(id) {
+      ensureWeeklyArchives();
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      document.querySelectorAll(".nb").forEach((b) => b.classList.remove("on"));
+      document.getElementById("s-" + id).classList.add("active");
+      document.getElementById("nb-" + id).classList.add("on");
+      document.getElementById("strat-detail").classList.remove("open");
+
+      if (id === "inicio")      renderMindset();
+      if (id === "estrategias") rstrat();
+      if (id === "diario")      rdiary();
+      if (id === "biblioteca")  rquotes();
+      if (id === "horario")     { renderBlocks(); requestNotifPermission(); }
+    }
+
+    function setDates() { startLiveClock(); }
+
+    // ─── Mindset ───────────────────────────────────────────────────────────────
+
+    function renderMindset() {
+      const rec   = getMindsetRecord();
+      const state = mindsetState(rec);
+      document.getElementById("mind-status-pill").textContent = state;
+      updateHorarioBanner();
+      const root  = document.getElementById("mindset-root");
+
+      if (editingMindsetId && rec && editingMindsetId === rec.id) {
+        root.innerHTML = `
+          <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
+            <div class="clabel cl-cyan">✦ PENSAMIENTO DEL DÍA</div>
+            <textarea id="m-edit-thought" rows="3" placeholder="Escribe tu pensamiento del día...">${e(rec.thought)}</textarea>
+
+
+      </div>
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-white">🗒 ¿CÓMO ESTÁ TU MENTE HOY?</div>
+        <textarea id="m-edit-notes" rows="3" placeholder="Describe tu mente hoy...">${e(rec.notes)}</textarea>
+      </div>
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-gold">⚡ ¿QUÉ APRENDISTE DE TUS TRADES HOY?</div>
+        <textarea id="m-edit-learn" rows="3" placeholder="Tu aprendizaje del día...">${e(rec.learn)}</textarea>
+        <div class="mind-actions">
+          <button class="btn btn-p" onclick="saveMindsetEdit('${rec.id}')">Guardar cambios</button>
+          <button class="btn btn-g" onclick="cancelMindsetEdit()">Cancelar</button>
+        </div>
+      </div>`;
+    renderMindsetHistory();
+    return;
+  }
+
+  if (state === "EMPTY") {
+    root.innerHTML = `
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
+        <div class="clabel cl-cyan">✦ PENSAMIENTO DEL DÍA</div>
+        <textarea id="thought" rows="3" placeholder="Escribe tu pensamiento del día..."></textarea>
+      </div>
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-white">🗒 ¿CÓMO ESTÁ TU MENTE HOY?</div>
+        <textarea id="notes" rows="3" placeholder="¿Cómo está tu mente hoy?"></textarea>
+      </div>
+      <div style="padding: 0 16px 12px;">
+        <button class="btn btn-p" onclick="saveMindsetStep1()">Guardar enfoque del día</button>
+      </div>`;
+  } else if (state === "PARTIAL") {
+    root.innerHTML = `
+      ${mindPanelHTML(rec, true)}
+      <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38);">
+        <div class="clabel cl-gold">⚡ ¿QUÉ APRENDISTE DE TUS TRADES HOY?</div>
+        <textarea id="learn" rows="3" placeholder="Tu aprendizaje del día..."></textarea>
+        <div style="height:12px;"></div>
+        <button class="btn btn-p" onclick="saveMindsetStep2()">Guardar aprendizaje</button>
+      </div>`;
+  } else {
+    root.innerHTML = mindPanelHTML(rec, true);
+  }
+
+  renderMindsetHistory();
+}
+
+function mindPanelHTML(rec, isToday) {
+  const title = isToday ? "PANEL DEL DÍA" : `REGISTRO ${fmtDateHuman(rec.dayKey)}`;
+  return `
+    <div class="mind-panel">
+      <div class="wk-title">${title}</div>
+      <div class="mind-block">
+        <div class="mind-q">Pensamiento del día</div>
+        <div class="mind-a">${e(rec.thought || "—")}</div>
+      </div>
+      <div class="mind-block">
+        <div class="mind-q">Cómo está tu mente hoy</div>
+        <div class="mind-a">${e(rec.notes || "—")}</div>
+      </div>
+      ${(rec.learn || "").trim() ? `
+        <div class="mind-block">
+          <div class="mind-q">Qué aprendiste de tus trades hoy</div>
+          <div class="mind-a">${e(rec.learn)}</div>
+        </div>` : ""}
+      <div class="mind-actions">
+        <button class="btn btn-g btn-sm" onclick="editMindset('${rec.id}')">✏️ Editar</button>
+        <button class="btn btn-d btn-sm" onclick="askDelMindset('${rec.id}')">🗑 Borrar</button>
+      </div>
+    </div>`;
+}
+
+function saveMindsetStep1() {
+  const thought = (document.getElementById("thought")?.value || "").trim();
+  const notes   = (document.getElementById("notes")?.value  || "").trim();
+  if (!thought || !notes) return;
+
+  let rec = getMindsetRecord();
+  if (!rec) {
+    rec = { id: uid(), dayKey: getDayKey(), createdAt: new Date().toISOString(), thought: "", notes: "", learn: "" };
+    D.mindset.unshift(rec);
+  }
+
+  rec.thought = thought;
+  rec.notes   = notes;
+  sv();
+  renderMindset();
+}
+
+function saveMindsetStep2() {
+  const learn = (document.getElementById("learn")?.value || "").trim();
+  const rec   = getMindsetRecord();
+  if (!rec || !learn) return;
+  rec.learn = learn;
+  sv();
+  showCelebration("🎉");
+  renderMindset();
+}
+
+function editMindset(id)       { editingMindsetId = id; renderMindset(); }
+function cancelMindsetEdit()   { editingMindsetId = null; renderMindset(); }
+
+function saveMindsetEdit(id) {
+  const rec = D.mindset.find((r) => r.id === id);
+  if (!rec) return;
+  rec.thought = (document.getElementById("m-edit-thought")?.value || "").trim();
+  rec.notes   = (document.getElementById("m-edit-notes")?.value  || "").trim();
+  rec.learn   = (document.getElementById("m-edit-learn")?.value  || "").trim();
+  editingMindsetId = null;
+  sv();
+  renderMindset();
+}
+
+function askDelMindset(id) {
+  opConf("🧠", "Eliminar registro", "¿Eliminar este registro de mentalidad?", () => {
+    D.mindset = D.mindset.filter((r) => r.id !== id);
+    if (editingMindsetId === id) editingMindsetId = null;
+    sv();
+    renderMindset();
+  });
+}
+
+function toggleMindHistory() {
+  mindHistoryOpen = !mindHistoryOpen;
+  document.getElementById("mindset-history-wrap").style.display = mindHistoryOpen ? "block" : "none";
+  renderMindsetHistory();
+}
+
+function renderMindsetHistory() {
+  const list = document.getElementById("mindset-history-list");
+  const wrap = document.getElementById("mindset-history-wrap");
+  wrap.style.display = mindHistoryOpen ? "block" : "none";
+  if (!mindHistoryOpen) return;
+
+  const todayKey = getDayKey();
+  const items    = D.mindset.filter((r) => r.dayKey !== todayKey).sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+
+  if (!items.length) {
+    list.innerHTML = `<div class="empty" style="padding-top:20px;"><div class="empty-icon">🧠</div><div style="font-size:14px;color:var(--text2);">Aún no hay días anteriores guardados.</div></div>`;
+    return;
+  }
+
+  list.innerHTML = items.map((rec, i) => `<div class="mind-history-card" style="animation-delay:${i * 0.04}s;">${mindPanelHTML(rec, false)}</div>`).join("");
+}
+
+// ─── Estrategias ───────────────────────────────────────────────────────────
+
+function rstrat() {
+  const l = document.getElementById("strat-list");
+  if (!D.strategies.length) {
+    l.innerHTML = `<div class="empty"><div class="empty-icon">⊞</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">No tienes estrategias aún.</div><div style="font-size:13px">Crea tu primera estrategia abajo.</div></div>`;
+    return;
+  }
+
+  const calls = D.strategies.filter((s) => (s.side || "Call") === "Call");
+  const puts  = D.strategies.filter((s) => (s.side || "Call") === "Put");
+
+  l.innerHTML = renderStrategySection("📈 CALL", calls, "call") + renderStrategySection("📉 PUT", puts, "put");
+}
+
+function renderStrategySection(title, list, sideClass) {
+  if (!list.length) {
+    return `<div class="section-group"><div class="slabel">${title}</div><div class="empty" style="padding:20px 24px 24px;"><div style="font-size:13px;">Sin estrategias en esta sección.</div></div></div>`;
+  }
+
+  return `<div class="section-group"><div class="slabel">${title}</div>${list.map((s, i) => {
+    const currentOps = getCurrentWeekOps(s);
+    const w = currentOps.filter((o) => o.result === "win").length;
+    const t = currentOps.length;
+    return `<div class="si" style="animation-delay:${i * 0.05}s" onclick="openS('${s.id}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div style="font-weight:600;font-size:15px">${e(s.name)}</div>
+          <span class="side-pill ${sideClass}">${e(s.side || "Call")}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${t} operación${t !== 1 ? "es" : ""} esta semana</div>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center;flex-shrink:0">
+        ${t ? `<span class="pw">${w}W</span><span class="pl">${t - w}L</span>` : `<span class="week-badge">SEMANA LIMPIA</span>`}
+        <button class="btn btn-g btn-sm" onclick="event.stopPropagation(); editStrategyById('${s.id}')">✏️</button>
+        <button class="btn btn-d btn-sm" onclick="event.stopPropagation(); askDelStratById('${s.id}')">🗑</button>
+        <span style="color:var(--text3);font-size:22px">›</span>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function resetStrategyModal() {
+  editingStrategyId = null;
+  document.getElementById("strat-modal-title").textContent = "NUEVA ESTRATEGIA";
+  document.getElementById("strat-save-btn").textContent    = "Crear estrategia";
+  document.getElementById("ns-n").value    = "";
+  document.getElementById("ns-side").value = "Call";
+  document.getElementById("ns-r").value    = "";
+}
+
+function editStrategyById(id) {
+  const s = gSById(id);
+  if (!s) return;
+  editingStrategyId = id;
+  document.getElementById("strat-modal-title").textContent = "EDITAR ESTRATEGIA";
+  document.getElementById("strat-save-btn").textContent    = "Guardar cambios";
+  document.getElementById("ns-n").value    = s.name  || "";
+  document.getElementById("ns-side").value = s.side  || "Call";
+  document.getElementById("ns-r").value    = s.rules || "";
+  openModal("m-ns");
+}
+
+function crStrat() {
+  const n    = document.getElementById("ns-n").value.trim();
+  if (!n) return;
+  const side  = document.getElementById("ns-side").value || "Call";
+  const rules = document.getElementById("ns-r").value    || "";
+
+  let targetId = cur;
+
+  if (editingStrategyId) {
+    const s = gSById(editingStrategyId);
+    if (!s) return;
+    s.name     = n;
+    s.side     = side;
+    s.rules    = rules;
+    s.image    = s.image    || s.imageUrl || "";
+    s.imageUrl = s.image    || s.imageUrl || "";
+    s.imagePath = s.imagePath || "";
+    targetId = editingStrategyId;
+  } else {
+    const newId = uid();
+    D.strategies.unshift({
+      id: newId, name: n, side, rules,
+      image: "", imageUrl: "", imagePath: "",
+      mesa: "", ops: [], weeklyArchives: []
+    });
+    targetId = newId;
+  }
+
+  sv();
+  closeModal("m-ns");
+  resetStrategyModal();
+  rstrat();
+  if (targetId) openS(targetId);
+}
+
+function gS()       { return D.strategies.find((s) => s.id === cur); }
+function gSById(id) { return D.strategies.find((s) => s.id === id); }
+
+function openS(id) {
+  ensureWeeklyArchives();
+  cur            = id;
+  cf             = "all";
+  cr             = null;
+  editingOpId    = null;
+  openedArchiveWeek = null;
+
+  const s = gS();
+  if (!s) return;
+
+  s.image    = s.image    || s.imageUrl || "";
+  s.imageUrl = s.image    || s.imageUrl || "";
+
+  document.getElementById("dname").textContent    = s.name;
+  document.getElementById("dname").style.display  = "";
+  document.getElementById("rinp").style.display   = "none";
+  document.getElementById("st-rules").value       = s.rules || "";
+  document.getElementById("st-mesa").value        = s.mesa  || "";
+  document.getElementById("df").value             = "";
+  document.getElementById("dt").value             = "";
+
+  const cw = getCurrentWeekInfo();
+  document.getElementById("current-week-label").textContent = getWeekLabel(cw);
+  document.querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("on", i === 0));
+
+  stab("ops");
+  rStats();
+  renderOps();
+  renderWeeklyAnalysis();
+  renderStrategyImageSection();
+  document.getElementById("strat-detail").classList.add("open");
+}
+
+function closeDetail() {
+  document.getElementById("strat-detail").classList.remove("open");
+  rstrat();
+}
+
+function startRename() {
+  const s = gS();
+  if (!s) return;
+  document.getElementById("dname").style.display = "none";
+  const i = document.getElementById("rinp");
+  i.style.display = "block";
+  i.value = s.name;
+  i.focus();
+  i.select();
+}
+
+function saveRename() {
+  const v = document.getElementById("rinp").value.trim();
+  const s = gS();
+  if (!s) return;
+
+  if (v) {
+    s.name = v;
+    sv();
+    document.getElementById("dname").textContent = v;
+  }
+
+  document.getElementById("rinp").style.display  = "none";
+  document.getElementById("dname").style.display = "";
+  rstrat();
+  renderWeeklyAnalysis();
+}
+
+function askDelStrat() {
+  opConf("⚠️", "Eliminar estrategia", "Se eliminarán la estrategia y todas sus operaciones. No se puede deshacer.", async () => {
+    const s = gS();
+    if (s && s.imagePath) await deleteStorageFileByPath(s.imagePath);
+    D.strategies = D.strategies.filter((x) => x.id !== cur);
+    sv();
+    await saveCloudNow();
+    closeDetail();
+  });
+}
+
+function askDelStratById(id) {
+  const s = gSById(id);
+  if (!s) return;
+
+  opConf("⚠️", "Eliminar estrategia", `Se eliminará "${s.name}" y todas sus operaciones.`, async () => {
+    if (s.imagePath) await deleteStorageFileByPath(s.imagePath);
+    D.strategies = D.strategies.filter((x) => x.id !== id);
+    if (cur === id) {
+      cur = null;
+      document.getElementById("strat-detail").classList.remove("open");
+    }
+    sv();
+    await saveCloudNow();
+    rstrat();
+  });
+}
+
+function renderStrategyImageSection() {
+  const s    = gS();
+  const wrap = document.getElementById("strategy-image-wrap");
+  if (!s || !wrap) return;
+
+  const imageUrl = getStrategyImageUrl(s);
+
+  wrap.innerHTML = imageUrl
+    ? `
+      <div class="strategy-image-box">
+        <img src="${e(imageUrl)}" class="strategy-image-preview" alt="Referencia visual">
+        <div class="strategy-image-actions">
+          <button class="btn btn-g btn-sm" onclick="pickStrategyImage()" ${strategyImageUploading ? "disabled" : ""}>${strategyImageUploading ? "Subiendo..." : "Cambiar imagen"}</button>
+          <button class="btn btn-d btn-sm" onclick="removeStrategyImage()" ${strategyImageUploading ? "disabled" : ""}>Eliminar imagen</button>
+        </div>
+      </div>`
+    : `
+      <div class="strategy-image-box">
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px;">
+          Añade una referencia visual grande arriba para reconocer mejor el patrón.
+        </div>
+        <button class="btn btn-p" onclick="pickStrategyImage()" ${strategyImageUploading ? "disabled" : ""}>${strategyImageUploading ? "Subiendo..." : "Subir imagen"}</button>
+      </div>`;
+}
+
+async function pickStrategyImage() {
+  const s = gS();
+  if (!s || strategyImageUploading) return;
+
+  const input = document.createElement("input");
+  input.type    = "file";
+  input.accept  = "image/*";
+  input.style.position = "fixed";
+  input.style.left     = "-9999px";
+  input.style.opacity  = "0";
+  document.body.appendChild(input);
+
+  input.onchange = async function () {
+    const file = input.files && input.files[0];
+    input.remove();
+    if (!file) return;
+
+    const oldPath = s.imagePath || "";
+    strategyImageUploading = true;
+    renderStrategyImageSection();
+
+    try {
+      const uploadResult = await uploadStrategyImageFile(file, s.id);
+      s.image     = uploadResult.url;
+      s.imageUrl  = uploadResult.url;
+      s.imagePath = uploadResult.filePath;
+
+      sv();
+      await saveCloudNow();
+
+      if (oldPath && oldPath !== uploadResult.filePath) {
+        await deleteStorageFileByPath(oldPath);
+      }
+
+      renderStrategyImageSection();
+      rstrat();
+    } catch (err) {
+      console.error("Error subiendo imagen a Storage:", err);
+      alert("No se pudo subir la imagen. Revisa Firebase Storage, las reglas y vuelve a intentar.");
+    } finally {
+      strategyImageUploading = false;
+      renderStrategyImageSection();
+    }
+  };
+
+  input.click();
+}
+
+function removeStrategyImage() {
+  const s = gS();
+  if (!s || strategyImageUploading) return;
+
+  opConf("🖼", "Eliminar imagen", "¿Eliminar la referencia visual de esta estrategia?", async () => {
+    const oldPath = s.imagePath || "";
+    s.image     = "";
+    s.imageUrl  = "";
+    s.imagePath = "";
+    sv();
+    await saveCloudNow();
+    await deleteStorageFileByPath(oldPath);
+    renderStrategyImageSection();
+    rstrat();
+  });
+}
+
+function svRules() {
+  const s = gS();
+  if (s) { s.rules = document.getElementById("st-rules").value; sv(); }
+}
+
+function svMesa() {
+  const s = gS();
+  if (s) { s.mesa = document.getElementById("st-mesa").value; sv(); }
+}
+
+function rStats() {
+  const s = gS();
+  if (!s) return;
+
+  const ops = getCurrentWeekOps(s);
+  const t   = ops.length;
+  const w   = ops.filter((o) => o.result === "win").length;
+  const l   = t - w;
+  const pct = t ? Math.round((w / t) * 100) : 0;
+
+  document.getElementById("srow").innerHTML = `
+    <div class="sbox"><div class="sval" style="color:var(--accent2)">${t}</div><div class="slbl">TOTAL SEM.</div></div>
+    <div class="sbox"><div class="sval" style="color:var(--green)">${w}</div><div class="slbl">GANADAS</div></div>
+    <div class="sbox"><div class="sval" style="color:var(--red)">${l}</div><div class="slbl">PERDIDAS</div></div>`;
+
+  document.getElementById("ww").textContent = "Ganadas: " + w;
+  document.getElementById("wl").textContent = "Perdidas: " + l;
+  document.getElementById("wp").textContent = pct + "%";
+
+  setTimeout(() => {
+    const wf = document.getElementById("wf");
+    if (wf) wf.style.width = pct + "%";
+  }, 80);
+}
+
+function stab(t) {
+  ["ops", "analysis", "rules", "mesa"].forEach((id) => {
+    document.getElementById("tc-" + id).style.display = id === t ? "block" : "none";
+    document.getElementById("t-" + id).classList.toggle("on", id === t);
+  });
+  if (t === "analysis") renderWeeklyAnalysis();
+  if (t === "rules")    renderStrategyImageSection();
+}
+
+function setF(f, el) {
+  cf = f;
+  document.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+  el.classList.add("on");
+  renderOps();
+}
+
+function clrDates() {
+  document.getElementById("df").value = "";
+  document.getElementById("dt").value = "";
+  renderOps();
+}
+
+function renderOps() {
+  const s = gS();
+  if (!s) return;
+
+  let ops = getCurrentWeekOps(s);
+  if      (cf === "win")  ops = ops.filter((o) => o.result === "win");
+  else if (cf === "lose") ops = ops.filter((o) => o.result === "lose");
+  else if (cf === "call") ops = ops.filter((o) => o.type === "Call");
+  else if (cf === "put")  ops = ops.filter((o) => o.type === "Put");
+
+  const df = document.getElementById("df").value;
+  const dt = document.getElementById("dt").value;
+  if (df) ops = ops.filter((o) => o.date >= df);
+  if (dt) ops = ops.filter((o) => o.date <= dt);
+
+  const l = document.getElementById("ops-list");
+  if (!ops.length) {
+    l.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Sin operaciones esta semana</div><div style="font-size:13px">La semana actual está limpia o filtraste demasiado.</div></div>`;
+    return;
+  }
+
+  l.innerHTML = ops.sort((a, b) => (a.date < b.date ? 1 : -1)).map((op, i) => {
+    const resultColor = op.result === "win" ? "var(--green)" : "var(--red)";
+    const resultText  = op.result === "win" ? "✅ Se dio" : "❌ No se dio";
+    const typeClass   = op.type   === "Call" ? "call" : "put";
+    const typeIcon    = op.type   === "Call" ? "📈" : "📉";
+
+    return `<div class="opc" style="animation-delay:${i * 0.04}s">
+      <div class="otop">
+        <span class="oasset">${e(op.asset)}</span>
+        <span class="otype ${typeClass}">${typeIcon} ${e(op.type)}</span>
+      </div>
+      <div class="ogrid">
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:2px">ENTRADA</div><div style="font-size:13px;font-weight:600">${e(op.entry) || "—"}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:2px">SALIDA</div><div style="font-size:13px;font-weight:600">${e(op.exit) || "—"}</div></div>
+        <div><div style="font-size:10px;color:var(--text3);margin-bottom:2px">CONTRATOS</div><div style="font-size:13px;font-weight:600">${e(op.contracts) || "—"}</div></div>
+      </div>
+      <div class="ores" style="color:${resultColor}">
+        ${resultText}
+        <span style="color:var(--text3);font-size:11px;margin-left:auto">${fd(op.date)}</span>
+        <button onclick="editOp('${op.id}')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px;padding:0 4px">✏️</button>
+        <button onclick="askDelOp('${op.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 4px">🗑</button>
+      </div>
+      ${op.learn ? `<div class="olearn">"${e(op.learn)}"</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function renderWeeklyAnalysis() {
+  ensureWeeklyArchives();
+  const s = gS();
+  if (!s) return;
+
+  const currentWeek = getCurrentWeekInfo();
+  const currentOps  = getCurrentWeekOps(s);
+  const summary     = summarizeOps(currentOps, currentWeek);
+  const now         = new Date();
+  const alreadyClosed  = (s.weeklyArchives || []).some((x) => x.weekKey === currentWeek.key);
+  const beforeCutoff   = now < currentWeek.fridayCutoff;
+
+  document.getElementById("weekly-status").innerHTML = `
+    <div style="margin-bottom:6px;">${getWeekLabel(currentWeek)}</div>
+    <div>${alreadyClosed ? "✅ Esta semana ya fue cerrada y guardada automáticamente." : beforeCutoff ? "⏳ El cierre automático se guardará al detectar que ya pasó el viernes a las 4:15 PM." : "✅ El sistema ya puede cerrar y guardar esta semana."}</div>`;
+
+  document.getElementById("analysis-current").innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">${getWeekLabel(currentWeek)}</div>
+    <div class="wk-grid">
+      <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${summary.total}</div><div class="wk-lbl">Total</div></div>
+      <div class="wk-box"><div class="wk-num" style="color:var(--green)">${summary.wins}</div><div class="wk-lbl">Se dieron</div></div>
+      <div class="wk-box"><div class="wk-num" style="color:var(--red)">${summary.losses}</div><div class="wk-lbl">No se dieron</div></div>
+      <div class="wk-box"><div class="wk-num" style="color:var(--gold)">${summary.winRate}%</div><div class="wk-lbl">Acierto</div></div>
+    </div>`;
+
+  const max       = Math.max(summary.wins, summary.losses, 1);
+  const winWidth  = Math.max((summary.wins   / max) * 100, summary.wins   ? 12 : 0);
+  const loseWidth = Math.max((summary.losses / max) * 100, summary.losses ? 12 : 0);
+
+  document.getElementById("analysis-chart").innerHTML = `
+    <div class="chart">
+      <div class="chart-row"><div>Ganadas</div><div class="chart-bar-wrap"><div class="chart-bar win" style="width:${winWidth}%"></div></div><div>${summary.wins}</div></div>
+      <div class="chart-row"><div>Perdidas</div><div class="chart-bar-wrap"><div class="chart-bar lose" style="width:${loseWidth}%"></div></div><div>${summary.losses}</div></div>
+      <div class="chart-row"><div>Acierto</div><div class="chart-bar-wrap"><div class="chart-bar win" style="width:${summary.winRate}%"></div></div><div>${summary.winRate}%</div></div>
+      <div class="chart-row"><div>Fallo</div><div class="chart-bar-wrap"><div class="chart-bar lose" style="width:${summary.lossRate}%"></div></div><div>${summary.lossRate}%</div></div>
+    </div>`;
+
+  renderWeeklyHistory();
+}
+
+function getOpsByWeek(strategy, weekKey) {
+  return (strategy.ops || []).filter((op) => {
+    normalizeOperationWeek(op);
+    return op.weekKey === weekKey;
+  }).sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+function toggleArchivedWeek(weekKey) {
+  openedArchiveWeek = openedArchiveWeek === weekKey ? null : weekKey;
+  renderWeeklyHistory();
+}
+
+function renderArchivedWeekOps(weekKey) {
+  const s = gS();
+  if (!s) return "";
+  const ops = getOpsByWeek(s, weekKey);
+
+  if (!ops.length) {
+    return `<div class="archive-ops-wrap"><div class="archive-empty">No hay operaciones guardadas en esta semana.</div></div>`;
+  }
+
+  return `<div class="archive-ops-wrap">${ops.map((op) => {
+    const resultColor = op.result === "win" ? "var(--green)" : "var(--red)";
+    const resultText  = op.result === "win" ? "✅ Se dio" : "❌ No se dio";
+    const typeClass   = op.type   === "Call" ? "call" : "put";
+    const typeIcon    = op.type   === "Call" ? "📈" : "📉";
+
+    return `<div class="archive-op-card">
+      <div class="archive-op-top"><div class="archive-op-asset">${e(op.asset)}</div><span class="otype ${typeClass}">${typeIcon} ${e(op.type)}</span></div>
+      <div class="archive-op-grid">
+        <div class="archive-op-box"><div class="archive-op-label">Activo</div><div class="archive-op-value">${e(op.asset) || "—"}</div></div>
+        <div class="archive-op-box"><div class="archive-op-label">Tipo</div><div class="archive-op-value">${e(op.type) || "—"}</div></div>
+        <div class="archive-op-box"><div class="archive-op-label">Entrada</div><div class="archive-op-value">${e(op.entry) || "—"}</div></div>
+        <div class="archive-op-box"><div class="archive-op-label">Salida</div><div class="archive-op-value">${e(op.exit) || "—"}</div></div>
+        <div class="archive-op-box"><div class="archive-op-label">Contratos</div><div class="archive-op-value">${e(op.contracts) || "—"}</div></div>
+        <div class="archive-op-box"><div class="archive-op-label">Fecha</div><div class="archive-op-value">${fd(op.date) || "—"}</div></div>
+        <div class="archive-op-box" style="grid-column:1 / -1;"><div class="archive-op-label">Resultado</div><div class="archive-op-value" style="color:${resultColor}">${resultText}</div></div>
+        ${op.learn ? `<div class="archive-op-box" style="grid-column:1 / -1;"><div class="archive-op-label">Aprendizaje</div><div class="archive-op-value" style="font-style:italic;color:var(--text2);">"${e(op.learn)}"</div></div>` : ""}
+      </div>
+      <div class="archive-op-foot" style="color:${resultColor}">${resultText}<span style="margin-left:auto;color:var(--text3);font-size:11px;">${fd(op.date)}</span></div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderWeeklyHistory() {
+  const s = gS();
+  if (!s) return;
+
+  const currentWeekKey = getCurrentWeekInfo().key;
+  const history = sortArchivesDesc((s.weeklyArchives || []).filter((x) => x.weekKey !== currentWeekKey));
+  if (openedArchiveWeek && !history.some((x) => x.weekKey === openedArchiveWeek)) openedArchiveWeek = null;
+
+  const target = document.getElementById("weekly-history");
+  if (!history.length) {
+    target.innerHTML = `<div class="empty" style="padding-top:28px;"><div class="empty-icon">🗂</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Aún no hay semanas archivadas</div><div style="font-size:13px">Las semanas cerradas aparecerán aquí.</div></div>`;
+    return;
+  }
+
+  target.innerHTML = history.map((w, i) => {
+    const isOpen = openedArchiveWeek === w.weekKey;
+    return `<div class="week-archive clickable ${isOpen ? "open" : ""}" style="animation-delay:${i * 0.04}s" onclick="toggleArchivedWeek('${w.weekKey}')">
+      <div class="week-archive-head">
+        <div>
+          <div class="wk-title" style="margin-bottom:4px;">${e(getWeekLabel({ startISO: w.weekStart, endISO: w.weekEnd }))}</div>
+          <div style="font-size:12px;color:var(--text3);">Guardada ${ff(w.closedAt)}</div>
+          <div class="week-open-indicator">${isOpen ? "▲ Ocultar operaciones" : "▼ Ver operaciones de esa semana"}</div>
+        </div>
+        <span class="week-badge">ARCHIVADA</span>
+      </div>
+      <div class="wk-grid">
+        <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${w.total}</div><div class="wk-lbl">Total</div></div>
+        <div class="wk-box"><div class="wk-num" style="color:var(--green)">${w.wins}</div><div class="wk-lbl">Se dieron</div></div>
+        <div class="wk-box"><div class="wk-num" style="color:var(--red)">${w.losses}</div><div class="wk-lbl">No se dieron</div></div>
+        <div class="wk-box"><div class="wk-num" style="color:var(--gold)">${w.winRate}%</div><div class="wk-lbl">Acierto</div></div>
+      </div>
+      ${isOpen ? renderArchivedWeekOps(w.weekKey) : ""}
+    </div>`;
+  }).join("");
+}
+
+// ─── Operaciones ───────────────────────────────────────────────────────────
+
+function resetOpForm() {
+  editingOpId = null;
+  cr = null;
+  ["oa", "oen", "oex", "oc", "ol"].forEach((id) => (document.getElementById(id).value = ""));
+  document.getElementById("ot").value = "Call";
+  document.getElementById("od").value = fmtDateYMD(new Date());
+  document.getElementById("rw").className = "rb";
+  document.getElementById("rl").className = "rb";
+  document.getElementById("op-modal-title").textContent = "NUEVA OPERACIÓN";
+  document.getElementById("op-save-btn").textContent    = "Guardar operación";
+}
+
+function openAddOp() { resetOpForm(); openModal("m-ao"); }
+
+function setR(r) {
+  cr = r;
+  document.getElementById("rw").className = "rb" + (r === "win"  ? " rw" : "");
+  document.getElementById("rl").className = "rb" + (r === "lose" ? " rl" : "");
+}
+
+function editOp(id) {
+  const s = gS();
+  if (!s) return;
+  const op = (s.ops || []).find((o) => o.id === id);
+  if (!op) return;
+
+  editingOpId = id;
+  document.getElementById("oa").value  = op.asset     || "";
+  document.getElementById("ot").value  = op.type      || "Call";
+  document.getElementById("oen").value = op.entry     || "";
+  document.getElementById("oex").value = op.exit      || "";
+  document.getElementById("oc").value  = op.contracts || "";
+  document.getElementById("od").value  = op.date      || "";
+  document.getElementById("ol").value  = op.learn     || "";
+  setR(op.result || "win");
+  document.getElementById("op-modal-title").textContent = "EDITAR OPERACIÓN";
+  document.getElementById("op-save-btn").textContent    = "Actualizar operación";
+  openModal("m-ao");
+}
+
+function addOp() {
+  const a = document.getElementById("oa").value.trim();
+  if (!a || !cr) return;
+
+  const s = gS();
+  if (!s) return;
+
+  const info  = getWeekInfo(document.getElementById("od").value || new Date());
+  const opData = {
+    asset:     a,
+    type:      document.getElementById("ot").value,
+    entry:     document.getElementById("oen").value,
+    exit:      document.getElementById("oex").value,
+    contracts: document.getElementById("oc").value,
+    date:      document.getElementById("od").value,
+    result:    cr,
+    learn:     document.getElementById("ol").value.trim(),
+    weekKey:   info.key,
+    weekStart: info.startISO,
+    weekEnd:   info.endISO
+  };
+
+  s.ops = s.ops || [];
+  if (editingOpId) {
+    const idx = s.ops.findIndex((o) => o.id === editingOpId);
+    if (idx !== -1) s.ops[idx] = { ...s.ops[idx], ...opData };
+  } else {
+    s.ops.unshift({ id: uid(), ...opData });
+  }
+
+  editingOpId = null;
+  ensureWeeklyArchives();
+  sv();
+  closeModal("m-ao");
+  resetOpForm();
+  rStats();
+  renderOps();
+  renderWeeklyAnalysis();
+  rstrat();
+  if (cr === "win")  showCelebration("🏆");
+  if (cr === "lose") showCelebration("💪");
+}
+
+function askDelOp(id) {
+  opConf("🗑", "Eliminar operación", "¿Eliminar esta operación?", () => {
+    const s = gS();
+    if (!s) return;
+    s.ops = (s.ops || []).filter((o) => o.id !== id);
+    s.weeklyArchives = [];
+    ensureWeeklyArchives();
+    if (editingOpId === id) editingOpId = null;
+    sv();
+    rStats();
+    renderOps();
+    renderWeeklyAnalysis();
+    rstrat();
+  });
+}
+
+function expCSV() {
+  const s = gS();
+  if (!s) return;
+
+  const escCsv = (v) => { const str = String(v || ""); return '"' + str.replace(/"/g, '""') + '"'; };
+  const rows   = ["Activo,Tipo,Entrada,Salida,Contratos,Fecha,Resultado,Semana,Aprendizaje"];
+
+  (s.ops || []).forEach((o) => {
+    rows.push([
+      escCsv(o.asset), escCsv(o.type), escCsv(o.entry), escCsv(o.exit),
+      escCsv(o.contracts), escCsv(o.date),
+      escCsv(o.result === "win" ? "Se dio" : "No se dio"),
+      escCsv(o.weekKey || ""), escCsv(o.learn || "")
+    ].join(","));
+  });
+
+  const a      = document.createElement("a");
+  a.href        = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.join("\n"));
+  a.download    = "ENFO_" + s.name + ".csv";
+  a.click();
+}
+
+// ─── Diario ────────────────────────────────────────────────────────────────
+
+function saveDiary() {
+  const t = document.getElementById("dinp").value.trim();
+  if (!t) return;
+
+  if (editingDiaryId) {
+    const item = D.diary.find((en) => en.id === editingDiaryId);
+    if (!item) return;
+    item.text      = t;
+    item.updatedAt = new Date().toISOString();
+    editingDiaryId = null;
+  } else {
+    D.diary.unshift({ id: uid(), date: new Date().toISOString(), text: t });
+  }
+
+  sv();
+  document.getElementById("dinp").value = "";
+  rdiary();
+}
+
+function startEditDiary(id) {
+  const item = D.diary.find((en) => en.id === id);
+  if (!item) return;
+  editingDiaryId = id;
+  document.getElementById("dinp").value = item.text || "";
+  document.querySelector("#s-diario .btn.btn-p").textContent = "Actualizar entrada";
+  nav("diario");
+}
+
+function resetDiaryMode() {
+  editingDiaryId = null;
+  const btn = document.querySelector("#s-diario .btn.btn-p");
+  if (btn) btn.textContent = "Guardar entrada";
+}
+
+function rdiary() {
+  resetDiaryMode();
+  const l = document.getElementById("diary-list");
+  if (!D.diary.length) { l.innerHTML = ""; return; }
+
+  l.innerHTML = D.diary.map((en, i) => `
+    <div class="dentry" style="animation-delay:${i * 0.04}s">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div class="ddate">${ff(en.updatedAt || en.date)}</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="startEditDiary('${en.id}')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px">✏️</button>
+          <button onclick="askDelDiary('${en.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">🗑</button>
+        </div>
+      </div>
+      <div style="font-size:14px;line-height:1.6;color:var(--text2);white-space:pre-wrap">${e(en.text)}</div>
+    </div>`).join("");
+}
+
+function askDelDiary(id) {
+  opConf("🗑", "Eliminar entrada", "¿Eliminar esta entrada del diario?", () => {
+    D.diary = D.diary.filter((en) => en.id !== id);
+    if (editingDiaryId === id) {
+      editingDiaryId = null;
+      document.getElementById("dinp").value = "";
+    }
+    sv();
+    rdiary();
+  });
+}
+
+// ─── Biblioteca ────────────────────────────────────────────────────────────
+
+function openAddQuoteModal() {
+  editingQuoteId = null;
+  document.getElementById("quote-modal-title").textContent = "AÑADIR CITA";
+  document.getElementById("quote-save-btn").textContent    = "Guardar cita";
+  ["qt", "qb", "qa"].forEach((id) => (document.getElementById(id).value = ""));
+  openModal("m-aq");
+}
+
+function openEditQuoteModal(id) {
+  const q = D.quotes.find((item) => item.id === id);
+  if (!q) return;
+  editingQuoteId = id;
+  document.getElementById("quote-modal-title").textContent = "EDITAR CITA";
+  document.getElementById("quote-save-btn").textContent    = "Guardar cambios";
+  document.getElementById("qt").value = q.text   || "";
+  document.getElementById("qb").value = q.book   || "";
+  document.getElementById("qa").value = q.author || "";
+  openModal("m-aq");
+}
+
+function addQ() {
+  const t = document.getElementById("qt").value.trim();
+  if (!t) return;
+
+  const payload = {
+    text:   t,
+    book:   document.getElementById("qb").value.trim(),
+    author: document.getElementById("qa").value.trim()
+  };
+
+  if (editingQuoteId) {
+    const q = D.quotes.find((item) => item.id === editingQuoteId);
+    if (!q) return;
+    Object.assign(q, payload);
+  } else {
+    D.quotes.unshift({ id: uid(), ...payload });
+  }
+
+  sv();
+  closeModal("m-aq");
+  ["qt", "qb", "qa"].forEach((id) => (document.getElementById(id).value = ""));
+  editingQuoteId = null;
+  rquotes();
+}
+
+function rquotes() {
+  const l = document.getElementById("quotes-list");
+  if (!D.quotes.length) {
+    l.innerHTML = `<div class="empty"><div class="empty-icon">📚</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Tu biblioteca está vacía.</div><div style="font-size:13px">Añade frases que te inspiren.</div></div>`;
+    return;
+  }
+
+  l.innerHTML = D.quotes.map((q, i) => `
+    <div class="qcard" style="animation-delay:${i * 0.04}s">
+      <div style="position:absolute;top:10px;right:10px;display:flex;gap:4px;">
+        <button class="qdel" style="position:static;font-size:16px;" onclick="openEditQuoteModal('${q.id}')">✏️</button>
+        <button class="qdel" style="position:static;" onclick="askDelQ('${q.id}')">×</button>
+      </div>
+      <div style="font-size:14px;line-height:1.6;font-style:italic;margin-bottom:6px">"${e(q.text)}"</div>
+      ${(q.book || q.author) ? `<div style="font-size:11px;color:var(--text3);font-weight:600">${q.book ? "📖 " + e(q.book) + " " : ""}${q.author ? "· " + e(q.author) : ""}</div>` : ""}
+    </div>`).join("");
+}
+
+function askDelQ(id) {
+  opConf("×", "Eliminar cita", "¿Eliminar esta cita de tu biblioteca?", () => {
+    D.quotes = D.quotes.filter((q) => q.id !== id);
+    if (editingQuoteId === id) editingQuoteId = null;
+    sv();
+    rquotes();
+  });
+}
+
+// ─── Modales y confirmación ────────────────────────────────────────────────
+
+function openModal(id)  { document.getElementById(id).classList.add("open"); }
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+function bgc(ev, id) {
+  if (ev.target.id === id) {
+    closeModal(id);
+    if (id === "m-ao") resetOpForm();
+    if (id === "m-ns") resetStrategyModal();
+    if (id === "m-aq") editingQuoteId = null;
+  }
+}
+
+function opConf(icon, title, msg, cb) {
+  document.getElementById("ci").textContent = icon;
+  document.getElementById("ct").textContent = title;
+  document.getElementById("cm").textContent = msg;
+  cfcb = cb;
+  document.getElementById("confirm").classList.add("open");
+}
+
+function clsConf() { document.getElementById("confirm").classList.remove("open"); }
+
+function doConf() {
+  const cb = cfcb;
+  cfcb = null;
+  clsConf();
+  if (typeof cb === "function") cb();
+}
+
+// ─── Formato de fechas ─────────────────────────────────────────────────────
+
+function fd(s) {
+  if (!s) return "";
+  const [y, m, d] = s.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function ff(iso) {
+  const d  = new Date(iso);
+  const dn = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+  const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  return `${dn[d.getDay()]} ${d.getDate()} ${mn[d.getMonth()]} · ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
+
+// ─── Celebración ──────────────────────────────────────────────────────────
+
+function showCelebration(emoji) {
+  const el = document.getElementById("celebration");
+  const em = document.getElementById("celebration-emoji");
+  if (!el || !em) return;
+  em.textContent = emoji || "🎉";
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+// ─── Horario ───────────────────────────────────────────────────────────────
+
+let editingBlockId = null;
+let verTodosMode = false;
+let blockNotifTimers = [];
+
+function getBlocks() {
+  if (!D.blocks) D.blocks = [];
+  return D.blocks;
+}
+
+function getTodayBlockLog() {
+  const today = getDayKey();
+  if (!D.blockLogs) D.blockLogs = {};
+  // Limpiar logs de días anteriores para no acumular datos
+  Object.keys(D.blockLogs).forEach(k => {
+    if (k !== today) delete D.blockLogs[k];
+  });
+  if (!D.blockLogs[today]) D.blockLogs[today] = {};
+  return D.blockLogs[today];
+}
+
+function toggleVerTodos() {
+  verTodosMode = !verTodosMode;
+  const btn = document.getElementById("btn-ver-todos");
+  if (!verTodosMode && btn) {
+    btn.textContent = "Ver todos";
+    btn.style.borderColor = "var(--border2)";
+    btn.style.color = "var(--text2)";
+  }
+  renderBlocks();
+}
+
+function toggleAddBlockForm() {
+  const form = document.getElementById("add-block-form");
+  if (!form) return;
+  const isOpen = form.style.display === "block";
+  form.style.display = isOpen ? "none" : "block";
+  if (!isOpen) {
+    document.getElementById("blk-emoji").value = "";
+    document.getElementById("blk-name").value = "";
+    document.getElementById("blk-start").value = "";
+    document.getElementById("blk-end").value = "";
+    editingBlockId = null;
+    // Reset días: L-V activos por defecto
+    document.querySelectorAll(".day-btn").forEach(btn => {
+      const d = parseInt(btn.getAttribute("data-day"));
+      btn.classList.toggle("on", d >= 1 && d <= 5);
+    });
+  }
+}
+
+function toggleDay(btn) {
+  btn.classList.toggle("on");
+}
+
+function getSelectedDays() {
+  const days = [];
+  document.querySelectorAll(".day-btn.on").forEach(btn => {
+    days.push(parseInt(btn.getAttribute("data-day")));
+  });
+  return days;
+}
+
+function saveBlock() {
+  const name  = document.getElementById("blk-name").value.trim();
+  const start = document.getElementById("blk-start").value;
+  const end   = document.getElementById("blk-end").value;
+  const emoji = document.getElementById("blk-emoji").value.trim() || "🟢";
+  if (!name || !start || !end) return;
+
+  const days = getSelectedDays();
+
+  if (!D.blocks) D.blocks = [];
+
+  if (editingBlockId) {
+    const b = D.blocks.find(x => x.id === editingBlockId);
+    if (b) { b.name = name; b.start = start; b.end = end; b.emoji = emoji; b.days = days; }
+    editingBlockId = null;
+  } else {
+    D.blocks.push({ id: uid(), name, start, end, emoji, days });
+  }
+
+  D.blocks.sort((a, b) => a.start.localeCompare(b.start));
+  sv();
+  document.getElementById("add-block-form").style.display = "none";
+  renderBlocks();
+  scheduleBlockNotifs();
+}
+
+function toggleBlockDone(id) {
+  const log = getTodayBlockLog();
+  log[id] = !log[id];
+  if (log[id]) showCelebration("🏆");
+  sv();
+  renderBlocks();
+  renderWeekSummary();
+}
+
+function deleteBlock(id) {
+  if (!D.blocks) return;
+  D.blocks = D.blocks.filter(x => x.id !== id);
+  sv();
+  renderBlocks();
+}
+
+function editBlock(id) {
+  const b = (D.blocks || []).find(x => x.id === id);
+  if (!b) return;
+  editingBlockId = id;
+  document.getElementById("blk-emoji").value = b.emoji || "🟢";
+  document.getElementById("blk-name").value  = b.name  || "";
+  document.getElementById("blk-start").value = b.start || "";
+  document.getElementById("blk-end").value   = b.end   || "";
+  // Mostrar días guardados
+  const savedDays = b.days || [1,2,3,4,5];
+  document.querySelectorAll(".day-btn").forEach(btn => {
+    const d = parseInt(btn.getAttribute("data-day"));
+    btn.classList.toggle("on", savedDays.includes(d));
+  });
+  document.getElementById("add-block-form").style.display = "block";
+}
+
+function getCurrentTimeMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function formatTime(t) {
+  if (!t) return "";
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12  = h % 12 || 12;
+  return h12 + ":" + String(m).padStart(2,"0") + " " + ampm;
+}
+
+function openStats() {
+  closeUserMenu();
+  renderStats();
+  document.getElementById("stats-panel").classList.add("open");
+}
+
+function closeStats() {
+  document.getElementById("stats-panel").classList.remove("open");
+}
+
+function renderStats() {
+  const wrap = document.getElementById("stats-content");
+  if (!wrap) return;
+
+  const allBlocks = getBlocks();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+
+  // Agrupar blockLogs por semana
+  const logs = D.blockLogs || {};
+  const weekMap = {};
+
+  // Generar todas las semanas del año actual
+  const yearStart = new Date(currentYear, 0, 1);
+  const yearEnd   = new Date(currentYear, 11, 31);
+
+  for (let d = new Date(yearStart); d <= yearEnd; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay();
+    const mondayShift = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayShift);
+    const weekKey = monday.getFullYear() + "-" + String(monday.getMonth()+1).padStart(2,"0") + "-" + String(monday.getDate()).padStart(2,"0");
+    if (!weekMap[weekKey]) weekMap[weekKey] = { monday: new Date(monday), days: {} };
+  }
+
+  // Calcular cumplimiento por día
+  Object.keys(logs).forEach(dayKey => {
+    const d = new Date(dayKey + "T12:00:00");
+    const dow = d.getDay();
+    const mondayShift = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayShift);
+    const weekKey = monday.getFullYear() + "-" + String(monday.getMonth()+1).padStart(2,"0") + "-" + String(monday.getDate()).padStart(2,"0");
+    if (weekMap[weekKey]) {
+      const log = logs[dayKey];
+      const blocksForDay = allBlocks.filter(b => !b.days || b.days.length === 0 || b.days.includes(dow));
+      const total = blocksForDay.length;
+      const done  = blocksForDay.filter(b => log[b.id]).length;
+      weekMap[weekKey].days[dow] = { total, done, pct: total > 0 ? Math.round(done/total*100) : null };
+    }
+  });
+
+  // Calcular pct semanal
+  const weeks = Object.keys(weekMap).sort().map(wk => {
+    const w = weekMap[wk];
+    let total = 0, done = 0;
+    Object.values(w.days).forEach(d => { total += d.total; done += d.done; });
+    const pct = total > 0 ? Math.round(done/total*100) : null;
+    return { key: wk, monday: w.monday, days: w.days, total, done, pct };
+  });
+
+  // Estadísticas anuales
+  const weeksWithData = weeks.filter(w => w.total > 0);
+  const avgPct = weeksWithData.length > 0
+    ? Math.round(weeksWithData.reduce((a,w) => a + (w.pct||0), 0) / weeksWithData.length)
+    : 0;
+  const bestWeek = weeksWithData.reduce((best, w) => (!best || (w.pct||0) > (best.pct||0)) ? w : best, null);
+  const pctColor = avgPct >= 80 ? "var(--green)" : avgPct >= 50 ? "var(--gold)" : avgPct > 0 ? "var(--red)" : "var(--text3)";
+  const dayNames = ["D","L","M","X","J","V","S"];
+  const mnNames  = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+
+  let html = '<div style="padding:16px;">'
+    + '<div style="background:linear-gradient(135deg,#0a1525,#0d1e38);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:16px;">'
+      + '<div class="wk-title">RESUMEN ' + currentYear + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">'
+        + '<div class="wk-box"><div class="wk-num" style="color:' + pctColor + '">' + avgPct + '%</div><div class="wk-lbl">Promedio</div></div>'
+        + '<div class="wk-box"><div class="wk-num" style="color:var(--accent2)">' + weeksWithData.length + '</div><div class="wk-lbl">Semanas</div></div>'
+        + '<div class="wk-box"><div class="wk-num" style="color:var(--green)">' + (bestWeek ? (bestWeek.pct||0) + "%" : "—") + '</div><div class="wk-lbl">Mejor sem.</div></div>'
+      + '</div>'
+    + '</div>'
+  + '</div>';
+
+  // Agrupar semanas por mes
+  let currentMonth = -1;
+  weeks.forEach((w, i) => {
+    const m = w.monday.getMonth();
+    if (m !== currentMonth) {
+      currentMonth = m;
+      html += '<div class="month-label">' + mnNames[m] + ' ' + currentYear + '</div>';
+      html += '<div style="padding:0 16px 8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:6px;">';
+    }
+
+    const wPct = w.pct !== null ? w.pct : -1;
+    const wColor = wPct >= 80 ? "var(--green)" : wPct >= 50 ? "var(--gold)" : wPct >= 0 ? "var(--red)" : "var(--border)";
+    const barH   = wPct >= 0 ? Math.max(wPct, 8) : 0;
+    const isCurrent = w.key === (() => {
+      const dow = today.getDay();
+      const ms  = dow === 0 ? -6 : 1 - dow;
+      const mon = new Date(today);
+      mon.setDate(today.getDate() + ms);
+      return mon.getFullYear() + "-" + String(mon.getMonth()+1).padStart(2,"0") + "-" + String(mon.getDate()).padStart(2,"0");
+    })();
+
+    html += '<div style="text-align:center;" title="Sem ' + String(w.monday.getDate()).padStart(2,"0") + ' ' + mnNames[w.monday.getMonth()] + '">'
+      + '<div class="mini-bar-wrap" style="' + (isCurrent ? "border:1px solid var(--accent2);" : "") + '">'
+        + (barH > 0 ? '<div class="mini-bar" style="height:' + barH + '%;background:' + wColor + ';"></div>' : '')
+      + '</div>'
+      + '<div style="font-size:8px;color:' + (isCurrent ? "var(--accent2)" : "var(--text3)") + ';margin-top:2px;">'
+        + (wPct >= 0 ? wPct + "%" : "·")
+      + '</div>'
+    + '</div>';
+
+    // Cerrar grid al cambiar de mes
+    const nextWeek = weeks[i+1];
+    if (!nextWeek || nextWeek.monday.getMonth() !== m) {
+      html += '</div>';
+    }
+  });
+
+  wrap.innerHTML = html;
+}
+
+function renderWeekView() {
+  const wrap = document.getElementById("week-summary-wrap");
+  const list = document.getElementById("blocks-list");
+  const label = document.getElementById("horario-today-label");
+  if (label) label.textContent = "SEMANA COMPLETA";
+
+  const btn = document.getElementById("btn-ver-todos");
+  if (btn) {
+    btn.textContent = "Solo hoy";
+    btn.style.borderColor = "var(--accent2)";
+    btn.style.color = "var(--accent2)";
+  }
+
+  if (wrap) wrap.innerHTML = "";
+
+  const allBlocks = getBlocks();
+  const dayNames = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const dayShort = ["D","L","M","X","J","V","S"];
+  const todayDow = new Date().getDay();
+
+  // Ordenar días empezando por hoy
+  const orderedDays = [];
+  for (let i = 0; i < 7; i++) {
+    orderedDays.push((todayDow + i) % 7);
+  }
+
+  let html = "";
+  orderedDays.forEach(dow => {
+    const blocksForDay = allBlocks.filter(b => !b.days || b.days.length === 0 || b.days.includes(dow));
+    if (!blocksForDay.length) return;
+
+    const isToday = dow === todayDow;
+    html += '<div style="margin:0 16px 16px;">'
+      + '<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:' + (isToday ? "var(--accent2)" : "var(--text3)") + ';text-transform:uppercase;padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px;">'
+        + (isToday ? "⚡ " : "") + dayNames[dow] + (isToday ? " — HOY" : "")
+      + '</div>'
+      + blocksForDay.map(b => {
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;">'
+            + '<span style="font-size:18px;">' + (b.emoji || "🟢") + '</span>'
+            + '<div style="flex:1;">'
+              + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + b.name + '</div>'
+              + '<div style="font-size:11px;color:var(--text3);">' + formatTime(b.start) + ' — ' + formatTime(b.end) + '</div>'
+            + '</div>'
+            + '<button data-action="edit" data-id="' + b.id + '" style="background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:4px;">✏️</button>'
+            + '<button data-action="delete" data-id="' + b.id + '" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:4px;">🗑</button>'
+          + '</div>';
+        }).join("")
+    + '</div>';
+  });
+
+  if (list) {
+    list.innerHTML = html || '<div class="empty"><div class="empty-icon">⏱</div><div style="font-size:14px;color:var(--text2);">Sin bloques configurados</div></div>';
+
+    // Delegación de eventos
+    if (list._handler) list.removeEventListener("click", list._handler);
+    list._handler = function(ev) {
+      const btn = ev.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-id");
+      const action = btn.getAttribute("data-action");
+      if (action === "edit")   editBlock(id);
+      if (action === "delete") deleteBlock(id);
+    };
+    list.addEventListener("click", list._handler);
+  }
+}
+
+function renderWeekSummary() {
+  const wrap = document.getElementById("week-summary-wrap");
+  if (!wrap) return;
+
+  const today = new Date();
+  const todayDow = today.getDay();
+  const allBlocks = getBlocks();
+  const dayNames = ["D","L","M","X","J","V","S"];
+  const daysFull = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+  // Calcular cumplimiento de cada día de esta semana
+  // Lunes = inicio de semana
+  const mondayShift = todayDow === 0 ? -6 : 1 - todayDow;
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + mondayShift + i);
+    const dow = d.getDay();
+    const dayKey = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    const log = (D.blockLogs && D.blockLogs[dayKey]) ? D.blockLogs[dayKey] : {};
+    const blocksForDay = allBlocks.filter(b => !b.days || b.days.length === 0 || b.days.includes(dow));
+    const total = blocksForDay.length;
+    const done  = blocksForDay.filter(b => log[b.id]).length;
+    const pct   = total > 0 ? Math.round((done / total) * 100) : null;
+    const isPast = d < today && dayKey !== d.toISOString().slice(0,10);
+    const isToday = dayKey === (today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0"));
+    weekDays.push({ dow, dayKey, dayName: dayNames[dow], total, done, pct, isToday, isFuture: d > today && !isToday });
+  }
+
+  // Calcular porcentaje total de la semana
+  const totalSem = weekDays.reduce((a,d) => a + (d.total || 0), 0);
+  const doneSem  = weekDays.reduce((a,d) => a + (d.done  || 0), 0);
+  const pctSem   = totalSem > 0 ? Math.round((doneSem / totalSem) * 100) : 0;
+
+  const pctColor = pctSem >= 80 ? "var(--green)" : pctSem >= 50 ? "var(--gold)" : "var(--red)";
+  const mensaje  = pctSem >= 90 ? "Excelente semana 🏆" : pctSem >= 70 ? "Buen trabajo 💪" : pctSem >= 50 ? "Puedes más 📈" : pctSem > 0 ? "A enfocarse 😠" : "Semana en curso";
+
+  wrap.innerHTML = '<div class="week-summary-card">'
+    + '<div class="wk-title">RESUMEN SEMANAL</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      + '<div style="font-size:28px;font-family:Orbitron,monospace;font-weight:700;color:' + pctColor + ';">' + pctSem + '%</div>'
+      + '<div style="font-size:13px;color:var(--text2);text-align:right;line-height:1.5;">' + mensaje + '<br><span style="font-size:11px;color:var(--text3);">' + doneSem + ' de ' + totalSem + ' bloques</span></div>'
+    + '</div>'
+    + '<div class="week-day-grid">'
+    + weekDays.map(d => {
+        const barColor = d.pct === null ? "var(--border)" : d.pct >= 80 ? "var(--green)" : d.pct >= 50 ? "var(--gold)" : "var(--red)";
+        const barH = d.pct !== null ? Math.max(d.pct, 5) : 0;
+        return '<div class="week-day-col' + (d.isToday ? " week-day-today" : "") + '">'
+          + '<div class="week-day-label">' + d.dayName + '</div>'
+          + '<div class="week-day-bar-wrap">'
+            + (barH > 0 ? '<div class="week-day-bar" style="height:' + barH + '%;background:' + barColor + ';"></div>' : '')
+          + '</div>'
+          + '<div class="week-day-pct">' + (d.pct !== null ? d.pct + "%" : d.isFuture ? "" : "—") + '</div>'
+        + '</div>';
+      }).join("")
+    + '</div>'
+  + '</div>';
+}
+
+function renderBlocks() {
+  // Si estamos en modo "Ver todos", mostrar vista semanal organizada por día
+  if (verTodosMode) {
+    renderWeekView();
+    return;
+  }
+  const todayDow = new Date().getDay(); // 0=Dom, 1=Lun...
+  const allBlocks = getBlocks();
+  const blocks = verTodosMode ? allBlocks : allBlocks.filter(b => {
+    if (!b.days || b.days.length === 0) return true;
+    return b.days.includes(todayDow);
+  });
+  const log    = getTodayBlockLog();
+  const nowMin = getCurrentTimeMinutes();
+  const list   = document.getElementById("blocks-list");
+  const label  = document.getElementById("horario-today-label");
+
+  if (label) {
+    const now = new Date();
+    const dn  = ["DOM","LUN","MAR","MIÉ","JUE","VIE","SÁB"];
+    const mn  = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+    label.textContent = dn[now.getDay()] + " " + now.getDate() + " " + mn[now.getMonth()];
+  }
+  renderWeekSummary();
+
+  if (!list) return;
+
+  if (!blocks.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">⏱</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Sin bloques aún</div><div style="font-size:13px">Añade tu primer bloque de tiempo.</div></div>';
+    return;
+  }
+
+  updateHorarioBanner();
+  list.innerHTML = blocks.map((b, i) => {
+    const startMin = timeToMinutes(b.start);
+    const endMin   = timeToMinutes(b.end);
+    const isActive  = nowMin >= startMin && nowMin < endMin;
+    const isDone    = log[b.id];
+    const isPast    = nowMin >= endMin;
+    // Solo marcar como no cumplido si el bloque es de HOY (no de otro día)
+    const blockIsForToday = !b.days || b.days.length === 0 || b.days.includes(todayDow);
+    const isMissed  = isPast && !isDone && !isActive && blockIsForToday;
+    let cardClass  = "block-card";
+    if (isDone)        cardClass += " done-block";
+    else if (isActive) cardClass += " active-block";
+    if (isMissed)      cardClass += " missed-block";
+
+    const nameColor = isMissed ? "var(--red)" : isDone ? "var(--green)" : "var(--text)";
+    const checkStyle = isMissed ? "border-color:var(--red);color:var(--red);" : "";
+    const timeExtra = isActive
+      ? " <span style=\"color:var(--accent2)\">EN CURSO</span>"
+      : isMissed ? " <span style=\"color:var(--red)\">No cumplido</span>"
+      : isDone   ? " <span style=\"color:var(--green)\">Cumplido</span>"
+      : "";
+    const missedLabel = isMissed
+      ? "<div class=\"block-missed-label\">😠 No cumpliste este bloque</div>"
+      : "";
+
+    return "<div class=\"" + cardClass + "\" style=\"animation-delay:" + (i * 0.05) + "s\" data-block-id=\"" + b.id + "\">"
+      + "<div class=\"block-top\">"
+        + "<span class=\"block-emoji\">" + (isMissed ? "😠" : e(b.emoji || "🟢")) + "</span>"
+        + "<div style=\"flex:1;min-width:0;\">"
+          + "<div class=\"block-name\" style=\"color:" + nameColor + "\">" + e(b.name) + "</div>"
+          + "<div class=\"block-time\">" + formatTime(b.start) + " — " + formatTime(b.end) + timeExtra + "</div>"
+          + (verTodosMode && b.days && b.days.length > 0 ? "<div style=\"font-size:10px;color:var(--accent2);margin-top:3px;\">" + ["D","L","M","X","J","V","S"].filter((_,i) => b.days.includes(i)).join(" · ") + "</div>" : "")"
+        + "</div>"
+        + "<button class=\"block-check " + (isDone ? "checked" : "") + "\" style=\"" + checkStyle + "\" data-action=\"toggle\" data-id=\"" + b.id + "\">" + (isDone ? "✓" : isMissed ? "😠" : "") + "</button>"
+      + "</div>"
+      + missedLabel
+      + "<div style=\"display:flex;gap:8px;margin-top:10px;\">"
+        + "<button class=\"btn btn-g btn-sm\" data-action=\"edit\" data-id=\"" + b.id + "\">✏️</button>"
+        + "<button class=\"btn btn-d btn-sm\" data-action=\"delete\" data-id=\"" + b.id + "\">🗑</button>"
+      + "</div>"
+    + "</div>";
+  }).join("");
+
+  // Delegación de eventos para bloques
+  const blocklist = document.getElementById("blocks-list");
+  if (blocklist) {
+    if (blocklist._handler) blocklist.removeEventListener("click", blocklist._handler);
+    blocklist._handler = function(ev) {
+      const btn = ev.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-id");
+      const action = btn.getAttribute("data-action");
+      if (action === "toggle") toggleBlockDone(id);
+      if (action === "edit")   editBlock(id);
+      if (action === "delete") deleteBlock(id);
+    };
+    blocklist.addEventListener("click", blocklist._handler);
+  }
+}
+
+function updateHorarioBanner() {
+  const blocks  = getBlocks();
+  const log     = getTodayBlockLog();
+  const nowMin  = getCurrentTimeMinutes();
+
+  const nameEl  = document.getElementById("banner-block-name");
+  const timeEl  = document.getElementById("banner-block-time");
+  const emojiEl = document.getElementById("banner-emoji");
+  if (!nameEl || !timeEl) return;
+
+  // Bloque activo ahora
+  const active = blocks.find(b => {
+    const s = timeToMinutes(b.start);
+    const e2 = timeToMinutes(b.end);
+    return nowMin >= s && nowMin < e2;
+  });
+
+  // Próximo bloque
+  const next = blocks.filter(b => timeToMinutes(b.start) > nowMin)
+                     .sort((a,b2) => timeToMinutes(a.start) - timeToMinutes(b2.start))[0];
+
+  if (active) {
+    const isDone = log[active.id];
+    emojiEl.textContent = active.emoji || "⏱";
+    nameEl.textContent  = (isDone ? "✓ " : "") + active.name;
+    nameEl.style.color  = isDone ? "var(--green)" : "var(--accent2)";
+    timeEl.textContent  = "En curso: " + formatTime(active.start) + " — " + formatTime(active.end);
+  } else if (next) {
+    const diffMin = timeToMinutes(next.start) - nowMin;
+    const hrs     = Math.floor(diffMin / 60);
+    const mins    = diffMin % 60;
+    const diffStr = hrs > 0 ? hrs + "h " + mins + "m" : mins + " min";
+    emojiEl.textContent = next.emoji || "⏱";
+    nameEl.textContent  = "Próximo: " + next.name;
+    nameEl.style.color  = "var(--text)";
+    timeEl.textContent  = formatTime(next.start) + " · en " + diffStr;
+  } else if (blocks.length) {
+    emojiEl.textContent = "✅";
+    nameEl.textContent  = "Bloques del día completados";
+    nameEl.style.color  = "var(--green)";
+    timeEl.textContent  = "Buen trabajo hoy";
+  } else {
+    emojiEl.textContent = "⏱";
+    nameEl.textContent  = "Sin bloques configurados";
+    nameEl.style.color  = "var(--text)";
+    timeEl.textContent  = "Toca para configurar tu horario";
+  }
+
+  // Renderizar lista expandida
+  const fullEl = document.getElementById("banner-blocks-full");
+  if (fullEl) {
+    if (!blocks.length) {
+      fullEl.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;padding:8px 0;">Aún no tienes bloques. Agrégalos abajo.</div>';
+    } else {
+      fullEl.innerHTML = blocks.map(b => {
+        const isDone   = log[b.id];
+        const startMin = timeToMinutes(b.start);
+        const endMin   = timeToMinutes(b.end);
+        const isNow    = nowMin >= startMin && nowMin < endMin;
+        const color    = isDone ? "var(--green)" : isNow ? "var(--accent2)" : "var(--text2)";
+        const bStartMin = timeToMinutes(b.start);
+        const bEndMin   = timeToMinutes(b.end);
+        const bNow      = getCurrentTimeMinutes();
+        const bMissed   = bNow >= bEndMin && !isDone;
+        const bActive   = bNow >= bStartMin && bNow < bEndMin;
+        const bColor    = isDone ? "var(--green)" : bMissed ? "var(--red)" : bActive ? "var(--accent2)" : "var(--text2)";
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+          '<span style="font-size:18px;">' + (bMissed ? "😠" : e(b.emoji || "🟢")) + '</span>' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:13px;font-weight:700;color:' + bColor + ';">' + e(b.name) + '</div>' +
+            '<div style="font-size:11px;color:var(--text3);">' + formatTime(b.start) + ' — ' + formatTime(b.end) + (bMissed ? ' · No cumplido' : isDone ? ' · Cumplido ✓' : '') + '</div>' +
+          '</div>' +
+          '<button data-action="toggle" data-id="' + b.id + '" style="width:30px;height:30px;border-radius:50%;border:2px solid ' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--border2)") + ';background:' + (isDone ? "rgba(0,212,138,0.15)" : bMissed ? "rgba(255,69,96,0.1)" : "transparent") + ';color:' + (isDone ? "var(--green)" : bMissed ? "var(--red)" : "var(--text3)") + ';font-size:14px;cursor:pointer;">' + (isDone ? "✓" : bMissed ? "😠" : "") + '</button>' +
+        '</div>';
+      }).join("");
+    }
+  }
+}
+
+let bannerOpen = false;
+
+function toggleHorarioBanner() {
+  bannerOpen = !bannerOpen;
+  const collapsed = document.getElementById("horario-banner-collapsed");
+  const expanded  = document.getElementById("horario-banner-expanded");
+  const arrow     = document.getElementById("banner-arrow");
+  if (collapsed) collapsed.style.borderRadius = bannerOpen ? "14px 14px 0 0" : "14px";
+  if (expanded)  expanded.style.display = bannerOpen ? "block" : "none";
+  if (arrow)     arrow.textContent = bannerOpen ? "^" : "v";
+  if (bannerOpen) {
+    updateHorarioBanner();
+    // Delegación de eventos para el banner
+    const fullEl = document.getElementById("banner-blocks-full");
+    if (fullEl && !fullEl._delegated) {
+      fullEl._delegated = true;
+      fullEl.addEventListener("click", function(ev) {
+        ev.stopPropagation();
+        const btn = ev.target.closest("[data-action]");
+        if (!btn) return;
+        const id = btn.getAttribute("data-id");
+        toggleBlockDone(id);
+      });
+    }
+  }
+}
+
+function scheduleBlockNotifs() {
+  blockNotifTimers.forEach(t => clearTimeout(t));
+  blockNotifTimers = [];
+
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+    return;
+  }
+
+  const blocks = getBlocks();
+  const now    = new Date();
+
+  blocks.forEach(b => {
+    const [sh, sm] = b.start.split(":").map(Number);
+    const [eh, em] = b.end.split(":").map(Number);
+
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm, 0);
+    const endDate   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), eh, em, 0);
+
+    const msToStart = startDate - now;
+    const msToEnd   = endDate   - now;
+
+    if (msToStart > 0) {
+      blockNotifTimers.push(setTimeout(() => {
+        // Vibración en iPhone
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+        // Sonido con AudioContext
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          [440, 550, 660].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = "sine";
+            gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+            osc.start(ctx.currentTime + i * 0.15);
+            osc.stop(ctx.currentTime + i * 0.15 + 0.3);
+          });
+        } catch(ex) {}
+        if (Notification.permission === "granted") {
+          new Notification("⏱ ENFO — " + b.name, { body: "Es hora de: " + b.name + " hasta las " + formatTime(b.end), icon: "/favicon.ico" });
+        }
+        renderBlocks();
+        updateHorarioBanner();
+      }, msToStart));
+    }
+
+    if (msToEnd > 0) {
+      blockNotifTimers.push(setTimeout(() => {
+        const log2 = getTodayBlockLog();
+        if (log2[b.id]) {
+          new Notification("✅ ENFO — " + b.name, { body: "Terminaste: " + b.name + ". ¡Bien hecho!", icon: "/favicon.ico" });
+        } else {
+          new Notification("😠 ENFO — " + b.name, { body: "No cumpliste el bloque: " + b.name + ". ¡A la próxima!", icon: "/favicon.ico" });
+        }
+        renderBlocks();
+        updateHorarioBanner();
+      }, msToEnd));
+    }
+  });
+}
+
+function requestNotifPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().then(p => {
+      if (p === "granted") scheduleBlockNotifs();
+    });
+  }
+}
+
+// ─── Bootstrap ────────────────────────────────────────────────────────────
+
+async function bootstrap() {
+  if (!auth.currentUser) return;
+
+  const uid = auth.currentUser.uid;
+
+  currentUserData.uid   = uid;
+  currentUserData.email = auth.currentUser.email || "";
+
+  enfoRef = getUserDocRef();
+
+  // Sanear claves globales legacy que podrían contaminar otros usuarios
+  clearLegacyUnsafeLocalData();
+
+  const userRootRef = getUserRootRef();
+  await userRootRef.set({
+    uid:       currentUserData.uid,
+    email:     currentUserData.email,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  skipAutoSave = true;
+  await ld();
+  ensureWeeklyArchives();
+  setDates();
+  updateUserUI();
+  renderMindset();
+  rstrat();
+  rdiary();
+  rquotes();
+  skipAutoSave = false;
+  saveLocalLegacy();
+  scheduleBlockNotifs();
+}
+
+// ─── Auth state listener ───────────────────────────────────────────────────
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    try {
+      // Resetear estado ANTES de cargar el nuevo usuario
+      // para evitar que queden datos del anterior en memoria
+      resetAppState();
+
+      currentUserData.uid   = user.uid   || "";
+      currentUserData.email = user.email || "";
+      enfoRef = getUserDocRef();
+
+      await showMainApp();
+    } catch (err) {
+      console.error("Error al mostrar la app:", err);
+    }
+  } else {
+    // Logout: limpiar todo el estado en memoria
+    resetAppState();
+
+    if (liveClockTimer) {
+      clearInterval(liveClockTimer);
+      liveClockTimer = null;
+    }
+
+    const authWrap = document.getElementById("auth-wrap");
+    const appEl    = document.getElementById("app");
+    if (authWrap) authWrap.style.display = "flex";
+    if (appEl)    appEl.style.display    = "none";
+  }
+});
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btnLogin    = document.getElementById("btn-login");
+  const btnRegister = document.getElementById("btn-register");
+  if (btnLogin)    btnLogin.addEventListener("click",    loginUser);
+  if (btnRegister) btnRegister.addEventListener("click", registerUser);
+});
+
+Object.assign(window, {
+  loginUser, registerUser, forgotPassword, nav, toggleAddBlockForm, saveBlock, toggleBlockDone, deleteBlock, editBlock, toggleHorarioBanner, toggleDay, toggleVerTodos, openStats, closeStats, toggleMindHistory, closeDetail,
+  startRename, saveRename, askDelStrat, stab, setF, clrDates, renderOps,
+  openModal, bgc, crStrat, openAddOp, setR, addOp, saveDiary,
+  openAddQuoteModal, addQ, clsConf, doConf, saveMindsetStep1,
+  saveMindsetStep2, editMindset, cancelMindsetEdit, saveMindsetEdit,
+  askDelMindset, editStrategyById, askDelStratById, openS,
+  pickStrategyImage, removeStrategyImage, svRules, svMesa,
+  toggleArchivedWeek, editOp, askDelOp, expCSV, startEditDiary,
+  askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
+  closeUserMenu, openProfile, logoutUser
+});
+
+
+  </script>
+</body>
+</html>
