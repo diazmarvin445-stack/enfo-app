@@ -3460,7 +3460,7 @@ function renderBlocks() {
         + "<div style=\"flex:1;min-width:0;\">"
           + "<div class=\"block-name\" style=\"color:" + nameColor + "\">" + e(b.name) + "</div>"
           + "<div class=\"block-time\">" + formatTime(b.start) + " — " + formatTime(b.end) + timeExtra + "</div>"
-          + (verTodosMode && b.days && b.days.length > 0 ? "<div style=\"font-size:10px;color:var(--accent2);margin-top:3px;\">" + ["D","L","M","X","J","V","S"].filter((_,i) => b.days.includes(i)).join(" · ") + "</div>" : "")"
+          + (verTodosMode && b.days && b.days.length > 0 ? "<div style=\"font-size:10px;color:var(--accent2);margin-top:3px;\">" + "" : "".filter((_,i) => b.days.includes(i)).join(" · ") + "</div>" : "")"
         + "</div>"
         + "<button class=\"block-check " + (isDone ? "checked" : "") + "\" style=\"" + checkStyle + "\" data-action=\"toggle\" data-id=\"" + b.id + "\">" + (isDone ? "✓" : isMissed ? "😠" : "") + "</button>"
       + "</div>"
