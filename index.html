@@ -3132,7 +3132,7 @@ function toggleHorarioBanner() {
   const arrow     = document.getElementById("banner-arrow");
   if (collapsed) collapsed.style.borderRadius = bannerOpen ? "14px 14px 0 0" : "14px";
   if (expanded)  expanded.style.display = bannerOpen ? "block" : "none";
-  if (arrow)     arrow.textContent = bannerOpen ? "▲" : "▼";
+  arrow.textContent = bannerOpen ? "^" : "v";
   if (bannerOpen) updateHorarioBanner();
 }
 
