@@ -3193,7 +3193,7 @@ function toggleAddBlockForm() {
     document.getElementById("blk-end").value = "";
     editingBlockId = null;
     // Reset días: L-V activos por defecto
-    document.querySelectorAll(".day-btn").forEach(btn => {
+    document.querySelectorAll(".day-btn").forEach(function(btn) {
       const d = parseInt(btn.getAttribute("data-day"));
       btn.classList.toggle("on", d >= 1 && d <= 5);
     });
@@ -3206,7 +3206,7 @@ function toggleDay(btn) {
 
 function getSelectedDays() {
   const days = [];
-  document.querySelectorAll(".day-btn.on").forEach(btn => {
+ document.querySelectorAll(".day-btn").forEach(function(btn) { 
     days.push(parseInt(btn.getAttribute("data-day")));
   });
   return days;
