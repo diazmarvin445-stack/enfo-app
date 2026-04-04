@@ -3264,7 +3264,7 @@ function editBlock(id) {
   document.getElementById("blk-end").value   = b.end   || "";
   // Mostrar días guardados
   const savedDays = b.days || [1,2,3,4,5];
-  document.querySelectorAll(".day-btn").forEach(btn => {
+  document.querySelectorAll(".day-btn").forEach(function(btn) {
     const d = parseInt(btn.getAttribute("data-day"));
     btn.classList.toggle("on", savedDays.includes(d));
   });
