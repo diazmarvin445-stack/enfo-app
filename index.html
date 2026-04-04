@@ -1745,7 +1745,7 @@
     function safeFileName(name) {
       return String(name || "imagen")
         .toLowerCase()
-        .replace(/[^a-z0-9._-]/g, "_");
+       .replace(/[^a-z0-9._-]/g, "_") 
     }
 
     function parseLocalDate(dateStr) {
