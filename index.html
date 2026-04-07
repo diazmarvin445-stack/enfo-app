@@ -806,6 +806,34 @@
 
     .modal.open { opacity: 1; pointer-events: all; }
 
+    #calculator.modal { z-index: 450; }
+
+    .section-calc-host {
+      position: relative;
+      min-height: 100%;
+    }
+
+    .calc-float-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 50;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 18px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: 0.2s;
+    }
+
+    .calc-float-btn:hover {
+      transform: scale(1.1);
+      background: rgba(255,255,255,0.1);
+    }
+
     .msheet {
       width: 100%;
       background: var(--card);
@@ -821,6 +849,49 @@
     .modal.open .msheet { transform: translateY(0); }
     .mhandle { width: 40px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
     .mtitle { font-family: "Orbitron", monospace; font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 18px; }
+
+    .estrategias-calc-sheet { max-width: 320px; margin: 0 auto; padding-bottom: 28px; }
+    .estrategias-calc-display {
+      font-family: "DM Sans", sans-serif;
+      font-size: 26px;
+      font-weight: 600;
+      text-align: right;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      color: var(--text);
+      min-height: 48px;
+      word-break: break-all;
+      line-height: 1.25;
+    }
+    .estrategias-calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .estrategias-calc-btn {
+      padding: 0;
+      height: 48px;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .estrategias-calc-btn:active { background: rgba(29, 106, 255, 0.18); }
+    .estrategias-calc-btn--op { color: var(--accent2); background: rgba(29, 106, 255, 0.1); }
+    .estrategias-calc-btn--eq {
+      background: linear-gradient(135deg, var(--accent), #0066dd);
+      color: #fff;
+      border-color: transparent;
+    }
+    .estrategias-calc-btn--clear { color: var(--red); font-size: 13px; font-weight: 700; }
 
     /* Animación de celebración */
     #celebration {
@@ -1359,6 +1430,7 @@
     <button class="back-btn" onclick="nav('inicio')">‹</button>
     <div class="page-title" style="flex:1;min-width:0;">ESTRATEGIAS</div>
     <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
+    <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
     <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
   </div>
   <div id="strat-list"></div>
@@ -1520,6 +1592,35 @@
   </div>
 </div>
 
+<div class="modal" id="calculator" onclick="bgc(event, 'calculator')">
+  <div class="msheet estrategias-calc-sheet">
+    <div class="mhandle"></div>
+    <div class="mtitle">CALCULADORA</div>
+    <div id="estrategias-calc-display" class="estrategias-calc-display" aria-live="polite">0</div>
+    <div class="estrategias-calc-grid">
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--clear" onclick="estrategiasCalcClearAll()">AC</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcBackspace()">⌫</button>
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--op" onclick="estrategiasCalcInputOp('/')">÷</button>
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--op" onclick="estrategiasCalcInputOp('*')">×</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('7')">7</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('8')">8</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('9')">9</button>
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--op" onclick="estrategiasCalcInputOp('-')">−</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('4')">4</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('5')">5</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('6')">6</button>
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--op" onclick="estrategiasCalcInputOp('+')">+</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('1')">1</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('2')">2</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDigit('3')">3</button>
+      <button type="button" class="estrategias-calc-btn estrategias-calc-btn--eq" style="grid-row: span 2;" onclick="estrategiasCalcEquals()">=</button>
+      <button type="button" class="estrategias-calc-btn" style="grid-column: span 2;" onclick="estrategiasCalcDigit('0')">0</button>
+      <button type="button" class="estrategias-calc-btn" onclick="estrategiasCalcDot()">.</button>
+    </div>
+    <button type="button" class="btn btn-g" onclick="closeModal('calculator')" style="width:100%;margin-top:16px;">Cerrar</button>
+  </div>
+</div>
+
 <div id="s-biblioteca" class="screen">
   <div class="page-header">
     <button class="back-btn" onclick="nav('inicio')">‹</button>
@@ -1659,23 +1760,26 @@
 
 <!-- Panel de Finanzas -->
 <div id="finanzas-panel" style="position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);">
-  <div style="display:flex;align-items:center;gap:14px;padding:20px 16px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:10;">
-    <button class="back-btn" onclick="closeFinanzas()">‹</button>
-    <div class="page-title" id="finanzas-title">FINANZAS</div>
+  <div class="section-calc-host">
+    <button type="button" class="calc-float-btn" onclick="toggleCalculator()">🧮</button>
+    <div style="display:flex;align-items:center;gap:14px;padding:20px 16px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:10;">
+      <button class="back-btn" onclick="closeFinanzas()">‹</button>
+      <div class="page-title" id="finanzas-title">FINANZAS</div>
+    </div>
+    <div id="finanzas-content" style="padding-bottom:30px;"></div>
   </div>
-
-
-
-  <div id="finanzas-content" style="padding-bottom:30px;"></div>
 </div>
 
 <!-- Panel de Portafolio -->
 <div id="portafolio-panel" style="position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);">
-  <div style="display:flex;align-items:center;gap:14px;padding:20px 16px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:10;">
-    <button class="back-btn" onclick="closePortafolio()">‹</button>
-    <div class="page-title">PORTAFOLIO</div>
+  <div class="section-calc-host">
+    <button type="button" class="calc-float-btn" onclick="toggleCalculator()">🧮</button>
+    <div style="display:flex;align-items:center;gap:14px;padding:20px 16px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:10;">
+      <button class="back-btn" onclick="closePortafolio()">‹</button>
+      <div class="page-title">PORTAFOLIO</div>
+    </div>
+    <div id="portafolio-content" style="padding-bottom:30px;"></div>
   </div>
-  <div id="portafolio-content" style="padding-bottom:30px;"></div>
 </div>
 
 <!-- Panel de Calendario -->
@@ -5469,6 +5573,148 @@ function clearEstrategiasNotasAll() {
   showCelebration("🗑");
 }
 
+var estrategiasCalc = {
+  currentInput: "0",
+  previousValue: null,
+  operator: null,
+  waitingForOperand: false
+};
+
+function estrategiasCalcFormatNum(n) {
+  if (!isFinite(n)) return "Error";
+  var s = String(n);
+  if (s.length > 16) return String(parseFloat(n.toPrecision(14)));
+  return s;
+}
+
+function estrategiasCalcUpdateDisplay() {
+  var el = document.getElementById("estrategias-calc-display");
+  if (!el) return;
+  el.textContent = estrategiasCalc.currentInput;
+}
+
+function estrategiasCalcRecoverFromError() {
+  if (estrategiasCalc.currentInput !== "Error") return;
+  estrategiasCalc.currentInput = "0";
+  estrategiasCalc.previousValue = null;
+  estrategiasCalc.operator = null;
+  estrategiasCalc.waitingForOperand = false;
+}
+
+function estrategiasCalcCompute(a, b, op) {
+  if (op === "+") return a + b;
+  if (op === "-") return a - b;
+  if (op === "*") return a * b;
+  if (op === "/") return b === 0 ? NaN : a / b;
+  return b;
+}
+
+function estrategiasCalcDigit(d) {
+  estrategiasCalcRecoverFromError();
+  if (estrategiasCalc.waitingForOperand) {
+    estrategiasCalc.currentInput = d;
+    estrategiasCalc.waitingForOperand = false;
+  } else {
+    estrategiasCalc.currentInput =
+      estrategiasCalc.currentInput === "0" ? d : estrategiasCalc.currentInput + d;
+  }
+  estrategiasCalcUpdateDisplay();
+}
+
+function estrategiasCalcDot() {
+  estrategiasCalcRecoverFromError();
+  if (estrategiasCalc.waitingForOperand) {
+    estrategiasCalc.currentInput = "0.";
+    estrategiasCalc.waitingForOperand = false;
+  } else if (estrategiasCalc.currentInput.indexOf(".") === -1) {
+    estrategiasCalc.currentInput += ".";
+  }
+  estrategiasCalcUpdateDisplay();
+}
+
+function estrategiasCalcInputOp(op) {
+  estrategiasCalcRecoverFromError();
+  var input = parseFloat(estrategiasCalc.currentInput);
+  if (
+    estrategiasCalc.previousValue !== null &&
+    estrategiasCalc.operator &&
+    !estrategiasCalc.waitingForOperand
+  ) {
+    var result = estrategiasCalcCompute(estrategiasCalc.previousValue, input, estrategiasCalc.operator);
+    if (!isFinite(result)) {
+      estrategiasCalc.currentInput = "Error";
+      estrategiasCalc.previousValue = null;
+      estrategiasCalc.operator = null;
+      estrategiasCalc.waitingForOperand = false;
+      estrategiasCalcUpdateDisplay();
+      return;
+    }
+    estrategiasCalc.currentInput = estrategiasCalcFormatNum(result);
+    estrategiasCalcUpdateDisplay();
+    input = parseFloat(estrategiasCalc.currentInput);
+  }
+  estrategiasCalc.previousValue = input;
+  estrategiasCalc.waitingForOperand = true;
+  estrategiasCalc.operator = op;
+}
+
+function estrategiasCalcEquals() {
+  estrategiasCalcRecoverFromError();
+  if (estrategiasCalc.operator === null || estrategiasCalc.previousValue === null) return;
+  if (estrategiasCalc.waitingForOperand) return;
+  var input = parseFloat(estrategiasCalc.currentInput);
+  var result = estrategiasCalcCompute(estrategiasCalc.previousValue, input, estrategiasCalc.operator);
+  if (!isFinite(result)) {
+    estrategiasCalc.currentInput = "Error";
+    estrategiasCalc.previousValue = null;
+    estrategiasCalc.operator = null;
+    estrategiasCalc.waitingForOperand = false;
+    estrategiasCalcUpdateDisplay();
+    return;
+  }
+  estrategiasCalc.currentInput = estrategiasCalcFormatNum(result);
+  estrategiasCalc.previousValue = null;
+  estrategiasCalc.operator = null;
+  estrategiasCalc.waitingForOperand = true;
+  estrategiasCalcUpdateDisplay();
+}
+
+function estrategiasCalcClearAll() {
+  estrategiasCalc.currentInput = "0";
+  estrategiasCalc.previousValue = null;
+  estrategiasCalc.operator = null;
+  estrategiasCalc.waitingForOperand = false;
+  estrategiasCalcUpdateDisplay();
+}
+
+function estrategiasCalcBackspace() {
+  if (estrategiasCalc.currentInput === "Error") {
+    estrategiasCalcClearAll();
+    return;
+  }
+  if (estrategiasCalc.waitingForOperand) return;
+  var t = estrategiasCalc.currentInput;
+  if (t.length <= 1) estrategiasCalc.currentInput = "0";
+  else estrategiasCalc.currentInput = t.slice(0, -1);
+  estrategiasCalcUpdateDisplay();
+}
+
+function openEstrategiasCalculator() {
+  estrategiasCalcClearAll();
+  openModal("calculator");
+}
+
+function toggleCalculator() {
+  var calc = document.getElementById("calculator");
+  if (!calc) return;
+  if (calc.classList.contains("open")) {
+    closeModal("calculator");
+  } else {
+    estrategiasCalcClearAll();
+    openModal("calculator");
+  }
+}
+
 // ─── Registro Global Operaciones ─────────────────────────────────────────
 
 function openRegistroGlobal() {
@@ -6366,7 +6612,7 @@ firebase.auth().onAuthStateChanged(function(user) {
 });
 
 Object.assign(window, {
-  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, askDelRegistroGlobalWeek, openEditRegistroGlobalWeek, saveRegistroGlobalWeekEdit, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, calcOpResult,
+  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, askDelRegistroGlobalWeek, openEditRegistroGlobalWeek, saveRegistroGlobalWeekEdit, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
   toggleAddBlockForm, saveBlock, toggleBlockDone, deleteBlock, editBlock, toggleHorarioBanner, toggleDay, toggleVerTodos, openStats, closeStats,
   startRename, saveRename, askDelStrat, stab, setF, clrDates, renderOps,
   openModal, bgc, crStrat, openAddOp, setR, addOp, saveDiary, openMetasLargoPanel, closeMetasLargoPanel, setMetasTab, addLongTermGoalSlot, saveLongTermGoal, askDelLongTermGoal, addShortTermGoalSlot, saveShortTermGoal, askDelShortTermGoal,
@@ -6377,7 +6623,7 @@ Object.assign(window, {
   toggleArchivedWeek, editOp, askDelOp, expCSV, startEditDiary,
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
   closeUserMenu, openProfile, logoutUser, toggleDay, toggleVerTodos,
-  openStats, closeStats, toggleMindHistory, closeDetail, openRegistroGlobal, closeRegistroGlobal, askDelRegistroGlobalWeek, openEditRegistroGlobalWeek, saveRegistroGlobalWeekEdit, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, calcOpResult,
+  openStats, closeStats, toggleMindHistory, closeDetail,
   togglePrivateCoach, sendPrivateCoachMessage
 });
 

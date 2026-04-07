@@ -120,6 +120,95 @@ const COACH_MEMORY_FIXED_BLOCKS = Object.freeze([
   {text: ENFO_ESTRUCTURA_MENTAL_COACH_MEMORY_TEXT}
 ]);
 
+const TITO_CORE_FIELD_LABELS = {
+  name: "Nombre / rol",
+  creator_context: "Contexto del creador",
+  purpose: "Propósito",
+  mission: "Misión",
+  identity: "Identidad",
+  style_rules: "Reglas de estilo y tono",
+  response_structure: "Estructura de respuesta",
+  core_principles: "Principios centrales",
+  non_negotiables: "No negociables",
+  forbidden_patterns: "Patrones prohibidos"
+};
+
+function normalizeTitoField(value) {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((x) => String(x).trim())
+      .filter(Boolean)
+      .join("\n");
+    return joined || undefined;
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch (_) {
+      return undefined;
+    }
+  }
+  const s = String(value).trim();
+  return s || undefined;
+}
+
+/**
+ * Lee cerebro base Tito: tito_brain/core. Devuelve null si falla, no existe o no hay campos útiles.
+ */
+async function getTitoCoreFromFirestore() {
+  try {
+    const snap = await admin.firestore().collection("tito_brain").doc("core").get();
+    if (!snap.exists) {
+      console.log("[tito] core: documento ausente");
+      return null;
+    }
+    const d = snap.data() || {};
+    const out = {};
+    Object.keys(TITO_CORE_FIELD_LABELS).forEach((key) => {
+      const v = normalizeTitoField(d[key]);
+      if (v !== undefined) out[key] = v;
+    });
+    if (Object.keys(out).length === 0) {
+      console.log("[tito] core: sin campos reconocidos");
+      return null;
+    }
+    return out;
+  } catch (err) {
+    console.error("[tito] getTitoCoreFromFirestore:", err && err.message ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Construye instructions para OpenAI desde Firestore; si titoCore es null o vacío, usa SYSTEM_PROMPT.
+ */
+function buildTitoSystemPrompt(titoCore) {
+  if (!titoCore || typeof titoCore !== "object") {
+    return SYSTEM_PROMPT;
+  }
+  const parts = [];
+  Object.keys(TITO_CORE_FIELD_LABELS).forEach((key) => {
+    const text = titoCore[key];
+    if (typeof text === "string" && text.trim()) {
+      parts.push(TITO_CORE_FIELD_LABELS[key] + ":\n" + text.trim());
+    }
+  });
+  if (!parts.length) {
+    return SYSTEM_PROMPT;
+  }
+  const base = parts.join("\n\n---\n\n");
+  const ops = `
+REGLAS OPERATIVAS (fijas):
+- Responde siempre en español.
+- Tono firme, claro, estratégico y orientado a acción.
+- No humilles ni insultes; no suavices la verdad innecesariamente.
+- Cuando el usuario plantee un problema, cierra con una acción concreta (no solo reflexión).
+- Respuestas breves salvo que el contexto pida algo más.
+`.trim();
+  return (base + "\n\n---\n\n" + ops).trim();
+}
+
 function extractResponsesText(data) {
   if (!data || typeof data !== "object") return "";
   if (typeof data.output_text === "string" && data.output_text.trim()) {
@@ -202,17 +291,21 @@ async function privateCoachChatCore(data) {
     throw new HttpsError("failed-precondition", "OPENAI_API_KEY no configurada en Functions.");
   }
 
+  const titoCore = await getTitoCoreFromFirestore();
+  const instructions = buildTitoSystemPrompt(titoCore);
+  console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
+
   const input = buildOpenAIInput(userText, coachHistory, coachMemory);
 
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer " + key
+      Authorization: `Bearer ${key}`
     },
     body: JSON.stringify({
       model: "gpt-4.1-mini",
-      instructions: SYSTEM_PROMPT,
+      instructions: instructions,
       input: input
     })
   });
