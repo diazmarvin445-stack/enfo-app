@@ -1,9 +1,7 @@
 const admin = require("firebase-admin");
 const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
-const cors = require("cors")({
-  origin: ["https://enfoapp.io", "https://www.enfoapp.io"],
-});
+const cors = require("cors")({ origin: true });
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -266,6 +264,10 @@ exports.privateCoachChatHttp = onRequest(
     cors(req, res, async () => {
       try {
         if (req.method === "OPTIONS") {
+          res.set("Access-Control-Allow-Origin", "*");
+          res.set("Access-Control-Allow-Methods", "GET, POST");
+          res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+          res.status(204).send("");
           return;
         }
 
