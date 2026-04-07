@@ -1760,9 +1760,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
     const storage = firebase.storage();
-    /** Callable privateCoachChat (misma app, región us-central1). No usar fetch() al URL .cloudfunctions.net. */
-    const firebaseFunctionsUsCentral1 = firebase.app().functions("us-central1");
-    let privateCoachChatCallable = null;
 
     let enfoRef = null;
     let currentUserData = { uid: "", email: "" };
@@ -6213,45 +6210,17 @@ function buildPrivateCoachReply(userText) {
   return privateCoachPickFromBands("default", PRIVATE_COACH_IMPLACABLE.default, userText);
 }
 
-/**
- * Coach vía Firebase Callable (httpsCallable sobre firebaseFunctionsUsCentral1).
- * No invocar el endpoint HTTPS con fetch() — el SDK firma el token y gestiona CORS del callable.
- */
-async function getCoachReplyFromCloud(userText) {
-  try {
-    const u = auth && auth.currentUser;
-    if (!u) throw new Error("Sin sesión");
+async function getCoachReplyFromCloud(data, token) {
+  const res = await fetch("https://us-central1-enfo-ee211.cloudfunctions.net/privateCoachChatHttp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify(data)
+  });
 
-    await u.getIdToken();
-
-    const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 24) : [];
-
-    if (!privateCoachChatCallable) {
-      privateCoachChatCallable = firebaseFunctionsUsCentral1.httpsCallable("privateCoachChat");
-    }
-
-    console.log("CALLING CLOUD FUNCTION...");
-    const result = await privateCoachChatCallable({
-      message: userText,
-      userText: userText,
-      coachHistory: history.map((h) => ({
-        role: h.role === "coach" ? "coach" : "user",
-        text: String(h.text || "").slice(0, 2000)
-      })),
-      coachMemory: []
-    });
-    console.log("CLOUD RESPONSE:", result);
-
-    const reply =
-      result && result.data && typeof result.data.reply === "string"
-        ? result.data.reply.trim()
-        : "";
-    if (!reply) throw new Error("Respuesta vacía del servidor");
-    return reply.slice(0, 4000);
-  } catch (error) {
-    console.log("CLOUD ERROR:", error);
-    throw error;
-  }
+  return await res.json();
 }
 
 async function sendPrivateCoachMessage() {
@@ -6264,8 +6233,31 @@ async function sendPrivateCoachMessage() {
   appendPrivateCoachMessage("user", text);
   let reply = "";
   try {
-    reply = await getCoachReplyFromCloud(text);
+    const u = auth && auth.currentUser;
+    if (!u) throw new Error("Sin sesión");
+    const token = await u.getIdToken();
+    const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 24) : [];
+    const data = {
+      message: text,
+      userText: text,
+      coachHistory: history.map(function (h) {
+        return {
+          role: h.role === "coach" ? "coach" : "user",
+          text: String(h.text || "").slice(0, 2000)
+        };
+      }),
+      coachMemory: []
+    };
+    console.log("CALLING CLOUD FUNCTION...");
+    const json = await getCoachReplyFromCloud(data, token);
+    console.log("CLOUD RESPONSE:", json);
+    if (json && json.error != null && json.reply == null) {
+      throw new Error(typeof json.error === "string" ? json.error : "Error del servidor");
+    }
+    reply = typeof json.reply === "string" ? json.reply.trim().slice(0, 4000) : "";
+    if (!reply) throw new Error("Respuesta vacía del servidor");
   } catch (e) {
+    console.log("CLOUD ERROR:", e);
     reply = buildPrivateCoachReply(text);
   }
   if (!String(reply || "").trim()) {

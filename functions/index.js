@@ -1,5 +1,13 @@
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
+const {onCall, onRequest, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
+const cors = require("cors")({
+  origin: ["https://enfoapp.io", "https://www.enfoapp.io"],
+});
+
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 const openaiApiKey = defineSecret("OPENAI_API_KEY");
 
@@ -176,6 +184,60 @@ function buildOpenAIInput(userText, coachHistory, coachMemory) {
   return parts.join("\n\n---\n\n");
 }
 
+/**
+ * Lógica compartida Tito: payload message, userText, coachHistory, coachMemory (coachMemory del cliente no sustituye bloques fijos).
+ * @param {object} data - Payload (message, userText, coachHistory, coachMemory)
+ */
+async function privateCoachChatCore(data) {
+  const fromMessage = typeof data.message === "string" ? data.message.trim() : "";
+  const fromUserText = typeof data.userText === "string" ? data.userText.trim() : "";
+  const userText = fromMessage || fromUserText;
+  if (!userText || userText.length > 8000) {
+    throw new HttpsError("invalid-argument", "message / userText inválido o demasiado largo.");
+  }
+
+  const coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
+  const coachMemory = COACH_MEMORY_FIXED_BLOCKS;
+
+  const key = openaiApiKey.value();
+  if (!key) {
+    throw new HttpsError("failed-precondition", "OPENAI_API_KEY no configurada en Functions.");
+  }
+
+  const input = buildOpenAIInput(userText, coachHistory, coachMemory);
+
+  const resp = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + key
+    },
+    body: JSON.stringify({
+      model: "gpt-4.1-mini",
+      instructions: SYSTEM_PROMPT,
+      input: input
+    })
+  });
+
+  const json = await resp.json();
+  if (!resp.ok) {
+    const msg =
+      json && json.error && json.error.message
+        ? json.error.message
+        : "Error OpenAI";
+    console.error("OpenAI HTTP", resp.status, msg);
+    throw new HttpsError("internal", msg);
+  }
+
+  const reply = extractResponsesText(json);
+  if (!reply) {
+    console.error("OpenAI empty output", JSON.stringify(json).slice(0, 500));
+    throw new HttpsError("internal", "Respuesta vacía del modelo.");
+  }
+
+  return {reply: reply.slice(0, 4000)};
+}
+
 exports.privateCoachChat = onCall(
   {
     region: "us-central1",
@@ -187,54 +249,46 @@ exports.privateCoachChat = onCall(
     if (!request.auth || !request.auth.uid) {
       throw new HttpsError("unauthenticated", "Inicia sesión para usar el coach.");
     }
-
     const data = request.data || {};
-    const fromMessage = typeof data.message === "string" ? data.message.trim() : "";
-    const fromUserText = typeof data.userText === "string" ? data.userText.trim() : "";
-    const userText = fromMessage || fromUserText;
-    if (!userText || userText.length > 8000) {
-      throw new HttpsError("invalid-argument", "message / userText inválido o demasiado largo.");
-    }
+    return privateCoachChatCore(data);
+  }
+);
 
-    const coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
-    const coachMemory = COACH_MEMORY_FIXED_BLOCKS;
+exports.privateCoachChatHttp = onRequest(
+  {
+    region: "us-central1",
+    secrets: [openaiApiKey],
+    maxInstances: 10,
+    timeoutSeconds: 60,
+    invoker: "public"
+  },
+  (req, res) => {
+    cors(req, res, async () => {
+      try {
+        if (req.method === "OPTIONS") {
+          return;
+        }
 
-    const key = openaiApiKey.value();
-    if (!key) {
-      throw new HttpsError("failed-precondition", "OPENAI_API_KEY no configurada en Functions.");
-    }
+        const authHeader = req.headers.authorization || "";
+        const token = authHeader.startsWith("Bearer ")
+          ? authHeader.split("Bearer ")[1]
+          : null;
 
-    const input = buildOpenAIInput(userText, coachHistory, coachMemory);
+        if (!token) {
+          return res.status(401).json({ error: "No token" });
+        }
 
-    const resp = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + key
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        instructions: SYSTEM_PROMPT,
-        input: input
-      })
+        const decoded = await admin.auth().verifyIdToken(token);
+
+        const data = req.body || {};
+
+        const result = await privateCoachChatCore(data);
+
+        return res.status(200).json(result);
+      } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: e.message || "Server error" });
+      }
     });
-
-    const json = await resp.json();
-    if (!resp.ok) {
-      const msg =
-        json && json.error && json.error.message
-          ? json.error.message
-          : "Error OpenAI";
-      console.error("OpenAI HTTP", resp.status, msg);
-      throw new HttpsError("internal", msg);
-    }
-
-    const reply = extractResponsesText(json);
-    if (!reply) {
-      console.error("OpenAI empty output", JSON.stringify(json).slice(0, 500));
-      throw new HttpsError("internal", "Respuesta vacía del modelo.");
-    }
-
-    return {reply: reply.slice(0, 4000)};
   }
 );
