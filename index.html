@@ -6166,13 +6166,30 @@ function extraerAccion(texto) {
 
 function compromisoEstaPendiente(m) {
   if (!m) return false;
+  if (m.estado === "reemplazado") return false;
   if (m.estado === "completado") return false;
   if (m.completado === true) return false;
-  return true;
+  if (m.estado === "pendiente") return true;
+  if (m.estado == null || m.estado === undefined) {
+    return !m.completado;
+  }
+  return false;
 }
 
+/** Solo pendientes reales, más reciente primero (createdAt DESC). */
 function verificarPendientes(memoria) {
-  return (memoria || []).filter(compromisoEstaPendiente);
+  const list = (memoria || []).filter(compromisoEstaPendiente);
+  list.sort(function (a, b) {
+    return (
+      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
+    );
+  });
+  return list;
+}
+
+function getCompromisoActivo(memoria) {
+  const pend = verificarPendientes(memoria);
+  return pend.length ? pend[0] : null;
 }
 
 function clasificarCompromiso(texto) {
@@ -6253,16 +6270,30 @@ function titoMemoriaCollectionRef(uid) {
 
 async function guardarCompromiso(uid, texto) {
   const ref = titoMemoriaCollectionRef(uid);
-  if (!ref) return;
+  if (!ref || typeof db === "undefined" || !db) return;
   const c = clasificarCompromiso(texto);
-  await ref.add({
+  const ahora = new Date().toISOString();
+  const anteriores = verificarPendientes(memoriaTito);
+  const batch = db.batch();
+  const reemplazadoAt = ahora;
+  anteriores.forEach(function (p) {
+    if (p.id) {
+      batch.update(ref.doc(p.id), {
+        estado: "reemplazado",
+        reemplazadoAt: reemplazadoAt
+      });
+    }
+  });
+  const nuevoRef = ref.doc();
+  batch.set(nuevoRef, {
     accion: String(extraerAccion(texto) || "").slice(0, 4000),
     tipo: c.tipo,
     prioridad: c.prioridad,
     fechaObjetivo: c.fechaObjetivo,
     estado: "pendiente",
-    createdAt: new Date().toISOString()
+    createdAt: ahora
   });
+  await batch.commit();
 }
 
 async function cargarMemoria(uid) {
@@ -6293,18 +6324,12 @@ async function cerrarCompromisoPendiente(uid, texto) {
   if (!uid || !detectarCierreCompromiso(texto)) {
     return { closed: false };
   }
-  const pend = verificarPendientes(memoriaTito);
-  if (!pend.length) {
+  const activo = getCompromisoActivo(memoriaTito);
+  if (!activo || !activo.id) {
     return { closed: false };
   }
-  const sorted = pend.slice().sort(function (a, b) {
-    return (
-      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
-    );
-  });
-  const doc = sorted[0];
-  await marcarCompromisoCompleto(uid, doc.id);
-  return { closed: true, id: doc.id };
+  await marcarCompromisoCompleto(uid, activo.id);
+  return { closed: true, id: activo.id };
 }
 
 function preloadPrivateCoachMemoria() {
@@ -6962,16 +6987,9 @@ async function sendPrivateCoachMessage() {
         reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
         skipCloud = true;
       } else {
-        var pend = verificarPendientes(memoriaTito);
-        if (pend.length > 0) {
-          var sortedPend = pend.slice().sort(function (a, b) {
-            return (
-              new Date(a.createdAt || a.fecha || 0) -
-              new Date(b.createdAt || b.fecha || 0)
-            );
-          });
-          var primera = sortedPend[0];
-          reply = mensajeSeguimientoParaPendiente(primera, {
+        var activo = getCompromisoActivo(memoriaTito);
+        if (activo) {
+          reply = mensajeSeguimientoParaPendiente(activo, {
             cambioDeTema:
               detectarCambioDeTema(text) || detectarCompromiso(text)
           });
