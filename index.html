@@ -2904,7 +2904,7 @@ function renderEstrategiasHoy() {
       return (
         '<button type="button" class="estrategia-hoy-tile" title="' +
         e(s.name) +
-        '" onclick="openEstrategiaDestacadaHoy(\'' +
+        '" onclick="openS(\'' +
         sid +
         '\')"><span class="estrategia-hoy-tile-label">' +
         e(s.name) +
@@ -2912,17 +2912,6 @@ function renderEstrategiasHoy() {
       );
     })
     .join("");
-}
-
-function openEstrategiaDestacadaHoy(id) {
-  if (!id) return;
-  openS(id);
-  var t = getDayKey();
-  var df = document.getElementById("df");
-  var dt = document.getElementById("dt");
-  if (df) df.value = t;
-  if (dt) dt.value = t;
-  renderOps();
 }
 
 function rstrat() {
@@ -6870,7 +6859,7 @@ Object.assign(window, {
   openModal, bgc, crStrat, openAddOp, setR, addOp, saveDiary, openMetasLargoPanel, closeMetasLargoPanel, setMetasTab, addLongTermGoalSlot, saveLongTermGoal, askDelLongTermGoal, addShortTermGoalSlot, saveShortTermGoal, askDelShortTermGoal,
   openAddQuoteModal, addQ, clsConf, doConf, saveMindsetStep1,
   saveMindsetStep2, editMindset, cancelMindsetEdit, saveMindsetEdit,
-  askDelMindset, editStrategyById, askDelStratById, openS, openEstrategiaDestacadaHoy,
+  askDelMindset, editStrategyById, askDelStratById, openS,
   pickStrategyImage, removeStrategyImage, svRules, svMesa,
   toggleArchivedWeek, editOp, askDelOp, expCSV, startEditDiary,
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
