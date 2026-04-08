@@ -6144,6 +6144,14 @@ let privateCoachOpenGreetingIdx = 0;
 let memoriaTito = [];
 let memoriaTitoCargada = false;
 
+function titoLocalDateISO(d) {
+  var x = d instanceof Date ? d : new Date(d);
+  var y = x.getFullYear();
+  var m = String(x.getMonth() + 1).padStart(2, "0");
+  var day = String(x.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
 function detectarCompromiso(texto) {
   const frases = ["voy a", "haré", "hoy hago", "mañana hago"];
   const t = String(texto || "").toLowerCase();
@@ -6156,18 +6164,86 @@ function extraerAccion(texto) {
   return texto;
 }
 
-function verificarPendientes(memoria) {
-  return (memoria || []).filter(function (m) {
-    return !m.completado;
-  });
+function compromisoEstaPendiente(m) {
+  if (!m) return false;
+  if (m.estado === "completado") return false;
+  if (m.completado === true) return false;
+  return true;
 }
 
-function detectarAfirmacionCierre(texto) {
+function verificarPendientes(memoria) {
+  return (memoria || []).filter(compromisoEstaPendiente);
+}
+
+function clasificarCompromiso(texto) {
+  const t = String(texto || "").toLowerCase();
+  let tipo = "general";
+  if (/clientes|ventas|negocio|propuesta/.test(t)) tipo = "negocio";
+  else if (/trading|operaci[oó]n|mercado/.test(t)) tipo = "trading";
+  else if (/h[aá]bitos|ejercicio|disciplina/.test(t)) tipo = "habitos";
+
+  let prioridad = "normal";
+  if (/\bhoy\b/.test(t)) prioridad = "alta";
+  else if (/\bma[nñ]ana\b|\bmanana\b/.test(t)) prioridad = "media";
+
+  let fechaObjetivo = null;
+  const hoy = new Date();
+  if (/\bhoy\b/.test(t)) {
+    fechaObjetivo = titoLocalDateISO(hoy);
+  } else if (/\bma[nñ]ana\b|\bmanana\b/.test(t)) {
+    const man = new Date(hoy);
+    man.setDate(man.getDate() + 1);
+    fechaObjetivo = titoLocalDateISO(man);
+  }
+
+  return { tipo: tipo, prioridad: prioridad, fechaObjetivo: fechaObjetivo };
+}
+
+function detectarCierreCompromiso(texto) {
   const t = String(texto || "").trim().toLowerCase();
-  if (t.length > 80) return false;
-  if (/^(sí|si|yes|listo|hecho|ok)\b/.test(t)) return true;
-  if (/\bya lo hice\b/.test(t) || /\bcompletado\b/.test(t)) return true;
+  if (/\bya lo hice\b/.test(t) || /\bya qued[oó]\b/.test(t)) return true;
+  if (/\bterminad[oa]\b/.test(t) || /\bcompletad[oa]\b/.test(t)) return true;
+  if (t.length <= 80) {
+    if (/^(sí|si|yes|listo|hecho|ok)\b/.test(t)) return true;
+    if (/^listo[.!]?$/.test(t)) return true;
+  }
   return false;
+}
+
+function detectarCambioDeTema(texto) {
+  const t = String(texto || "").trim();
+  if (detectarCompromiso(t) || detectarCierreCompromiso(t)) return false;
+  if (/\?/.test(t)) return true;
+  if (t.length >= 50) return true;
+  if (/^(qu[eé]|c[oó]mo|cu[aá]l|cu[aá]nto|d[oó]nde|por\s*qu[eé]|qui[eé]n)\b/i.test(t)) {
+    return true;
+  }
+  return false;
+}
+
+function mensajeSeguimientoParaPendiente(comp, opts) {
+  opts = opts || {};
+  const acc = String(comp.accion || "").trim();
+  const hoyIso = titoLocalDateISO(new Date());
+  const man = new Date();
+  man.setDate(man.getDate() + 1);
+  const manIso = titoLocalDateISO(man);
+
+  if (opts.cambioDeTema) {
+    return "Antes de cambiar de tema, responde esto: ¿ya hiciste " + acc + "?";
+  }
+  const fo = comp.fechaObjetivo;
+  if (fo === hoyIso) {
+    return "Hoy dijiste que ibas a hacer esto: " + acc + ". ¿Ya empezaste?";
+  }
+  if (fo === manIso) {
+    return (
+      "Dijiste que mañana harías esto: " +
+      acc +
+      ". No lo dejes en intención. ¿Ya lo tienes definido?"
+    );
+  }
+  return "Eso quedó pendiente: " + acc + ". Antes de abrir otro frente, dime si ya avanzaste.";
 }
 
 function titoMemoriaCollectionRef(uid) {
@@ -6175,13 +6251,17 @@ function titoMemoriaCollectionRef(uid) {
   return db.collection("users").doc(uid).collection("tito").doc("default").collection("memoria");
 }
 
-async function guardarCompromiso(uid, accion) {
+async function guardarCompromiso(uid, texto) {
   const ref = titoMemoriaCollectionRef(uid);
   if (!ref) return;
+  const c = clasificarCompromiso(texto);
   await ref.add({
-    accion: String(extraerAccion(accion) || "").slice(0, 4000),
-    fecha: new Date().toISOString(),
-    completado: false
+    accion: String(extraerAccion(texto) || "").slice(0, 4000),
+    tipo: c.tipo,
+    prioridad: c.prioridad,
+    fechaObjetivo: c.fechaObjetivo,
+    estado: "pendiente",
+    createdAt: new Date().toISOString()
   });
 }
 
@@ -6203,9 +6283,28 @@ async function marcarCompromisoCompleto(uid, docId) {
   const ref = titoMemoriaCollectionRef(uid);
   if (!ref || !docId) return;
   await ref.doc(docId).update({
+    estado: "completado",
     completado: true,
     fechaCierre: new Date().toISOString()
   });
+}
+
+async function cerrarCompromisoPendiente(uid, texto) {
+  if (!uid || !detectarCierreCompromiso(texto)) {
+    return { closed: false };
+  }
+  const pend = verificarPendientes(memoriaTito);
+  if (!pend.length) {
+    return { closed: false };
+  }
+  const sorted = pend.slice().sort(function (a, b) {
+    return (
+      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
+    );
+  });
+  const doc = sorted[0];
+  await marcarCompromisoCompleto(uid, doc.id);
+  return { closed: true, id: doc.id };
 }
 
 function preloadPrivateCoachMemoria() {
@@ -6856,28 +6955,31 @@ async function sendPrivateCoachMessage() {
   if (u && typeof db !== "undefined" && db) {
     try {
       await cargarMemoria(u.uid);
-      let pend = verificarPendientes(memoriaTito);
-      if (pend.length > 0 && detectarAfirmacionCierre(text)) {
-        var sortedClose = pend.slice().sort(function (a, b) {
-          return new Date(a.fecha || 0) - new Date(b.fecha || 0);
-        });
-        await marcarCompromisoCompleto(u.uid, sortedClose[0].id);
+
+      var cierre = await cerrarCompromisoPendiente(u.uid, text);
+      if (cierre.closed) {
         await cargarMemoria(u.uid);
-        pend = verificarPendientes(memoriaTito);
-      }
-      if (pend.length > 0) {
-        var sortedPend = pend.slice().sort(function (a, b) {
-          return new Date(a.fecha || 0) - new Date(b.fecha || 0);
-        });
-        var primera = sortedPend[0];
-        reply =
-          "Dijiste que harías esto: " +
-          String(primera.accion || "").trim() +
-          " ¿Ya lo hiciste?";
+        reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
         skipCloud = true;
-      } else if (detectarCompromiso(text)) {
-        await guardarCompromiso(u.uid, extraerAccion(text));
-        await cargarMemoria(u.uid);
+      } else {
+        var pend = verificarPendientes(memoriaTito);
+        if (pend.length > 0) {
+          var sortedPend = pend.slice().sort(function (a, b) {
+            return (
+              new Date(a.createdAt || a.fecha || 0) -
+              new Date(b.createdAt || b.fecha || 0)
+            );
+          });
+          var primera = sortedPend[0];
+          reply = mensajeSeguimientoParaPendiente(primera, {
+            cambioDeTema:
+              detectarCambioDeTema(text) || detectarCompromiso(text)
+          });
+          skipCloud = true;
+        } else if (detectarCompromiso(text)) {
+          await guardarCompromiso(u.uid, text);
+          await cargarMemoria(u.uid);
+        }
       }
     } catch (err) {
       console.error("tito memoria:", err);
