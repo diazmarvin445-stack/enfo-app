@@ -210,8 +210,25 @@ function extractResponsesText(data) {
   return "";
 }
 
-function buildOpenAIInput(userText, coachHistory, coachMemory) {
+function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo) {
   const parts = [];
+
+  if (
+    contextoTiempo &&
+    typeof contextoTiempo === "object" &&
+    (contextoTiempo.fechaISO || contextoTiempo.hora != null)
+  ) {
+    const bits = [];
+    if (contextoTiempo.fechaISO) bits.push(`fecha local: ${contextoTiempo.fechaISO}`);
+    if (contextoTiempo.hora != null) {
+      const mi = String(contextoTiempo.minuto != null ? contextoTiempo.minuto : 0).padStart(2, "0");
+      bits.push(`hora: ${contextoTiempo.hora}:${mi}`);
+    }
+    if (contextoTiempo.zonaHoraria) bits.push(`zona: ${contextoTiempo.zonaHoraria}`);
+    if (contextoTiempo.periodo) bits.push(`periodo del día: ${contextoTiempo.periodo}`);
+    if (contextoTiempo.diaSemanaNombre) bits.push(`día: ${contextoTiempo.diaSemanaNombre}`);
+    parts.push("Contexto temporal (ahora, cliente):\n" + bits.join(", ") + ".");
+  }
 
   if (Array.isArray(coachMemory) && coachMemory.length) {
     const blocks = coachMemory
@@ -254,6 +271,8 @@ async function privateCoachChatCore(data) {
 
   const coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
   const coachMemory = COACH_MEMORY_INPUT_BLOCKS;
+  const contextoTiempo =
+    data.contextoTiempo && typeof data.contextoTiempo === "object" ? data.contextoTiempo : null;
 
   const key = openaiApiKey.value();
   if (!key) {
@@ -267,7 +286,7 @@ async function privateCoachChatCore(data) {
     const instructions = buildTitoSystemPrompt(titoCore);
     console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
 
-    const input = buildOpenAIInput(userText, coachHistory, coachMemory);
+    const input = buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo);
     console.timeEnd("[tito] firestore+prompt");
 
     console.time("[tito] openai");

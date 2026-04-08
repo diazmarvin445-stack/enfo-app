@@ -6145,6 +6145,51 @@ let memoriaTito = [];
 let memoriaTitoCargada = false;
 let titoCoachControlVariant = 0;
 
+/** Construir en cada mensaje (no usar un solo new Date() fijo al cargar). */
+function construirContextoTiempo() {
+  var fechaActual = new Date();
+  return {
+    fechaActual: fechaActual,
+    fechaISO: titoLocalDateISO(fechaActual),
+    zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    hora: fechaActual.getHours(),
+    minuto: fechaActual.getMinutes(),
+    diaSemana: fechaActual.getDay(),
+    diaSemanaNombre: [
+      "domingo",
+      "lunes",
+      "martes",
+      "miércoles",
+      "jueves",
+      "viernes",
+      "sábado"
+    ][fechaActual.getDay()],
+    periodo: titoPeriodoDelDia(fechaActual.getHours())
+  };
+}
+
+function titoPeriodoDelDia(hora) {
+  if (hora >= 5 && hora < 12) return "mañana";
+  if (hora >= 12 && hora < 20) return "tarde";
+  return "noche";
+}
+
+function titoEsMuyTardeParaHoy(ctx) {
+  return ctx && typeof ctx.hora === "number" && ctx.hora >= 22;
+}
+
+function titoNormFechaObjetivo(comp) {
+  if (!comp || comp.fechaObjetivo == null) return null;
+  var fo = comp.fechaObjetivo;
+  if (typeof fo === "string" && /^\d{4}-\d{2}-\d{2}/.test(fo)) {
+    return fo.substring(0, 10);
+  }
+  if (typeof fo === "object" && typeof fo.toDate === "function") {
+    return titoLocalDateISO(fo.toDate());
+  }
+  return null;
+}
+
 function titoLocalDateISO(d) {
   var x = d instanceof Date ? d : new Date(d);
   var y = x.getFullYear();
@@ -6204,44 +6249,118 @@ function titoCommitmentClientMs(comp) {
   return titoCommitmentMs(comp);
 }
 
-/** Bloque "hoy": texto con "hoy", prioridad alta o fecha objetivo = hoy local. */
-function compEsBloqueHoy(comp) {
-  if (!comp) return false;
-  var acc = String(comp.accion || "");
-  if (/\bhoy\b/i.test(acc)) return true;
-  if (comp.prioridad === "alta") return true;
-  if (comp.fechaObjetivo === titoLocalDateISO(new Date())) return true;
-  return false;
+function tiempoDesdeAccionPalabras(comp) {
+  var acc = String(comp && comp.accion || "").toLowerCase();
+  if (/\bhoy\b/.test(acc)) return "presente";
+  if (/\bma[nñ]ana\b|\bmanana\b/.test(acc)) return "futuro";
+  if (/\bayer\b/.test(acc)) return "pasado";
+  return "neutral";
 }
 
 /**
- * 1) Solo pendientes.
- * 2) Si hay alguno de bloque "hoy", solo ese subconjunto; si no, todos.
- * 3) Ordenar por createdAtClient DESC (no server createdAt).
- * 4) Un solo activo: [0].
+ * Presente / futuro / pasado / vencido según fechaObjetivo real y calendario local.
  */
-function getCompromisoActivo(memoria) {
-  var list = compromisosPendientesLista(memoria);
-  if (!list.length) return null;
-  var deHoy = list.filter(compEsBloqueHoy);
-  var pool = deHoy.length ? deHoy : list;
-  pool.sort(function (a, b) {
-    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
-  });
-  return pool[0];
+function tiempoRelativoCompromiso(comp, ctx) {
+  if (!comp || !ctx) return tiempoDesdeAccionPalabras(comp);
+  var iso = ctx.fechaISO;
+  var f = titoNormFechaObjetivo(comp);
+  var acc = String(comp.accion || "").toLowerCase();
+  if (f) {
+    if (f === iso) return "presente";
+    if (f > iso) return "futuro";
+    if (/\bayer\b/.test(acc)) return "pasado";
+    return "vencido";
+  }
+  var pal = tiempoDesdeAccionPalabras(comp);
+  if (pal === "presente") {
+    var ms = titoCommitmentClientMs(comp);
+    if (ms) {
+      var isoCre = titoLocalDateISO(new Date(ms));
+      if (isoCre < iso) return "vencido";
+    }
+  }
+  return pal;
 }
 
-/** Prioridad actual + resto de pendientes (ordenados por createdAtClient). */
-function getPrioridadYSecundarios(memoria) {
-  var prioritaria = getCompromisoActivo(memoria);
-  if (!prioritaria) {
-    return { prioritaria: null, secundarios: [] };
+/**
+ * ctx = contexto tiempo actual (construirContextoTiempo()).
+ * Enfoque: presente > vencido > resto no–pasado. "Pasado" (ayer) no es foco principal.
+ */
+function getOrganizacionTemporal(memoria, ctxOpt) {
+  var ctx = ctxOpt || construirContextoTiempo();
+  var pend = verificarPendientes(memoria);
+  if (!pend.length) {
+    return {
+      enfoque: null,
+      futurosLinea: [],
+      pasadosLinea: [],
+      vencidosLinea: []
+    };
   }
-  var todos = verificarPendientes(memoria);
-  var secundarios = todos.filter(function (c) {
-    return c.id !== prioritaria.id;
+  function T(c) {
+    return tiempoRelativoCompromiso(c, ctx);
+  }
+  var presentes = pend
+    .filter(function (c) {
+      return T(c) === "presente";
+    })
+    .sort(function (a, b) {
+      return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+    });
+  var vencidosPri = pend
+    .filter(function (c) {
+      return T(c) === "vencido";
+    })
+    .sort(function (a, b) {
+      return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+    });
+  var candidatosEnfoque = pend
+    .filter(function (c) {
+      var t = T(c);
+      return t !== "pasado" && t !== "vencido";
+    })
+    .sort(function (a, b) {
+      return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+    });
+  var enfoque = null;
+  if (presentes.length) {
+    enfoque = presentes[0];
+  } else if (vencidosPri.length) {
+    enfoque = vencidosPri[0];
+  } else if (candidatosEnfoque.length) {
+    enfoque = candidatosEnfoque[0];
+  }
+  var futurosLinea = pend.filter(function (c) {
+    return T(c) === "futuro" && (!enfoque || c.id !== enfoque.id);
   });
-  return { prioritaria: prioritaria, secundarios: secundarios };
+  futurosLinea.sort(function (a, b) {
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+  });
+  futurosLinea = futurosLinea.slice(0, 2);
+  var pasadosLinea = pend.filter(function (c) {
+    return T(c) === "pasado";
+  });
+  pasadosLinea.sort(function (a, b) {
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+  });
+  pasadosLinea = pasadosLinea.slice(0, 2);
+  var vencidosLinea = pend.filter(function (c) {
+    return T(c) === "vencido" && (!enfoque || c.id !== enfoque.id);
+  });
+  vencidosLinea.sort(function (a, b) {
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+  });
+  vencidosLinea = vencidosLinea.slice(0, 2);
+  return {
+    enfoque: enfoque,
+    futurosLinea: futurosLinea,
+    pasadosLinea: pasadosLinea,
+    vencidosLinea: vencidosLinea
+  };
+}
+
+function getCompromisoActivo(memoria) {
+  return getOrganizacionTemporal(memoria).enfoque;
 }
 
 function titoFormatearAccionCoach(acc) {
@@ -6251,34 +6370,88 @@ function titoFormatearAccionCoach(acc) {
     .slice(0, 500);
 }
 
-function mensajeCoachCompromisosOrganizados(prioritaria, secundarios, opts) {
+function mensajeCoachCompromisosTemporal(
+  enfoque,
+  futurosLinea,
+  pasadosLinea,
+  vencidosLinea,
+  opts
+) {
   opts = opts || {};
-  var accP = titoFormatearAccionCoach(prioritaria && prioritaria.accion);
+  var ctx = opts.contexto;
   var partes = [];
-  partes.push("Tu enfoque ahora es: " + accP + ".");
-  var secs = (secundarios || []).slice(0, 2);
-  if (secs.length === 1) {
+  if (
+    ctx &&
+    titoEsMuyTardeParaHoy(ctx) &&
+    enfoque &&
+    tiempoRelativoCompromiso(enfoque, ctx) === "presente"
+  ) {
     partes.push(
-      "También tienes pendiente: " + titoFormatearAccionCoach(secs[0].accion) + "."
+      "Ya es tarde para eso hoy. Define si lo harás mañana temprano."
     );
-  } else if (secs.length >= 2) {
+  }
+  if (enfoque) {
+    partes.push(
+      "Tu enfoque ahora es: " + titoFormatearAccionCoach(enfoque.accion) + "."
+    );
+  }
+  var fut = (futurosLinea || []).slice(0, 2);
+  if (fut.length === 1) {
+    partes.push(
+      "También tienes pendiente: " + titoFormatearAccionCoach(fut[0].accion) + "."
+    );
+  } else if (fut.length >= 2) {
     partes.push(
       "También tienes pendiente: " +
-        titoFormatearAccionCoach(secs[0].accion) +
+        titoFormatearAccionCoach(fut[0].accion) +
         " y " +
-        titoFormatearAccionCoach(secs[1].accion) +
+        titoFormatearAccionCoach(fut[1].accion) +
         "."
     );
   }
-  var controles = [
-    "Confírmame: ¿eso sigue activo o ya cambió tu enfoque?",
-    "Dime si sigue vigente o si movemos el foco.",
-    "¿Eso sigue siendo tu prioridad o lo ajustamos?"
-  ];
-  var ctrl = controles[titoCoachControlVariant % controles.length];
-  titoCoachControlVariant += 1;
-  partes.push(ctrl);
-  if (opts.cambioDeTema) {
+  var ven = (vencidosLinea || []).slice(0, 2);
+  if (ven.length === 1) {
+    partes.push(
+      "Esto ya tenía fecha y sigue pendiente: " +
+        titoFormatearAccionCoach(ven[0].accion) +
+        ". ¿Qué hacemos?"
+    );
+  } else if (ven.length >= 2) {
+    partes.push(
+      "Esto ya tenía fecha y sigue pendiente: " +
+        titoFormatearAccionCoach(ven[0].accion) +
+        " y " +
+        titoFormatearAccionCoach(ven[1].accion) +
+        ". ¿Qué hacemos?"
+    );
+  }
+  var pas = (pasadosLinea || []).slice(0, 2);
+  if (pas.length === 1) {
+    partes.push(
+      "Ayer dijiste: " +
+        titoFormatearAccionCoach(pas[0].accion) +
+        ". ¿Lo completaste?"
+    );
+  } else if (pas.length >= 2) {
+    partes.push(
+      "Ayer dijiste: " +
+        titoFormatearAccionCoach(pas[0].accion) +
+        " y " +
+        titoFormatearAccionCoach(pas[1].accion) +
+        ". ¿Lo completaste?"
+    );
+  }
+  if (partes.length) {
+    var controles = [
+      "Confírmame: ¿eso sigue activo o ya cambió tu enfoque?",
+      "Dime si sigue vigente o si movemos el foco.",
+      "¿Eso sigue siendo tu prioridad o lo ajustamos?"
+    ];
+    var ctrl = controles[titoCoachControlVariant % controles.length];
+    titoCoachControlVariant += 1;
+    partes.push(ctrl);
+  }
+  if (opts.cambioDeTema && partes.length) {
     partes[0] = "Primero esto. " + partes[0];
   }
   return partes.join("\n\n");
@@ -6344,6 +6517,14 @@ function titoMemoriaCollectionRef(uid) {
   return db.collection("users").doc(uid).collection("tito").doc("default").collection("memoria");
 }
 
+function prioridadTemporalDesdeTexto(texto) {
+  var t = String(texto || "").toLowerCase();
+  if (/\bhoy\b/.test(t)) return 3;
+  if (/\bayer\b/.test(t)) return 1;
+  if (/\bma[nñ]ana\b|\bmanana\b/.test(t)) return 2;
+  return 2;
+}
+
 async function guardarCompromiso(uid, texto) {
   const ref = titoMemoriaCollectionRef(uid);
   if (!ref || typeof db === "undefined" || !db) return;
@@ -6353,6 +6534,7 @@ async function guardarCompromiso(uid, texto) {
     accion: String(extraerAccion(texto) || "").slice(0, 4000),
     tipo: c.tipo,
     prioridad: c.prioridad,
+    prioridadTemporal: prioridadTemporalDesdeTexto(texto),
     fechaObjetivo: c.fechaObjetivo,
     estado: "pendiente",
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -7041,6 +7223,7 @@ async function sendPrivateCoachMessage() {
   let reply = "";
   let skipCloud = false;
   let skipPrivateCoachFormat = false;
+  var ctxTito = construirContextoTiempo();
 
   if (u && typeof db !== "undefined" && db) {
     try {
@@ -7051,11 +7234,13 @@ async function sendPrivateCoachMessage() {
         await cargarMemoria(u.uid);
         var pendTrasCierre = verificarPendientes(memoriaTito);
         if (pendTrasCierre.length > 0) {
-          var orgCierre = getPrioridadYSecundarios(memoriaTito);
-          reply = mensajeCoachCompromisosOrganizados(
-            orgCierre.prioritaria,
-            orgCierre.secundarios,
-            {}
+          var orgCierre = getOrganizacionTemporal(memoriaTito, ctxTito);
+          reply = mensajeCoachCompromisosTemporal(
+            orgCierre.enfoque,
+            orgCierre.futurosLinea,
+            orgCierre.pasadosLinea,
+            orgCierre.vencidosLinea,
+            { contexto: ctxTito }
           );
           skipPrivateCoachFormat = true;
         } else {
@@ -7069,13 +7254,16 @@ async function sendPrivateCoachMessage() {
         }
         var pendOrg = verificarPendientes(memoriaTito);
         if (pendOrg.length > 0) {
-          var org = getPrioridadYSecundarios(memoriaTito);
-          reply = mensajeCoachCompromisosOrganizados(
-            org.prioritaria,
-            org.secundarios,
+          var org = getOrganizacionTemporal(memoriaTito, ctxTito);
+          reply = mensajeCoachCompromisosTemporal(
+            org.enfoque,
+            org.futurosLinea,
+            org.pasadosLinea,
+            org.vencidosLinea,
             {
               cambioDeTema:
-                detectarCambioDeTema(text) && !detectarCompromiso(text)
+                detectarCambioDeTema(text) && !detectarCompromiso(text),
+              contexto: ctxTito
             }
           );
           skipPrivateCoachFormat = true;
@@ -7115,6 +7303,7 @@ async function sendPrivateCoachMessage() {
     if (!u) throw new Error("Sin sesión");
     const token = await u.getIdToken();
     const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 12) : [];
+    var ctxCloud = construirContextoTiempo();
     const data = {
       message: text,
       userText: text,
@@ -7124,7 +7313,16 @@ async function sendPrivateCoachMessage() {
           text: String(h.text || "").slice(0, 800)
         };
       }),
-      coachMemory: []
+      coachMemory: [],
+      contextoTiempo: {
+        fechaISO: ctxCloud.fechaISO,
+        hora: ctxCloud.hora,
+        minuto: ctxCloud.minuto,
+        zonaHoraria: ctxCloud.zonaHoraria,
+        periodo: ctxCloud.periodo,
+        diaSemana: ctxCloud.diaSemana,
+        diaSemanaNombre: ctxCloud.diaSemanaNombre
+      }
     };
     const json = await getCoachReplyFromCloud(data, token);
     if (json && json.error != null && json.reply == null) {
