@@ -6482,6 +6482,60 @@ function buildPrivateCoachReply(userText) {
   return privateCoachPickFromBands("default", PRIVATE_COACH_IMPLACABLE.default, userText);
 }
 
+/**
+ * Salida visible de Tito: quita etiquetas de proceso ("Detecto…", "Corrijo…", etc.) y deja máx. 2 líneas.
+ * Solo afecta el texto mostrado al usuario (no Firebase).
+ */
+function privateCoachFormatTitoReply(raw) {
+  if (raw == null || typeof raw !== "string") return "";
+  var t = raw.replace(/\r\n/g, "\n").trim();
+  if (!t) return "";
+
+  var tag =
+    "(detecto(\\s+la\\s+ra[ií]z)?|corri[jg]o(\\s+la\\s+excusa)?|perspectiva(\\s+m[aá]s\\s+fuerte)?|perspectiva\\s+fuerte|acci[oó]n\\s+inmediata|accion\\s+inmediata)";
+  var inlineTag = new RegExp("\\s*" + tag + "\\s*:\\s*", "gi");
+  t = t.replace(inlineTag, "\n");
+
+  var lineStart = new RegExp(
+    "^\\s*(?:[-*•]\\s*)?(?:\\*\\*[^*]+\\*\\*\\s*)?" + tag + "\\s*:\\s*",
+    "i"
+  );
+  var lines = t.split("\n").map(function (line) {
+    var L = line.trim();
+    L = L.replace(lineStart, "").trim();
+    L = L.replace(lineStart, "").trim();
+    return L;
+  });
+
+  lines = lines.filter(function (line) {
+    if (!line) return false;
+    var low = line.toLowerCase();
+    if (
+      /^(detecto|corri[jg]o|perspectiva|acci[oó]n|accion)\b/.test(low) &&
+      line.length < 48 &&
+      !/[.!?]/.test(line)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  var out = lines.slice(0, 2).join("\n").trim();
+  if (!out) {
+    out = raw
+      .replace(/\r\n/g, "\n")
+      .trim()
+      .split("\n")
+      .map(function (l) {
+        return l.trim();
+      })
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("\n");
+  }
+  return out.slice(0, 4000);
+}
+
 async function getCoachReplyFromCloud(data, token) {
   const res = await fetch("https://us-central1-enfo-ee211.cloudfunctions.net/privateCoachChatHttp", {
     method: "POST",
@@ -6534,6 +6588,10 @@ async function sendPrivateCoachMessage() {
   }
   if (!String(reply || "").trim()) {
     reply = buildPrivateCoachReply(text);
+  }
+  reply = privateCoachFormatTitoReply(reply);
+  if (!String(reply || "").trim()) {
+    reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
   }
   appendPrivateCoachMessage("coach", reply);
   privateCoachPersistTurn(text, reply);
