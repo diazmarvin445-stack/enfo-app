@@ -1748,16 +1748,6 @@
   </div>
 </div>
 
-<div class="modal" id="m-rg-wk" onclick="bgc(event, 'm-rg-wk')">
-  <div class="msheet" onclick="event.stopPropagation()">
-    <div class="mhandle"></div>
-    <div class="mtitle" id="rg-wk-title">Editar registro semanal</div>
-    <div id="rg-wk-body" style="max-height:55vh;overflow-y:auto;margin-bottom:14px;"></div>
-    <button type="button" class="btn btn-p" style="width:100%;margin-bottom:8px;" onclick="saveRegistroGlobalWeekEdit()">Guardar cambios</button>
-    <button type="button" class="btn btn-g btn-sm" style="width:100%;" onclick="closeModal('m-rg-wk')">Cerrar</button>
-  </div>
-</div>
-
 <!-- Panel de Finanzas -->
 <div id="finanzas-panel" style="position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);">
   <div class="section-calc-host">
@@ -3823,7 +3813,6 @@ function askDelQ(id) {
 function openModal(id)  { document.getElementById(id).classList.add("open"); }
 function closeModal(id) {
   document.getElementById(id).classList.remove("open");
-  if (id === "m-rg-wk") editingRegistroWeekKey = null;
 }
 
 function bgc(ev, id) {
@@ -5754,14 +5743,43 @@ function weekLabelFromKey(weekKey) {
   return fmtD(monday) + " - " + fmtD(friday);
 }
 
+/** Clave estable para una fila del registro global (evita duplicados legacy + sync). */
+function registroGlobalDedupeKey(op) {
+  if (!op || typeof op !== "object") return "";
+  if (op.sourceStrategyId && op.sourceOpId) {
+    return "src|" + String(op.sourceStrategyId) + "|" + String(op.sourceOpId);
+  }
+  if (op.id && String(op.id).indexOf("rg-sync-") === 0) return "id|" + String(op.id);
+  if (op.id) return "id|" + String(op.id);
+  return "cmp|" + [
+    String(op.sourceStrategyId || ""),
+    String(op.asset || "").toLowerCase().trim(),
+    String(op.date || "").trim(),
+    String(op.weekKey || "").trim(),
+    String(op.result || op.resultado || "").toLowerCase().trim(),
+    String(parseNum(op.opMonto != null ? op.opMonto : op.monto)),
+    String(parseNum(op.opPct != null ? op.opPct : op.pct))
+  ].join("|");
+}
+
+/** Primera aparición gana; elimina filas repetidas por misma operación de estrategia o mismo contenido. */
+function dedupeRegistroGlobalOps(ops) {
+  var seen = {};
+  var out = [];
+  (ops || []).forEach(function(op) {
+    var k = registroGlobalDedupeKey(op);
+    if (!k || seen[k]) return;
+    seen[k] = true;
+    out.push(op);
+  });
+  return out;
+}
+
 function syncRegistroGlobalFromStrategies() {
-  if (!D.registroOps) D.registroOps = [];
-  var keepManual = (D.registroOps || []).filter(function(o) { return !o || !o.sourceOpId; });
   var auto = [];
   (D.strategies || []).forEach(function(s) {
     (s.ops || []).forEach(function(op) {
       if (!op || !op.id) return;
-      if (op.result !== "win" && op.result !== "lose") return;
       var signed = resolveRegistroSigned(op);
       if (!signed) return;
       var baseDate = toIsoDateOnly(op.date) || toIsoDateOnly(new Date());
@@ -5785,7 +5803,7 @@ function syncRegistroGlobalFromStrategies() {
       });
     });
   });
-  D.registroOps = keepManual.concat(auto);
+  D.registroOps = dedupeRegistroGlobalOps(auto);
 }
 
 function openRegistroGlobal() {
@@ -5797,89 +5815,6 @@ function openRegistroGlobal() {
 
 function closeRegistroGlobal() {
   document.getElementById("registro-global-panel").style.transform = "translateY(100%)";
-}
-
-var editingRegistroWeekKey = null;
-
-function openEditRegistroGlobalWeek(weekKey) {
-  if (!weekKey) return;
-  var now = new Date();
-  var dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  var monday = new Date(now);
-  monday.setDate(now.getDate() - dow);
-  var currentWkKey = monday.getFullYear() + "-" + String(monday.getMonth() + 1).padStart(2, "0") + "-" + String(monday.getDate()).padStart(2, "0");
-  if (weekKey === currentWkKey) return;
-  if (!D.registroOps) D.registroOps = [];
-  var ops = D.registroOps.filter(function(o) { return (o.weekKey || "sin-semana") === weekKey; });
-  if (!ops.length) return;
-  ops.forEach(function(o) { if (!o.id) o.id = uid(); });
-  editingRegistroWeekKey = weekKey;
-  var label = ops[0].weekLabel || weekKey;
-  var titleEl = document.getElementById("rg-wk-title");
-  if (titleEl) titleEl.textContent = "Editar registro · " + label;
-  var body = document.getElementById("rg-wk-body");
-  if (!body) return;
-  body.innerHTML = ops.map(function(op) {
-    var res = op.result === "lose" ? "lose" : "win";
-    return '<div class="rg-row" data-op-id="' + e(op.id) + '" style="margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
-        + '<div><label class="flbl">Activo</label><input type="text" class="rg-asset" value="' + e(op.asset || "") + '" style="width:100%;box-sizing:border-box;font-size:13px;"></div>'
-        + '<div><label class="flbl">Resultado</label><select class="rg-res" style="width:100%;padding:8px;box-sizing:border-box;font-size:13px;">'
-          + '<option value="win"' + (res === "win" ? " selected" : "") + '>Se dio</option>'
-          + '<option value="lose"' + (res === "lose" ? " selected" : "") + '>No se dio</option>'
-        + '</select></div>'
-      + '</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-        + '<div><label class="flbl">Monto ($)</label><input type="number" step="0.01" class="rg-monto" value="' + e(String(op.monto != null ? op.monto : "")) + '" style="width:100%;font-family:Orbitron,monospace;font-size:13px;box-sizing:border-box;"></div>'
-        + '<div><label class="flbl">%</label><input type="number" step="0.01" class="rg-pct" value="' + e(String(op.pct != null ? op.pct : "")) + '" style="width:100%;font-family:Orbitron,monospace;font-size:13px;box-sizing:border-box;"></div>'
-      + '</div>'
-    + '</div>';
-  }).join("");
-  openModal("m-rg-wk");
-}
-
-function saveRegistroGlobalWeekEdit() {
-  if (!editingRegistroWeekKey) return;
-  var body = document.getElementById("rg-wk-body");
-  if (!body) return;
-  body.querySelectorAll(".rg-row").forEach(function(row) {
-    var id = row.getAttribute("data-op-id");
-    var op = (D.registroOps || []).find(function(o) { return o.id === id; });
-    if (!op || (op.weekKey || "sin-semana") !== editingRegistroWeekKey) return;
-    var asset = row.querySelector(".rg-asset");
-    var monto = row.querySelector(".rg-monto");
-    var pct = row.querySelector(".rg-pct");
-    var res = row.querySelector(".rg-res");
-    op.asset = asset ? String(asset.value || "").trim() : "";
-    op.monto = monto ? parseFloat(monto.value) || 0 : 0;
-    op.pct = pct ? parseFloat(pct.value) || 0 : 0;
-    op.result = res && res.value === "lose" ? "lose" : "win";
-    op.ganancia = resolveRegistroSigned(op);
-  });
-  editingRegistroWeekKey = null;
-  sv();
-  renderRegistroGlobal();
-  closeModal("m-rg-wk");
-  showCelebration("💾");
-}
-
-function askDelRegistroGlobalWeek(weekKey) {
-  if (!weekKey) return;
-  var now = new Date();
-  var dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
-  var monday = new Date(now);
-  monday.setDate(now.getDate() - dow);
-  var currentWkKey = monday.getFullYear() + "-" + String(monday.getMonth() + 1).padStart(2, "0") + "-" + String(monday.getDate()).padStart(2, "0");
-  if (weekKey === currentWkKey) return;
-  opConf("🗑", "Eliminar semana del registro", "¿Eliminar todas las operaciones de esta semana en el registro global? No se puede deshacer.", function() {
-    if (!D.registroOps) D.registroOps = [];
-    D.registroOps = D.registroOps.filter(function(o) {
-      return (o.weekKey || "sin-semana") !== weekKey;
-    });
-    sv();
-    renderRegistroGlobal();
-    showCelebration("🗑");
-  });
 }
 
 function renderRegistroGlobal() {
@@ -5901,9 +5836,9 @@ function renderRegistroGlobal() {
   var fmtD   = function(d){ return d.getDate() + " " + mn[d.getMonth()]; };
   var currentWkLabel = fmtD(monday) + " - " + fmtD(friday);
 
-  // Filtrar operaciones de la semana actual
-  var currentOps = D.registroOps.filter(function(o){ return o.weekKey === currentWkKey; });
-  var allOps     = D.registroOps.slice().reverse();
+  // Filtrar operaciones de la semana actual (dedupe defensivo)
+  var currentOps = dedupeRegistroGlobalOps(D.registroOps.filter(function(o){ return o.weekKey === currentWkKey; }));
+  var allOps     = dedupeRegistroGlobalOps(D.registroOps.slice()).reverse();
 
   var totalGan = allOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g > 0 ? g : 0); },0);
   var totalPer = allOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g < 0 ? Math.abs(g) : 0); },0);
@@ -5967,8 +5902,6 @@ function renderRegistroGlobal() {
       html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">'
           + '<span style="font-size:11px;color:var(--text2);flex:1;min-width:0;">' + e(w.label) + '</span>'
-          + '<button type="button" onclick="openEditRegistroGlobalWeek(\'' + String(wk).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\')" title="Editar esta semana" style="flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:2px 6px;line-height:1;">✏️</button>'
-          + '<button type="button" onclick="askDelRegistroGlobalWeek(\'' + String(wk).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + '\')" title="Eliminar esta semana" style="flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:2px 6px;line-height:1;">🗑</button>'
           + '<span style="font-size:13px;font-weight:700;font-family:Orbitron,monospace;color:' + (wNet>=0?"var(--green)":"var(--red)") + ';">' + (wNet>=0?"+":"-") + '$' + Math.abs(wNet).toFixed(2) + '</span>'
         + '</div>'
         + w.ops.map(function(op){
@@ -6685,7 +6618,7 @@ firebase.auth().onAuthStateChanged(function(user) {
 });
 
 Object.assign(window, {
-  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, askDelRegistroGlobalWeek, openEditRegistroGlobalWeek, saveRegistroGlobalWeekEdit, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
+  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
   toggleAddBlockForm, saveBlock, toggleBlockDone, deleteBlock, editBlock, toggleHorarioBanner, toggleDay, toggleVerTodos, openStats, closeStats,
   startRename, saveRename, askDelStrat, stab, setF, clrDates, renderOps,
   openModal, bgc, crStrat, openAddOp, setR, addOp, saveDiary, openMetasLargoPanel, closeMetasLargoPanel, setMetasTab, addLongTermGoalSlot, saveLongTermGoal, askDelLongTermGoal, addShortTermGoalSlot, saveShortTermGoal, askDelShortTermGoal,
