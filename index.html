@@ -6212,7 +6212,7 @@ function extraerAccion(texto) {
 
 function compromisoEstaPendiente(m) {
   if (!m) return false;
-  if (m.estado === "reemplazado") return false;
+  if (m.estado === "ajustado" || m.estado === "reemplazado") return false;
   if (m.estado === "completado") return false;
   if (m.completado === true) return false;
   if (m.estado === "pendiente") return true;
@@ -6512,6 +6512,33 @@ function detectarCambioDeTema(texto) {
   return false;
 }
 
+function detectarAjusteEnfoque(texto) {
+  var t = String(texto || "").trim().toLowerCase();
+  if (t.length > 160) return false;
+  var marcas = [
+    "ajústalo",
+    "ajustalo",
+    "cámbialo",
+    "cambialo",
+    "ya no",
+    "ya cambió",
+    "ya cambio",
+    "mejor este",
+    "enfócate en este",
+    "enfocate en este",
+    "ese no",
+    "olvida ese",
+    "vamos con este",
+    "deja ese",
+    "dejá ese",
+    "olvidalo",
+    "olvídalo"
+  ];
+  return marcas.some(function (m) {
+    return t.indexOf(m) !== -1;
+  });
+}
+
 function titoMemoriaCollectionRef(uid) {
   if (!uid || typeof db === "undefined" || !db) return null;
   return db.collection("users").doc(uid).collection("tito").doc("default").collection("memoria");
@@ -6523,6 +6550,24 @@ function prioridadTemporalDesdeTexto(texto) {
   if (/\bayer\b/.test(t)) return 1;
   if (/\bma[nñ]ana\b|\bmanana\b/.test(t)) return 2;
   return 2;
+}
+
+async function aplicarAjusteEnfoque(uid, idMantener) {
+  const ref = titoMemoriaCollectionRef(uid);
+  if (!ref || !idMantener || typeof db === "undefined" || !db) return;
+  var otros = verificarPendientes(memoriaTito).filter(function (p) {
+    return p.id && p.id !== idMantener;
+  });
+  if (!otros.length) return;
+  var batch = db.batch();
+  var ahora = new Date().toISOString();
+  otros.forEach(function (p) {
+    batch.update(ref.doc(p.id), {
+      estado: "ajustado",
+      ajustadoAt: ahora
+    });
+  });
+  await batch.commit();
 }
 
 async function guardarCompromiso(uid, texto) {
@@ -7229,45 +7274,70 @@ async function sendPrivateCoachMessage() {
     try {
       await cargarMemoria(u.uid);
 
-      var cierre = await cerrarCompromisoPendiente(u.uid, text);
-      if (cierre.closed) {
-        await cargarMemoria(u.uid);
-        var pendTrasCierre = verificarPendientes(memoriaTito);
-        if (pendTrasCierre.length > 0) {
-          var orgCierre = getOrganizacionTemporal(memoriaTito, ctxTito);
-          reply = mensajeCoachCompromisosTemporal(
-            orgCierre.enfoque,
-            orgCierre.futurosLinea,
-            orgCierre.pasadosLinea,
-            orgCierre.vencidosLinea,
-            { contexto: ctxTito }
-          );
-          skipPrivateCoachFormat = true;
-        } else {
-          reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
-        }
-        skipCloud = true;
-      } else {
-        if (detectarCompromiso(text)) {
-          await guardarCompromiso(u.uid, text);
-          await cargarMemoria(u.uid);
-        }
-        var pendOrg = verificarPendientes(memoriaTito);
-        if (pendOrg.length > 0) {
-          var org = getOrganizacionTemporal(memoriaTito, ctxTito);
-          reply = mensajeCoachCompromisosTemporal(
-            org.enfoque,
-            org.futurosLinea,
-            org.pasadosLinea,
-            org.vencidosLinea,
-            {
-              cambioDeTema:
-                detectarCambioDeTema(text) && !detectarCompromiso(text),
-              contexto: ctxTito
+      var ajusteHecho = false;
+      if (detectarAjusteEnfoque(text)) {
+        var pendAjuste = verificarPendientes(memoriaTito);
+        if (pendAjuste.length >= 1) {
+          var orgAjuste = getOrganizacionTemporal(memoriaTito, ctxTito);
+          if (orgAjuste.enfoque && orgAjuste.enfoque.id) {
+            try {
+              await aplicarAjusteEnfoque(u.uid, orgAjuste.enfoque.id);
+              await cargarMemoria(u.uid);
+              reply =
+                "Bien. Ajusté el enfoque.\n\nAhora tu prioridad es: " +
+                titoFormatearAccionCoach(orgAjuste.enfoque.accion) +
+                ".";
+              skipPrivateCoachFormat = true;
+              skipCloud = true;
+              ajusteHecho = true;
+            } catch (errAdj) {
+              console.error("tito ajuste enfoque:", errAdj);
             }
-          );
-          skipPrivateCoachFormat = true;
+          }
+        }
+      }
+
+      if (!ajusteHecho) {
+        var cierre = await cerrarCompromisoPendiente(u.uid, text);
+        if (cierre.closed) {
+          await cargarMemoria(u.uid);
+          var pendTrasCierre = verificarPendientes(memoriaTito);
+          if (pendTrasCierre.length > 0) {
+            var orgCierre = getOrganizacionTemporal(memoriaTito, ctxTito);
+            reply = mensajeCoachCompromisosTemporal(
+              orgCierre.enfoque,
+              orgCierre.futurosLinea,
+              orgCierre.pasadosLinea,
+              orgCierre.vencidosLinea,
+              { contexto: ctxTito }
+            );
+            skipPrivateCoachFormat = true;
+          } else {
+            reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
+          }
           skipCloud = true;
+        } else {
+          if (detectarCompromiso(text)) {
+            await guardarCompromiso(u.uid, text);
+            await cargarMemoria(u.uid);
+          }
+          var pendOrg = verificarPendientes(memoriaTito);
+          if (pendOrg.length > 0) {
+            var org = getOrganizacionTemporal(memoriaTito, ctxTito);
+            reply = mensajeCoachCompromisosTemporal(
+              org.enfoque,
+              org.futurosLinea,
+              org.pasadosLinea,
+              org.vencidosLinea,
+              {
+                cambioDeTema:
+                  detectarCambioDeTema(text) && !detectarCompromiso(text),
+                contexto: ctxTito
+              }
+            );
+            skipPrivateCoachFormat = true;
+            skipCloud = true;
+          }
         }
       }
     } catch (err) {
