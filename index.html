@@ -6176,9 +6176,13 @@ function compromisoEstaPendiente(m) {
   return false;
 }
 
+function compromisosPendientesLista(memoria) {
+  return (memoria || []).filter(compromisoEstaPendiente);
+}
+
 /** Solo pendientes reales, más reciente primero (createdAt DESC). */
 function verificarPendientes(memoria) {
-  const list = (memoria || []).filter(compromisoEstaPendiente);
+  const list = compromisosPendientesLista(memoria);
   list.sort(function (a, b) {
     return (
       new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
@@ -6187,9 +6191,31 @@ function verificarPendientes(memoria) {
   return list;
 }
 
+/** Compromiso para hoy: prioridad alta, fechaObjetivo hoy, o texto con "hoy" (legacy). */
+function esCompromisoDeHoy(comp) {
+  if (!comp) return false;
+  const hoyIso = titoLocalDateISO(new Date());
+  if (comp.prioridad === "alta") return true;
+  if (comp.fechaObjetivo === hoyIso) return true;
+  if (/\bhoy\b/.test(String(comp.accion || "").toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * Activo: si hay algún pendiente de hoy → solo ese bloque, el más reciente entre ellos.
+ * Si no hay ninguno de hoy → el pendiente más reciente (createdAt DESC).
+ */
 function getCompromisoActivo(memoria) {
-  const pend = verificarPendientes(memoria);
-  return pend.length ? pend[0] : null;
+  const pend = compromisosPendientesLista(memoria);
+  if (!pend.length) return null;
+  const deHoy = pend.filter(esCompromisoDeHoy);
+  const pool = deHoy.length ? deHoy : pend;
+  pool.sort(function (a, b) {
+    return (
+      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
+    );
+  });
+  return pool[0];
 }
 
 function clasificarCompromiso(texto) {
@@ -6199,7 +6225,7 @@ function clasificarCompromiso(texto) {
   else if (/trading|operaci[oó]n|mercado/.test(t)) tipo = "trading";
   else if (/h[aá]bitos|ejercicio|disciplina/.test(t)) tipo = "habitos";
 
-  let prioridad = "normal";
+  let prioridad = "baja";
   if (/\bhoy\b/.test(t)) prioridad = "alta";
   else if (/\bma[nñ]ana\b|\bmanana\b/.test(t)) prioridad = "media";
 
