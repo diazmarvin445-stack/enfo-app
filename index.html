@@ -6143,6 +6143,7 @@ let privateCoachOpenGreetingIdx = 0;
 /** Memoria Tito (compromisos) — users/{uid}/tito/default/memoria */
 let memoriaTito = [];
 let memoriaTitoCargada = false;
+let titoCoachControlVariant = 0;
 
 function titoLocalDateISO(d) {
   var x = d instanceof Date ? d : new Date(d);
@@ -6180,42 +6181,116 @@ function compromisosPendientesLista(memoria) {
   return (memoria || []).filter(compromisoEstaPendiente);
 }
 
-/** Solo pendientes reales, más reciente primero (createdAt DESC). */
-function verificarPendientes(memoria) {
-  const list = compromisosPendientesLista(memoria);
-  list.sort(function (a, b) {
-    return (
-      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
-    );
-  });
-  return list;
+/** Fallback: server createdAt / fecha (legacy). No usar para orden principal. */
+function titoCommitmentMs(comp) {
+  if (!comp) return 0;
+  var c = comp.createdAt != null ? comp.createdAt : comp.fecha;
+  if (c == null) return 0;
+  if (typeof c === "object" && typeof c.toDate === "function") {
+    return c.toDate().getTime();
+  }
+  if (typeof c === "object" && typeof c.seconds === "number") {
+    return c.seconds * 1000 + (c.nanoseconds || 0) / 1e6;
+  }
+  var t = new Date(c).getTime();
+  return isNaN(t) ? 0 : t;
 }
 
-/** Compromiso para hoy: prioridad alta, fechaObjetivo hoy, o texto con "hoy" (legacy). */
-function esCompromisoDeHoy(comp) {
+/** Ordenación principal: createdAtClient (Date.now al guardar). Si falta, legacy. */
+function titoCommitmentClientMs(comp) {
+  if (!comp) return 0;
+  var cc = comp.createdAtClient;
+  if (typeof cc === "number" && !isNaN(cc)) return cc;
+  return titoCommitmentMs(comp);
+}
+
+/** Bloque "hoy": texto con "hoy", prioridad alta o fecha objetivo = hoy local. */
+function compEsBloqueHoy(comp) {
   if (!comp) return false;
-  const hoyIso = titoLocalDateISO(new Date());
+  var acc = String(comp.accion || "");
+  if (/\bhoy\b/i.test(acc)) return true;
   if (comp.prioridad === "alta") return true;
-  if (comp.fechaObjetivo === hoyIso) return true;
-  if (/\bhoy\b/.test(String(comp.accion || "").toLowerCase())) return true;
+  if (comp.fechaObjetivo === titoLocalDateISO(new Date())) return true;
   return false;
 }
 
 /**
- * Activo: si hay algún pendiente de hoy → solo ese bloque, el más reciente entre ellos.
- * Si no hay ninguno de hoy → el pendiente más reciente (createdAt DESC).
+ * 1) Solo pendientes.
+ * 2) Si hay alguno de bloque "hoy", solo ese subconjunto; si no, todos.
+ * 3) Ordenar por createdAtClient DESC (no server createdAt).
+ * 4) Un solo activo: [0].
  */
 function getCompromisoActivo(memoria) {
-  const pend = compromisosPendientesLista(memoria);
-  if (!pend.length) return null;
-  const deHoy = pend.filter(esCompromisoDeHoy);
-  const pool = deHoy.length ? deHoy : pend;
+  var list = compromisosPendientesLista(memoria);
+  if (!list.length) return null;
+  var deHoy = list.filter(compEsBloqueHoy);
+  var pool = deHoy.length ? deHoy : list;
   pool.sort(function (a, b) {
-    return (
-      new Date(b.createdAt || b.fecha || 0) - new Date(a.createdAt || a.fecha || 0)
-    );
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
   });
   return pool[0];
+}
+
+/** Prioridad actual + resto de pendientes (ordenados por createdAtClient). */
+function getPrioridadYSecundarios(memoria) {
+  var prioritaria = getCompromisoActivo(memoria);
+  if (!prioritaria) {
+    return { prioritaria: null, secundarios: [] };
+  }
+  var todos = verificarPendientes(memoria);
+  var secundarios = todos.filter(function (c) {
+    return c.id !== prioritaria.id;
+  });
+  return { prioritaria: prioritaria, secundarios: secundarios };
+}
+
+function titoFormatearAccionCoach(acc) {
+  return String(acc || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 500);
+}
+
+function mensajeCoachCompromisosOrganizados(prioritaria, secundarios, opts) {
+  opts = opts || {};
+  var accP = titoFormatearAccionCoach(prioritaria && prioritaria.accion);
+  var partes = [];
+  partes.push("Tu enfoque ahora es: " + accP + ".");
+  var secs = (secundarios || []).slice(0, 2);
+  if (secs.length === 1) {
+    partes.push(
+      "También tienes pendiente: " + titoFormatearAccionCoach(secs[0].accion) + "."
+    );
+  } else if (secs.length >= 2) {
+    partes.push(
+      "También tienes pendiente: " +
+        titoFormatearAccionCoach(secs[0].accion) +
+        " y " +
+        titoFormatearAccionCoach(secs[1].accion) +
+        "."
+    );
+  }
+  var controles = [
+    "Confírmame: ¿eso sigue activo o ya cambió tu enfoque?",
+    "Dime si sigue vigente o si movemos el foco.",
+    "¿Eso sigue siendo tu prioridad o lo ajustamos?"
+  ];
+  var ctrl = controles[titoCoachControlVariant % controles.length];
+  titoCoachControlVariant += 1;
+  partes.push(ctrl);
+  if (opts.cambioDeTema) {
+    partes[0] = "Primero esto. " + partes[0];
+  }
+  return partes.join("\n\n");
+}
+
+/** Solo pendientes reales, más reciente primero (createdAtClient DESC). */
+function verificarPendientes(memoria) {
+  const list = compromisosPendientesLista(memoria);
+  list.sort(function (a, b) {
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+  });
+  return list;
 }
 
 function clasificarCompromiso(texto) {
@@ -6264,31 +6339,6 @@ function detectarCambioDeTema(texto) {
   return false;
 }
 
-function mensajeSeguimientoParaPendiente(comp, opts) {
-  opts = opts || {};
-  const acc = String(comp.accion || "").trim();
-  const hoyIso = titoLocalDateISO(new Date());
-  const man = new Date();
-  man.setDate(man.getDate() + 1);
-  const manIso = titoLocalDateISO(man);
-
-  if (opts.cambioDeTema) {
-    return "Antes de cambiar de tema, responde esto: ¿ya hiciste " + acc + "?";
-  }
-  const fo = comp.fechaObjetivo;
-  if (fo === hoyIso) {
-    return "Hoy dijiste que ibas a hacer esto: " + acc + ". ¿Ya empezaste?";
-  }
-  if (fo === manIso) {
-    return (
-      "Dijiste que mañana harías esto: " +
-      acc +
-      ". No lo dejes en intención. ¿Ya lo tienes definido?"
-    );
-  }
-  return "Eso quedó pendiente: " + acc + ". Antes de abrir otro frente, dime si ya avanzaste.";
-}
-
 function titoMemoriaCollectionRef(uid) {
   if (!uid || typeof db === "undefined" || !db) return null;
   return db.collection("users").doc(uid).collection("tito").doc("default").collection("memoria");
@@ -6298,28 +6348,16 @@ async function guardarCompromiso(uid, texto) {
   const ref = titoMemoriaCollectionRef(uid);
   if (!ref || typeof db === "undefined" || !db) return;
   const c = clasificarCompromiso(texto);
-  const ahora = new Date().toISOString();
-  const anteriores = verificarPendientes(memoriaTito);
-  const batch = db.batch();
-  const reemplazadoAt = ahora;
-  anteriores.forEach(function (p) {
-    if (p.id) {
-      batch.update(ref.doc(p.id), {
-        estado: "reemplazado",
-        reemplazadoAt: reemplazadoAt
-      });
-    }
-  });
-  const nuevoRef = ref.doc();
-  batch.set(nuevoRef, {
+  var nowClient = Date.now();
+  await ref.add({
     accion: String(extraerAccion(texto) || "").slice(0, 4000),
     tipo: c.tipo,
     prioridad: c.prioridad,
     fechaObjetivo: c.fechaObjetivo,
     estado: "pendiente",
-    createdAt: ahora
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAtClient: nowClient
   });
-  await batch.commit();
 }
 
 async function cargarMemoria(uid) {
@@ -7002,6 +7040,7 @@ async function sendPrivateCoachMessage() {
   const u = auth && auth.currentUser;
   let reply = "";
   let skipCloud = false;
+  let skipPrivateCoachFormat = false;
 
   if (u && typeof db !== "undefined" && db) {
     try {
@@ -7010,19 +7049,37 @@ async function sendPrivateCoachMessage() {
       var cierre = await cerrarCompromisoPendiente(u.uid, text);
       if (cierre.closed) {
         await cargarMemoria(u.uid);
-        reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
+        var pendTrasCierre = verificarPendientes(memoriaTito);
+        if (pendTrasCierre.length > 0) {
+          var orgCierre = getPrioridadYSecundarios(memoriaTito);
+          reply = mensajeCoachCompromisosOrganizados(
+            orgCierre.prioritaria,
+            orgCierre.secundarios,
+            {}
+          );
+          skipPrivateCoachFormat = true;
+        } else {
+          reply = "Bien. Cerraste ese pendiente. Ahora sí, seguimos.";
+        }
         skipCloud = true;
       } else {
-        var activo = getCompromisoActivo(memoriaTito);
-        if (activo) {
-          reply = mensajeSeguimientoParaPendiente(activo, {
-            cambioDeTema:
-              detectarCambioDeTema(text) || detectarCompromiso(text)
-          });
-          skipCloud = true;
-        } else if (detectarCompromiso(text)) {
+        if (detectarCompromiso(text)) {
           await guardarCompromiso(u.uid, text);
           await cargarMemoria(u.uid);
+        }
+        var pendOrg = verificarPendientes(memoriaTito);
+        if (pendOrg.length > 0) {
+          var org = getPrioridadYSecundarios(memoriaTito);
+          reply = mensajeCoachCompromisosOrganizados(
+            org.prioritaria,
+            org.secundarios,
+            {
+              cambioDeTema:
+                detectarCambioDeTema(text) && !detectarCompromiso(text)
+            }
+          );
+          skipPrivateCoachFormat = true;
+          skipCloud = true;
         }
       }
     } catch (err) {
@@ -7034,7 +7091,9 @@ async function sendPrivateCoachMessage() {
     if (!String(reply || "").trim()) {
       reply = buildPrivateCoachReply(text);
     }
-    reply = privateCoachFormatTitoReply(reply);
+    if (!skipPrivateCoachFormat) {
+      reply = privateCoachFormatTitoReply(reply);
+    }
     if (!String(reply || "").trim()) {
       reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
     }
