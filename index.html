@@ -3404,31 +3404,9 @@ function addOp() {
   renderWeeklyAnalysis();
   rstrat();
 
-  // Registrar en el registro global (solo con resultado confirmado y montos)
-  if (opMonto > 0 && opPct > 0 && (crSnapshot === "win" || crSnapshot === "lose")) {
-    if (!D.registroOps) D.registroOps = [];
-    var now3   = new Date();
-    var monday = new Date(now3);
-    var dow    = monday.getDay() === 0 ? 6 : monday.getDay() - 1;
-    monday.setDate(monday.getDate() - dow);
-    var friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    var fmtD = function(d){ return d.getDate() + " " + ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getMonth()]; };
-    var wkLabel = fmtD(monday) + " - " + fmtD(friday);
-    var wkKey   = monday.getFullYear() + "-" + String(monday.getMonth()+1).padStart(2,"0") + "-" + String(monday.getDate()).padStart(2,"0");
-    D.registroOps.push({
-      id:       uid(),
-      fecha:    now3.toISOString(),
-      weekKey:  wkKey,
-      weekLabel: wkLabel,
-      asset:    opData.asset || "",
-      result:   crSnapshot,
-      monto:    opMonto,
-      pct:      opPct,
-      ganancia: crSnapshot === "win" ? opResult : -opResult
-    });
-    sv();
-  }
+  // Sincronizar registro global desde operaciones reales (evita pérdidas omitidas).
+  syncRegistroGlobalFromStrategies();
+  sv();
 
   if (crSnapshot === "win")  showCelebration("🏆");
   else if (crSnapshot === "lose") showCelebration("💪");
@@ -3442,6 +3420,7 @@ function askDelOp(id) {
     s.weeklyArchives = [];
     ensureWeeklyArchives();
     if (editingOpId === id) editingOpId = null;
+    syncRegistroGlobalFromStrategies();
     sv();
     rStats();
     renderOps();
@@ -5717,7 +5696,101 @@ function toggleCalculator() {
 
 // ─── Registro Global Operaciones ─────────────────────────────────────────
 
+function parseNum(v) {
+  if (v == null) return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  var n = parseFloat(String(v).replace(",", ".").replace(/[^\d.\-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toIsoDateOnly(v) {
+  if (!v) return "";
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.trim())) return v.trim();
+  var d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function resolveRegistroSigned(op) {
+  if (!op || typeof op !== "object") return 0;
+  var rawResult = String(op.result != null ? op.result : (op.resultado != null ? op.resultado : ""))
+    .toLowerCase()
+    .trim();
+  var result = null;
+  if (rawResult === "win" || rawResult === "ganada" || rawResult === "se dio" || rawResult === "ganada/ok") result = "win";
+  if (
+    rawResult === "lose" ||
+    rawResult === "perdida" ||
+    rawResult === "pérdida" ||
+    rawResult === "no se dio" ||
+    rawResult === "no-se-dio"
+  ) result = "lose";
+  var stored = parseNum(op.ganancia);
+  var hasStored = String(op.ganancia || "").trim() !== "" && Number.isFinite(stored);
+  var monto = parseNum(op.monto != null ? op.monto : op.opMonto);
+  var pct = parseNum(op.pct != null ? op.pct : op.opPct);
+  var calc = 0;
+  if (monto > 0 && pct > 0) calc = monto * pct / 100;
+  else if (monto > 0) calc = monto; // Permite pérdida/ganancia manual directa en monto.
+  var base = calc > 0 ? calc : (hasStored ? Math.abs(stored) : 0);
+  if (result === "win") return base;
+  if (result === "lose") return -base;
+  return hasStored ? stored : 0;
+}
+
+function weekLabelFromKey(weekKey) {
+  if (!weekKey) return "Sin semana";
+  var p = String(weekKey).split("-");
+  if (p.length !== 3) return String(weekKey);
+  var y = parseInt(p[0], 10);
+  var m = parseInt(p[1], 10) - 1;
+  var d = parseInt(p[2], 10);
+  var monday = new Date(y, m, d, 12, 0, 0, 0);
+  if (Number.isNaN(monday.getTime())) return String(weekKey);
+  var friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  var mn = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  var fmtD = function(dt){ return dt.getDate() + " " + mn[dt.getMonth()]; };
+  return fmtD(monday) + " - " + fmtD(friday);
+}
+
+function syncRegistroGlobalFromStrategies() {
+  if (!D.registroOps) D.registroOps = [];
+  var keepManual = (D.registroOps || []).filter(function(o) { return !o || !o.sourceOpId; });
+  var auto = [];
+  (D.strategies || []).forEach(function(s) {
+    (s.ops || []).forEach(function(op) {
+      if (!op || !op.id) return;
+      if (op.result !== "win" && op.result !== "lose") return;
+      var signed = resolveRegistroSigned(op);
+      if (!signed) return;
+      var baseDate = toIsoDateOnly(op.date) || toIsoDateOnly(new Date());
+      var info = getWeekInfo(baseDate || new Date());
+      var absVal = Math.abs(signed);
+      var pct = parseNum(op.opPct != null ? op.opPct : op.pct);
+      var monto = parseNum(op.opMonto != null ? op.opMonto : op.monto);
+      if (!(monto > 0) && pct > 0) monto = absVal * 100 / pct;
+      auto.push({
+        id: "rg-sync-" + s.id + "-" + op.id,
+        sourceStrategyId: s.id,
+        sourceOpId: op.id,
+        fecha: baseDate ? new Date(baseDate + "T12:00:00").toISOString() : new Date().toISOString(),
+        weekKey: op.weekKey || info.key,
+        weekLabel: op.weekLabel || weekLabelFromKey(op.weekKey || info.key),
+        asset: op.asset || "",
+        result: signed < 0 ? "lose" : "win",
+        monto: monto > 0 ? monto : absVal,
+        pct: pct > 0 ? pct : 0,
+        ganancia: signed
+      });
+    });
+  });
+  D.registroOps = keepManual.concat(auto);
+}
+
 function openRegistroGlobal() {
+  syncRegistroGlobalFromStrategies();
+  sv();
   renderRegistroGlobal();
   document.getElementById("registro-global-panel").style.transform = "translateY(0)";
 }
@@ -5781,8 +5854,7 @@ function saveRegistroGlobalWeekEdit() {
     op.monto = monto ? parseFloat(monto.value) || 0 : 0;
     op.pct = pct ? parseFloat(pct.value) || 0 : 0;
     op.result = res && res.value === "lose" ? "lose" : "win";
-    var opResult = op.monto * op.pct / 100;
-    op.ganancia = op.result === "win" ? opResult : -opResult;
+    op.ganancia = resolveRegistroSigned(op);
   });
   editingRegistroWeekKey = null;
   sv();
@@ -5814,6 +5886,7 @@ function renderRegistroGlobal() {
   var wrap = document.getElementById("registro-global-content");
   if (!wrap) return;
   if (!D.registroOps) D.registroOps = [];
+  syncRegistroGlobalFromStrategies();
 
   // Calcular semana actual L-V
   var now    = new Date();
@@ -5832,11 +5905,11 @@ function renderRegistroGlobal() {
   var currentOps = D.registroOps.filter(function(o){ return o.weekKey === currentWkKey; });
   var allOps     = D.registroOps.slice().reverse();
 
-  var totalGan = allOps.reduce(function(a,o){ return a+(o.ganancia>0?o.ganancia:0); },0);
-  var totalPer = allOps.reduce(function(a,o){ return a+(o.ganancia<0?Math.abs(o.ganancia):0); },0);
+  var totalGan = allOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g > 0 ? g : 0); },0);
+  var totalPer = allOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g < 0 ? Math.abs(g) : 0); },0);
   var neto     = totalGan - totalPer;
-  var curGan   = currentOps.reduce(function(a,o){ return a+(o.ganancia>0?o.ganancia:0); },0);
-  var curPer   = currentOps.reduce(function(a,o){ return a+(o.ganancia<0?Math.abs(o.ganancia):0); },0);
+  var curGan   = currentOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g > 0 ? g : 0); },0);
+  var curPer   = currentOps.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g < 0 ? Math.abs(g) : 0); },0);
   var curNeto  = curGan - curPer;
 
   var html = '<div style="padding:0 16px 20px;">';
@@ -5855,7 +5928,7 @@ function renderRegistroGlobal() {
       + '<div class="wk-box"><div class="wk-num" style="color:var(--red);font-size:14px;">-$' + curPer.toFixed(2) + '</div><div class="wk-lbl">Perdido</div></div>'
     + '</div>'
     + (currentOps.length > 0 ? '<div style="margin-top:10px;">' + currentOps.map(function(op){
-        var g=op.ganancia||0;
+        var g = resolveRegistroSigned(op);
         return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
           + '<span style="font-size:12px;color:var(--text2);">' + e(op.asset||"") + ' <span style="font-size:10px;color:var(--text3);">' + op.pct + '%</span></span>'
           + '<span style="font-size:12px;font-weight:700;font-family:Orbitron,monospace;color:' + (g>=0?"var(--green)":"var(--red)") + ';">' + (g>=0?"+":"-") + '$' + Math.abs(g).toFixed(2) + '</span>'
@@ -5888,8 +5961,8 @@ function renderRegistroGlobal() {
     html += '<div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:2px;margin-bottom:8px;">SEMANAS ANTERIORES</div>';
     wkKeys.forEach(function(wk) {
       var w    = weeks[wk];
-      var wGan = w.ops.reduce(function(a,o){ return a+(o.ganancia>0?o.ganancia:0); },0);
-      var wPer = w.ops.reduce(function(a,o){ return a+(o.ganancia<0?Math.abs(o.ganancia):0); },0);
+      var wGan = w.ops.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g > 0 ? g : 0); },0);
+      var wPer = w.ops.reduce(function(a,o){ var g = resolveRegistroSigned(o); return a + (g < 0 ? Math.abs(g) : 0); },0);
       var wNet = wGan - wPer;
       html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px;">'
@@ -5899,7 +5972,7 @@ function renderRegistroGlobal() {
           + '<span style="font-size:13px;font-weight:700;font-family:Orbitron,monospace;color:' + (wNet>=0?"var(--green)":"var(--red)") + ';">' + (wNet>=0?"+":"-") + '$' + Math.abs(wNet).toFixed(2) + '</span>'
         + '</div>'
         + w.ops.map(function(op){
-            var g=op.ganancia||0;
+            var g = resolveRegistroSigned(op);
             return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">'
               + '<span style="font-size:11px;color:var(--text3);">' + e(op.asset||"") + '</span>'
               + '<span style="font-size:11px;font-weight:700;color:' + (g>=0?"var(--green)":"var(--red)") + ';">' + (g>=0?"+":"-") + '$' + Math.abs(g).toFixed(2) + '</span>'
