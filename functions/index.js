@@ -9,30 +9,12 @@ if (!admin.apps.length) {
 
 const openaiApiKey = defineSecret("OPENAI_API_KEY");
 
+/** Prompt corto = menos tokens y menor latencia. */
 const SYSTEM_PROMPT = `
-Eres Tito, coach de ENFO: directo, claro y humano. Respondes siempre en español.
-
-TONO:
-- Firme y enfocado, sin agresividad, sarcasmo ni insultos.
-- Como un mentor que reta con respeto: intenso pero no hostil.
-- Sin motivación vacía, sin repetir al usuario palabra por palabra, sin juzgarlo como persona.
-
-QUÉ HACES EN CADA RESPUESTA (sin anunciarlo):
-- Ir al problema real detrás de lo que dice.
-- Desafiar excusas cuando las haya.
-- Ofrecer una perspectiva más fuerte y útil.
-- Empujar a una acción o a una decisión clara al final, cuando plantee un problema o estancamiento.
-
-FORMATO DE SALIDA (obligatorio):
-- Uno o dos párrafos cortos como conversación natural. Nada más.
-- Sin títulos, sin subtítulos, sin viñetas, sin listas numeradas ni guiones al inicio de línea.
-- Sin etiquetas de sección ni frases tipo: "Detecto la raíz", "Corrijo la excusa", "Perspectiva más fuerte", "Acción inmediata", "Detecto…", "Corrijo…", ni ningún encabezado que organice el mensaje en bloques.
-- No expliques qué vas a hacer ni tu método; habla directo al usuario.
-
-Si solo saluda, responde natural y sin dar órdenes. Si está perdido, claridad en prosa continua.
-
-EJEMPLO DE ESTILO (referencia; no copies la frase literal):
-"Puedes descansar, pero no lo conviertas en escape. Si de verdad estás cansado, toma 15 minutos y regresa. Si no, solo estás evitando avanzar. Decide qué quieres: relajarte con control o perder el ritmo. Hazlo con intención."
+Eres Tito (ENFO). Español. Coach directo, humano, sin agresividad ni insultos.
+Responde en 1–2 párrafos cortos. Sin títulos, viñetas ni etiquetas tipo "Detecto la raíz" / "Corrijo…". No expliques tu proceso.
+Ve al punto: problema real, desafía excusas si aplica, perspectiva fuerte, y si hay problema cierra con acción o decisión concreta.
+Saludos casuales: respuesta breve sin mandar órdenes.
 `.trim();
 
 /** Bloque Deseo (parte de coachMemory fijo en servidor; ver COACH_MEMORY_FIXED_BLOCKS). */
@@ -90,12 +72,19 @@ const ENFO_ESTRUCTURA_MENTAL_COACH_MEMORY_TEXT = `
 BASE PRIVADA ENFO — ESTRUCTURA MENTAL
 `.trim();
 
-/** Siempre los mismos cuatro bloques (Deseo → Claridad → Decisión → Estructura mental); no se concatena con datos dinámicos del cliente. */
+/** Siempre los mismos cuatro bloques (legacy; ya no se envían enteros al modelo — demasiado tokens). */
 const COACH_MEMORY_FIXED_BLOCKS = Object.freeze([
   {text: ENFO_BASE_COACH_MEMORY_TEXT},
   {text: ENFO_CLARIDAD_COACH_MEMORY_TEXT},
   {text: ENFO_DECISION_COACH_MEMORY_TEXT},
   {text: ENFO_ESTRUCTURA_MENTAL_COACH_MEMORY_TEXT}
+]);
+
+/** Marco mínimo enviado en cada request (latencia). */
+const COACH_MEMORY_INPUT_BLOCKS = Object.freeze([
+  {
+    text: "Marco ENFO: meta clara → decisión → acción ejecutable. Sin dilación; siguiente paso concreto hoy."
+  }
 ]);
 
 const TITO_CORE_FIELD_LABELS = {
@@ -110,6 +99,10 @@ const TITO_CORE_FIELD_LABELS = {
   non_negotiables: "No negociables",
   forbidden_patterns: "Patrones prohibidos"
 };
+
+/** Cache en memoria del cerebro Tito (Firestore) para no leer en cada mensaje. */
+let _titoCoreCache = { ts: 0, val: null };
+const TITO_CORE_CACHE_MS = 10 * 60 * 1000;
 
 function normalizeTitoField(value) {
   if (value == null) return undefined;
@@ -135,10 +128,15 @@ function normalizeTitoField(value) {
  * Lee cerebro base Tito: tito_brain/core. Devuelve null si falla, no existe o no hay campos útiles.
  */
 async function getTitoCoreFromFirestore() {
+  const now = Date.now();
+  if (now - _titoCoreCache.ts < TITO_CORE_CACHE_MS && _titoCoreCache.ts > 0) {
+    return _titoCoreCache.val;
+  }
   try {
     const snap = await admin.firestore().collection("tito_brain").doc("core").get();
     if (!snap.exists) {
       console.log("[tito] core: documento ausente");
+      _titoCoreCache = { ts: Date.now(), val: null };
       return null;
     }
     const d = snap.data() || {};
@@ -149,11 +147,14 @@ async function getTitoCoreFromFirestore() {
     });
     if (Object.keys(out).length === 0) {
       console.log("[tito] core: sin campos reconocidos");
+      _titoCoreCache = { ts: Date.now(), val: null };
       return null;
     }
+    _titoCoreCache = { ts: Date.now(), val: out };
     return out;
   } catch (err) {
     console.error("[tito] getTitoCoreFromFirestore:", err && err.message ? err.message : err);
+    _titoCoreCache = { ts: Date.now(), val: null };
     return null;
   }
 }
@@ -176,17 +177,7 @@ function buildTitoSystemPrompt(titoCore) {
     return SYSTEM_PROMPT;
   }
   const base = parts.join("\n\n---\n\n");
-  const ops = `
-REGLAS OPERATIVAS (fijas; si chocan con el texto anterior, estas mandan):
-- Responde siempre en español.
-- Tono firme, claro, estratégico: mentor directo, nada robótico ni de plantilla.
-- Salida al usuario: máximo 1–2 párrafos cortos, solo prosa fluida. Prohibido títulos, viñetas, listas numeradas y guiones al inicio de línea.
-- Prohibido usar etiquetas o encabezados de sección, incluidos (y similares): "Detecto la raíz", "Corrige la excusa", "Corrijo la excusa", "Perspectiva más fuerte", "Acción inmediata", "Detecto…", "Corrijo…". No organices la respuesta en bloques rotulados.
-- No expliques tu proceso ("primero voy a…"). Ve al punto en un solo mensaje natural.
-- Sigue en la práctica: ver el problema real, desafiar excusas si aplica, dar perspectiva más fuerte y cerrar con acción o decisión, todo mezclado en el texto sin anunciar cada parte.
-- No humilles ni insultes; no suavices la verdad innecesariamente.
-- Si el usuario plantea un problema o estancamiento, termina con una acción concreta o una decisión clara (sin rotularla como sección).
-`.trim();
+  const ops = `Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas "Detecto…"/"Corrijo…". Sin narrar el proceso. Acción clara si aplica problema.`;
   return (base + "\n\n---\n\n" + ops).trim();
 }
 
@@ -227,28 +218,25 @@ function buildOpenAIInput(userText, coachHistory, coachMemory) {
       .map((m) => (m && m.text ? String(m.text).trim() : ""))
       .filter(Boolean);
     if (blocks.length) {
-      parts.push(
-        "CONTEXTO BASE ENFO (obligatorio — marco fijo antes del historial y del mensaje actual):\n\n" +
-          blocks.join("\n\n---\n\n")
-      );
+      parts.push("Contexto fijo:\n" + blocks.join("\n"));
     }
   }
 
   if (Array.isArray(coachHistory) && coachHistory.length) {
-    const chronological = coachHistory.slice(0, 24).reverse();
+    const chronological = coachHistory.slice(0, 12).reverse();
     const lines = chronological
       .map((h) => {
-        const role = h && h.role === "coach" ? "Coach" : "Usuario";
+        const role = h && h.role === "coach" ? "C" : "U";
         const tx = h && h.text ? String(h.text).trim() : "";
-        return tx ? role + ": " + tx.slice(0, 1500) : "";
+        return tx ? role + ": " + tx.slice(0, 500) : "";
       })
       .filter(Boolean);
     if (lines.length) {
-      parts.push("Turnos recientes (más antiguo primero):\n" + lines.join("\n"));
+      parts.push("Historial (antiguo→reciente):\n" + lines.join("\n"));
     }
   }
 
-  parts.push("Mensaje actual del usuario:\n" + userText);
+  parts.push("Usuario:\n" + userText);
   return parts.join("\n\n---\n\n");
 }
 
@@ -265,49 +253,61 @@ async function privateCoachChatCore(data) {
   }
 
   const coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
-  const coachMemory = COACH_MEMORY_FIXED_BLOCKS;
+  const coachMemory = COACH_MEMORY_INPUT_BLOCKS;
 
   const key = openaiApiKey.value();
   if (!key) {
     throw new HttpsError("failed-precondition", "OPENAI_API_KEY no configurada en Functions.");
   }
 
-  const titoCore = await getTitoCoreFromFirestore();
-  const instructions = buildTitoSystemPrompt(titoCore);
-  console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
+  console.time("[tito] total");
+  try {
+    console.time("[tito] firestore+prompt");
+    const titoCore = await getTitoCoreFromFirestore();
+    const instructions = buildTitoSystemPrompt(titoCore);
+    console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
 
-  const input = buildOpenAIInput(userText, coachHistory, coachMemory);
+    const input = buildOpenAIInput(userText, coachHistory, coachMemory);
+    console.timeEnd("[tito] firestore+prompt");
 
-  const resp = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`
-    },
-    body: JSON.stringify({
-      model: "gpt-4.1-mini",
-      instructions: instructions,
-      input: input
-    })
-  });
+    console.time("[tito] openai");
+    const resp = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        instructions: instructions,
+        input: input,
+        max_output_tokens: 450
+      })
+    });
 
-  const json = await resp.json();
-  if (!resp.ok) {
-    const msg =
-      json && json.error && json.error.message
-        ? json.error.message
-        : "Error OpenAI";
-    console.error("OpenAI HTTP", resp.status, msg);
-    throw new HttpsError("internal", msg);
+    const json = await resp.json();
+    console.timeEnd("[tito] openai");
+    if (!resp.ok) {
+      const msg =
+        json && json.error && json.error.message
+          ? json.error.message
+          : "Error OpenAI";
+      console.error("OpenAI HTTP", resp.status, msg);
+      throw new HttpsError("internal", msg);
+    }
+
+    const reply = extractResponsesText(json);
+    if (!reply) {
+      console.error("OpenAI empty output", JSON.stringify(json).slice(0, 500));
+      throw new HttpsError("internal", "Respuesta vacía del modelo.");
+    }
+
+    return {reply: reply.slice(0, 4000)};
+  } finally {
+    try {
+      console.timeEnd("[tito] total");
+    } catch (_) {}
   }
-
-  const reply = extractResponsesText(json);
-  if (!reply) {
-    console.error("OpenAI empty output", JSON.stringify(json).slice(0, 500));
-    throw new HttpsError("internal", "Respuesta vacía del modelo.");
-  }
-
-  return {reply: reply.slice(0, 4000)};
 }
 
 exports.privateCoachChat = onCall(

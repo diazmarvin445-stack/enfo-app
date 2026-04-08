@@ -1377,6 +1377,36 @@
       cursor: pointer;
       font-family: inherit;
     }
+
+    .enfo-coach-send:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .enfo-coach-msg--thinking .enfo-coach-msg-inner {
+      border-style: dashed;
+      opacity: 0.95;
+    }
+
+    .enfo-coach-thinking-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text3);
+      animation: enfo-coach-thinking-pulse 1.1s ease-in-out infinite;
+    }
+
+    @keyframes enfo-coach-thinking-pulse {
+      0%, 100% { opacity: 0.65; }
+      50% { opacity: 1; }
+    }
+
+    .enfo-coach-thinking-dots {
+      display: inline-block;
+      width: 1.2em;
+      letter-spacing: 2px;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -6204,6 +6234,29 @@ function appendPrivateCoachMessage(role, text) {
   list.scrollTop = list.scrollHeight;
 }
 
+function appendPrivateCoachThinking() {
+  removePrivateCoachThinking();
+  const list = document.getElementById("enfo-coach-messages");
+  if (!list) return;
+  const wrap = document.createElement("div");
+  wrap.id = "enfo-coach-thinking";
+  wrap.className = "enfo-coach-msg enfo-coach-msg--coach enfo-coach-msg--thinking";
+  wrap.setAttribute("role", "status");
+  wrap.setAttribute("aria-live", "polite");
+  const inner = document.createElement("div");
+  inner.className = "enfo-coach-msg-inner enfo-coach-thinking-inner";
+  inner.innerHTML =
+    '<span class="enfo-coach-thinking-text">Tito está pensando</span><span class="enfo-coach-thinking-dots">…</span>';
+  wrap.appendChild(inner);
+  list.appendChild(wrap);
+  list.scrollTop = list.scrollHeight;
+}
+
+function removePrivateCoachThinking() {
+  const el = document.getElementById("enfo-coach-thinking");
+  if (el) el.remove();
+}
+
 function privateCoachResetOpenGreeting() {
   privateCoachOpenGreetingDone = false;
 }
@@ -6713,27 +6766,29 @@ async function sendPrivateCoachMessage() {
   const text = (input.value || "").trim();
   if (!text) return;
   input.value = "";
+  const sendBtn = document.getElementById("enfo-coach-send");
   appendPrivateCoachMessage("user", text);
+  appendPrivateCoachThinking();
+  if (sendBtn) sendBtn.disabled = true;
   let reply = "";
   try {
+    console.time("[tito_client] roundtrip");
     const u = auth && auth.currentUser;
     if (!u) throw new Error("Sin sesión");
     const token = await u.getIdToken();
-    const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 24) : [];
+    const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 12) : [];
     const data = {
       message: text,
       userText: text,
       coachHistory: history.map(function (h) {
         return {
           role: h.role === "coach" ? "coach" : "user",
-          text: String(h.text || "").slice(0, 2000)
+          text: String(h.text || "").slice(0, 800)
         };
       }),
       coachMemory: []
     };
-    console.log("CALLING CLOUD FUNCTION...");
     const json = await getCoachReplyFromCloud(data, token);
-    console.log("CLOUD RESPONSE:", json);
     if (json && json.error != null && json.reply == null) {
       throw new Error(typeof json.error === "string" ? json.error : "Error del servidor");
     }
@@ -6742,6 +6797,12 @@ async function sendPrivateCoachMessage() {
   } catch (e) {
     console.log("CLOUD ERROR:", e);
     reply = buildPrivateCoachReply(text);
+  } finally {
+    try {
+      console.timeEnd("[tito_client] roundtrip");
+    } catch (err) {}
+    removePrivateCoachThinking();
+    if (sendBtn) sendBtn.disabled = false;
   }
   if (!String(reply || "").trim()) {
     reply = buildPrivateCoachReply(text);
@@ -6751,7 +6812,13 @@ async function sendPrivateCoachMessage() {
     reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
   }
   appendPrivateCoachMessage("coach", reply);
-  privateCoachPersistTurn(text, reply);
+  setTimeout(function () {
+    console.time("[tito_client] persist");
+    privateCoachPersistTurn(text, reply);
+    try {
+      console.timeEnd("[tito_client] persist");
+    } catch (err) {}
+  }, 0);
 }
 
 function updatePrivateCoachVisibility() {
