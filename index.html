@@ -243,6 +243,21 @@
 
     .user-menu-btn:hover { background: rgba(255,255,255,0.04); }
 
+    .user-menu-btn--refresh {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text3);
+      opacity: 0.85;
+    }
+
+    .user-menu-btn--refresh:hover {
+      color: var(--text2);
+      background: rgba(255,255,255,0.03);
+    }
+
     .card {
       background: var(--card);
       border: 1px solid var(--border2);
@@ -1330,6 +1345,7 @@
         <button class="user-menu-btn" onclick="openPortafolio()">📈 Portafolio</button>
         <button class="user-menu-btn" onclick="openFinanzas('negocio')">💼 Finanzas de Negocio</button>
         <button class="user-menu-btn" onclick="openStats(); closeUserMenu()">📊 Productividad</button>
+        <button type="button" class="user-menu-btn user-menu-btn--refresh" onclick="refreshApp()">Actualizar</button>
         <button class="user-menu-btn" onclick="logoutUser()">🚪 Cerrar sesión</button>
       </div>
     </div>
@@ -2000,6 +2016,10 @@
     function closeUserMenu() {
       const menu = document.getElementById("user-menu");
       if (menu) menu.classList.remove("open");
+    }
+
+    function refreshApp() {
+      location.reload();
     }
 
     function openProfile() {
@@ -6628,7 +6648,7 @@ Object.assign(window, {
   pickStrategyImage, removeStrategyImage, svRules, svMesa,
   toggleArchivedWeek, editOp, askDelOp, expCSV, startEditDiary,
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
-  closeUserMenu, openProfile, logoutUser, toggleDay, toggleVerTodos,
+  closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
   togglePrivateCoach, sendPrivateCoachMessage
 });
