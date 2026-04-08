@@ -6139,6 +6139,83 @@ let privateCoachLastCoachReply = "";
 /** Un solo saludo del coach cada vez que se abre el panel. */
 let privateCoachOpenGreetingDone = false;
 let privateCoachOpenGreetingIdx = 0;
+
+/** Memoria Tito (compromisos) — users/{uid}/tito/default/memoria */
+let memoriaTito = [];
+let memoriaTitoCargada = false;
+
+function detectarCompromiso(texto) {
+  const frases = ["voy a", "haré", "hoy hago", "mañana hago"];
+  const t = String(texto || "").toLowerCase();
+  return frases.some(function (f) {
+    return t.includes(f);
+  });
+}
+
+function extraerAccion(texto) {
+  return texto;
+}
+
+function verificarPendientes(memoria) {
+  return (memoria || []).filter(function (m) {
+    return !m.completado;
+  });
+}
+
+function detectarAfirmacionCierre(texto) {
+  const t = String(texto || "").trim().toLowerCase();
+  if (t.length > 80) return false;
+  if (/^(sí|si|yes|listo|hecho|ok)\b/.test(t)) return true;
+  if (/\bya lo hice\b/.test(t) || /\bcompletado\b/.test(t)) return true;
+  return false;
+}
+
+function titoMemoriaCollectionRef(uid) {
+  if (!uid || typeof db === "undefined" || !db) return null;
+  return db.collection("users").doc(uid).collection("tito").doc("default").collection("memoria");
+}
+
+async function guardarCompromiso(uid, accion) {
+  const ref = titoMemoriaCollectionRef(uid);
+  if (!ref) return;
+  await ref.add({
+    accion: String(extraerAccion(accion) || "").slice(0, 4000),
+    fecha: new Date().toISOString(),
+    completado: false
+  });
+}
+
+async function cargarMemoria(uid) {
+  const ref = titoMemoriaCollectionRef(uid);
+  if (!ref) {
+    memoriaTito = [];
+    return memoriaTito;
+  }
+  const snapshot = await ref.get();
+  memoriaTito = snapshot.docs.map(function (doc) {
+    return Object.assign({ id: doc.id }, doc.data());
+  });
+  memoriaTitoCargada = true;
+  return memoriaTito;
+}
+
+async function marcarCompromisoCompleto(uid, docId) {
+  const ref = titoMemoriaCollectionRef(uid);
+  if (!ref || !docId) return;
+  await ref.doc(docId).update({
+    completado: true,
+    fechaCierre: new Date().toISOString()
+  });
+}
+
+function preloadPrivateCoachMemoria() {
+  var u = auth && auth.currentUser;
+  if (!u || typeof db === "undefined" || !db) return;
+  cargarMemoria(u.uid).catch(function (err) {
+    console.error("tito memoria preload:", err);
+  });
+}
+
 const PRIVATE_COACH_OPEN_LINES = [
   "No viniste aquí a pensar. Viniste a ejecutar.",
   "Decide. Ejecuta. Sin excusas.",
@@ -6202,6 +6279,7 @@ function togglePrivateCoach(force) {
     syncPrivateCoachPanelDom();
     if (privateCoachOpen) {
       privateCoachAppendOpenGreetingOnce();
+      preloadPrivateCoachMemoria();
       const input = document.getElementById("enfo-coach-input");
       if (input) setTimeout(() => { input.focus(); }, 220);
     }
@@ -6217,6 +6295,7 @@ function togglePrivateCoach(force) {
   privateCoachOpen = true;
   syncPrivateCoachPanelDom();
   privateCoachAppendOpenGreetingOnce();
+  preloadPrivateCoachMemoria();
   const input = document.getElementById("enfo-coach-input");
   if (input) setTimeout(() => { input.focus(); }, 220);
 }
@@ -6768,12 +6847,66 @@ async function sendPrivateCoachMessage() {
   input.value = "";
   const sendBtn = document.getElementById("enfo-coach-send");
   appendPrivateCoachMessage("user", text);
-  appendPrivateCoachThinking();
   if (sendBtn) sendBtn.disabled = true;
+
+  const u = auth && auth.currentUser;
   let reply = "";
+  let skipCloud = false;
+
+  if (u && typeof db !== "undefined" && db) {
+    try {
+      await cargarMemoria(u.uid);
+      let pend = verificarPendientes(memoriaTito);
+      if (pend.length > 0 && detectarAfirmacionCierre(text)) {
+        var sortedClose = pend.slice().sort(function (a, b) {
+          return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+        });
+        await marcarCompromisoCompleto(u.uid, sortedClose[0].id);
+        await cargarMemoria(u.uid);
+        pend = verificarPendientes(memoriaTito);
+      }
+      if (pend.length > 0) {
+        var sortedPend = pend.slice().sort(function (a, b) {
+          return new Date(a.fecha || 0) - new Date(b.fecha || 0);
+        });
+        var primera = sortedPend[0];
+        reply =
+          "Dijiste que harías esto: " +
+          String(primera.accion || "").trim() +
+          " ¿Ya lo hiciste?";
+        skipCloud = true;
+      } else if (detectarCompromiso(text)) {
+        await guardarCompromiso(u.uid, extraerAccion(text));
+        await cargarMemoria(u.uid);
+      }
+    } catch (err) {
+      console.error("tito memoria:", err);
+    }
+  }
+
+  if (skipCloud) {
+    if (!String(reply || "").trim()) {
+      reply = buildPrivateCoachReply(text);
+    }
+    reply = privateCoachFormatTitoReply(reply);
+    if (!String(reply || "").trim()) {
+      reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
+    }
+    appendPrivateCoachMessage("coach", reply);
+    if (sendBtn) sendBtn.disabled = false;
+    setTimeout(function () {
+      console.time("[tito_client] persist");
+      privateCoachPersistTurn(text, reply);
+      try {
+        console.timeEnd("[tito_client] persist");
+      } catch (err) {}
+    }, 0);
+    return;
+  }
+
+  appendPrivateCoachThinking();
   try {
     console.time("[tito_client] roundtrip");
-    const u = auth && auth.currentUser;
     if (!u) throw new Error("Sin sesión");
     const token = await u.getIdToken();
     const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 12) : [];
