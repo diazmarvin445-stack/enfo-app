@@ -443,6 +443,155 @@
       border-radius: 4px;
     }
 
+    /* Notas del día — post-it stack (Mentalidad / Inicio) */
+    .day-sticky-section {
+      margin: 6px 16px 18px;
+      animation: fadeUp 0.35s ease both;
+    }
+    .day-sticky-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 12px;
+      padding-left: 2px;
+    }
+    .day-sticky-stack {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 0;
+      padding: 10px 8px 16px;
+      min-height: 102px;
+    }
+    .day-sticky-hit {
+      flex: 1;
+      max-width: 34%;
+      min-width: 0;
+      position: relative;
+      z-index: 1;
+      padding: 0 2px;
+    }
+    .day-sticky-hit:nth-child(1) { z-index: 3; transform: rotate(-2.5deg); }
+    .day-sticky-hit:nth-child(2) { z-index: 2; margin-left: -7%; transform: rotate(1deg); }
+    .day-sticky-hit:nth-child(3) { z-index: 1; margin-left: -7%; transform: rotate(3deg); }
+    .day-sticky-card {
+      width: 100%;
+      min-height: 76px;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 10px 12px;
+      cursor: pointer;
+      text-align: left;
+      font-family: "DM Sans", sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      color: rgba(15, 22, 38, 0.92);
+      box-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.2),
+        0 8px 18px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .day-sticky-card:active { transform: scale(0.97); }
+    .day-sticky-card--a {
+      background: linear-gradient(145deg, #ffe566 0%, #f0c830 55%, #e8b820 100%);
+    }
+    .day-sticky-card--b {
+      background: linear-gradient(145deg, #7ddcff 0%, #4eb8ff 50%, #3aa5f0 100%);
+      color: rgba(12, 28, 48, 0.92);
+    }
+    .day-sticky-card--c {
+      background: linear-gradient(145deg, #c4ffb3 0%, #7ee06a 45%, #5bc94d 100%);
+      color: rgba(14, 38, 22, 0.9);
+    }
+    .day-sticky-preview {
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+      min-height: 2.7em;
+      opacity: 0.88;
+    }
+    .day-sticky-preview--empty {
+      opacity: 0.2;
+    }
+    .day-sticky-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 10060;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.28s ease;
+    }
+    .day-sticky-sheet.open {
+      pointer-events: auto;
+      opacity: 1;
+    }
+    .day-sticky-sheet-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(4, 8, 16, 0.72);
+      backdrop-filter: blur(4px);
+    }
+    .day-sticky-sheet-panel {
+      position: relative;
+      width: 100%;
+      max-width: 430px;
+      max-height: 78vh;
+      background: linear-gradient(180deg, #0e182c 0%, #0a1220 100%);
+      border: 1px solid var(--border2);
+      border-radius: 20px 20px 0 0;
+      padding: 14px 16px 18px;
+      padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+      transform: translateY(110%);
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .day-sticky-sheet.open .day-sticky-sheet-panel {
+      transform: translateY(0);
+    }
+    .day-sticky-sheet-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .day-sticky-sheet-hint {
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 0.04em;
+    }
+    .day-sticky-sheet-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #day-sticky-editor {
+      width: 100%;
+      min-height: 180px;
+      max-height: 48vh;
+      font-size: 15px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+
     .estrategias-hoy-inner {
       display: flex;
       flex-wrap: nowrap;
@@ -1510,6 +1659,18 @@
 
   <div id="mindset-root"></div>
 
+  <div id="day-sticky-root"></div>
+
+  <div id="day-sticky-sheet" class="day-sticky-sheet" aria-hidden="true">
+    <div class="day-sticky-sheet-backdrop" onclick="closeDaySticky()"></div>
+    <div class="day-sticky-sheet-panel" onclick="event.stopPropagation()">
+      <div class="day-sticky-sheet-top" style="justify-content:flex-end;">
+        <button type="button" class="day-sticky-sheet-close" onclick="closeDaySticky()" aria-label="Cerrar">×</button>
+      </div>
+      <textarea id="day-sticky-editor" rows="8" placeholder="" autocomplete="off" oninput="dayStickyEditorInput()"></textarea>
+    </div>
+  </div>
+
   <div id="mindset-history-wrap" style="display:none;">
     <div class="slabel">🧠 HISTORIAL DE MENTALIDAD</div>
     <div id="mindset-history-list"></div>
@@ -2071,7 +2232,8 @@
         calendario: {},
         coachHistory: [],
         coachMemory: [],
-        estrategiasNotas: ""
+        estrategiasNotas: "",
+        dayStickyNotes: {}
       };
     }
 
@@ -2109,6 +2271,15 @@
 
       const renderClock = () => {
         const now = new Date();
+        const ymd = fmtDateYMD(now);
+        if (liveClockPrevYMD === null) {
+          liveClockPrevYMD = ymd;
+        } else if (ymd !== liveClockPrevYMD) {
+          closeDaySticky();
+          liveClockPrevYMD = ymd;
+          const active = document.querySelector("#app .screen.active");
+          if (active && active.id === "s-inicio") renderMindset();
+        }
         const dn = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
         const mn = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
         const mn2 = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -2194,6 +2365,13 @@
       editingStrategyId = null;
       editingMindsetId = null;
       mindHistoryOpen = false;
+      dayStickyOpenIndex = null;
+      dayStickySheetBoundDayKey = null;
+      const dsSheet = document.getElementById("day-sticky-sheet");
+      if (dsSheet) {
+        dsSheet.classList.remove("open");
+        dsSheet.setAttribute("aria-hidden", "true");
+      }
       const statsPanel = document.getElementById("stats-panel");
       if (statsPanel) statsPanel.classList.remove("open");
       enfoRef = null;
@@ -2317,6 +2495,12 @@
     let editingStrategyId = null;
     let editingMindsetId = null;
     let mindHistoryOpen = false;
+
+    /** Notas del día (post-its): independientes de mindset; clave = día local YYYY-MM-DD */
+    let dayStickyOpenIndex = null;
+    let dayStickySheetBoundDayKey = null;
+    let dayStickySaveTimer = null;
+    let liveClockPrevYMD = null;
 
     let saveTimer = null;
     let savingNow = false;
@@ -2454,6 +2638,18 @@
       data.blockLogs = data.blockLogs && typeof data.blockLogs === "object" ? data.blockLogs : {};
 
       data.estrategiasNotas = typeof data.estrategiasNotas === "string" ? data.estrategiasNotas : "";
+
+      const dsn = data.dayStickyNotes;
+      data.dayStickyNotes = dsn && typeof dsn === "object" && !Array.isArray(dsn) ? dsn : {};
+      Object.keys(data.dayStickyNotes).forEach((k) => {
+        const arr = data.dayStickyNotes[k];
+        const a = Array.isArray(arr) ? arr : [];
+        data.dayStickyNotes[k] = [
+          String(a[0] != null ? a[0] : "").slice(0, 8000),
+          String(a[1] != null ? a[1] : "").slice(0, 8000),
+          String(a[2] != null ? a[2] : "").slice(0, 8000)
+        ];
+      });
 
       return data;
     }
@@ -2703,6 +2899,8 @@
     // ─── Navegación ────────────────────────────────────────────────────────────
 
     function nav(id) {
+      const prevScreen = document.querySelector("#app .screen.active");
+      if (prevScreen && prevScreen.id === "s-inicio" && id !== "inicio") closeDaySticky();
       ensureWeeklyArchives();
       document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
       document.querySelectorAll(".nb").forEach((b) => b.classList.remove("on"));
@@ -2760,6 +2958,7 @@
         <button class="btn btn-g" onclick="cancelMindsetEdit()">Cancelar</button>
       </div>`;
     renderMindsetHistory();
+    renderDayStickyNotes();
     return;
   }
 
@@ -2790,6 +2989,7 @@
   }
 
   renderMindsetHistory();
+  renderDayStickyNotes();
 }
 
 function mindPanelHTML(rec, isToday) {
@@ -2888,6 +3088,93 @@ function renderMindsetHistory() {
   }
 
   list.innerHTML = items.map((rec, i) => `<div class="mind-history-card" style="animation-delay:${i * 0.04}s;">${mindPanelHTML(rec, false)}</div>`).join("");
+}
+
+function dayStickyEditorInput() {
+  if (dayStickyOpenIndex === null || !dayStickySheetBoundDayKey) return;
+  const ta = document.getElementById("day-sticky-editor");
+  if (!ta) return;
+  if (!D.dayStickyNotes[dayStickySheetBoundDayKey]) D.dayStickyNotes[dayStickySheetBoundDayKey] = ["", "", ""];
+  D.dayStickyNotes[dayStickySheetBoundDayKey][dayStickyOpenIndex] = ta.value;
+  clearTimeout(dayStickySaveTimer);
+  dayStickySaveTimer = setTimeout(function() { sv(); }, 450);
+}
+
+function openDaySticky(index) {
+  const i = Number(index);
+  if (i < 0 || i > 2 || isNaN(i)) return;
+  const sheetPre = document.getElementById("day-sticky-sheet");
+  if (sheetPre && sheetPre.classList.contains("open")) closeDaySticky();
+
+  const dk = getDayKey();
+  if (!D.dayStickyNotes[dk]) D.dayStickyNotes[dk] = ["", "", ""];
+  const txt = D.dayStickyNotes[dk][i] || "";
+  dayStickyOpenIndex = i;
+  dayStickySheetBoundDayKey = dk;
+  const ta = document.getElementById("day-sticky-editor");
+  const sheet = document.getElementById("day-sticky-sheet");
+  if (ta) ta.value = txt;
+  if (sheet) {
+    sheet.classList.add("open");
+    sheet.setAttribute("aria-hidden", "false");
+  }
+  setTimeout(function() {
+    if (!ta) return;
+    ta.focus();
+    try {
+      const len = ta.value.length;
+      ta.setSelectionRange(len, len);
+    } catch (_) {}
+  }, 350);
+}
+
+function closeDaySticky() {
+  const sheet = document.getElementById("day-sticky-sheet");
+  if (!sheet || !sheet.classList.contains("open")) return;
+  const ta = document.getElementById("day-sticky-editor");
+  if (dayStickyOpenIndex !== null && dayStickySheetBoundDayKey) {
+    if (!D.dayStickyNotes[dayStickySheetBoundDayKey]) D.dayStickyNotes[dayStickySheetBoundDayKey] = ["", "", ""];
+    D.dayStickyNotes[dayStickySheetBoundDayKey][dayStickyOpenIndex] = ta ? ta.value : "";
+    sv();
+    if (ta) ta.value = "";
+  }
+  if (sheet) {
+    sheet.classList.remove("open");
+    sheet.setAttribute("aria-hidden", "true");
+  }
+  dayStickyOpenIndex = null;
+  dayStickySheetBoundDayKey = null;
+  renderDayStickyNotes();
+}
+
+function renderDayStickyNotes() {
+  const host = document.getElementById("day-sticky-root");
+  if (!host) return;
+  const dk = getDayKey();
+  if (!D.dayStickyNotes[dk]) D.dayStickyNotes[dk] = ["", "", ""];
+  const arr = D.dayStickyNotes[dk];
+  const cls = ["day-sticky-card--a", "day-sticky-card--b", "day-sticky-card--c"];
+  const parts = [];
+  for (let j = 0; j < 3; j++) {
+    const raw = String(arr[j] || "");
+    const line = raw.replace(/\s+/g, " ").trim();
+    const safe = line ? e(line) : "";
+    const emptyClass = safe ? "" : " day-sticky-preview--empty";
+    parts.push(
+      '<div class="day-sticky-hit">' +
+        '<button type="button" class="day-sticky-card ' + cls[j] + '" onclick="openDaySticky(' + j + ')" aria-label="Nota">' +
+          '<div class="day-sticky-preview' + emptyClass + '">' + safe + "</div>" +
+        "</button>" +
+      "</div>"
+    );
+  }
+  host.innerHTML =
+    '<div class="day-sticky-section">' +
+      '<div class="day-sticky-title">Notas del día</div>' +
+      '<div class="day-sticky-stack">' +
+        parts.join("") +
+      "</div>" +
+    "</div>";
 }
 
 // ─── Estrategias ───────────────────────────────────────────────────────────
@@ -7538,7 +7825,8 @@ Object.assign(window, {
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
   closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
-  togglePrivateCoach, sendPrivateCoachMessage
+  togglePrivateCoach, sendPrivateCoachMessage,
+  openDaySticky, closeDaySticky, dayStickyEditorInput
 });
 
 
