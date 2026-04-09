@@ -159,26 +159,115 @@ async function getTitoCoreFromFirestore() {
   }
 }
 
+const TITO_MOD_ANCHORS = {
+  mentalidad:
+    "MÓDULO ACTIVO ENFO: Mentalidad. Habla SOLO de claridad, disciplina, enfoque, miedo, ejecución mental, pensamiento y dirección. NO menciones clientes, ventas, prospección, CRM, setup de trading, strike/spread, ni hábitos físicos (gimnasio).",
+  negocio:
+    "MÓDULO ACTIVO ENFO: Negocio. Puedes hablar de clientes, ventas, propuesta, seguimiento, oferta y ejecución comercial. Evita jerga fina de trading (stop, strike, spread) salvo analogía de una frase.",
+  trading:
+    "MÓDULO ACTIVO ENFO: Trading. Habla SOLO de estrategia operativa, reglas, setup, ejecución, impulsividad, validación/backtesting, riesgo y disciplina operativa. NO menciones clientes, ventas, prospección, pipeline ni negocio comercial.",
+  habitos:
+    "MÓDULO ACTIVO ENFO: Hábitos. Rutina, consistencia, disciplina diaria, cumplimiento y repetición. Evita ventas, clientes y jerga de trading.",
+  general:
+    "Módulo general ENFO. Sé breve y útil; no mezcles ventas, trading y rutina en el mismo párrafo sin necesidad."
+};
+
+const TITO_MOD_FALLBACK_SRV = {
+  mentalidad:
+    "En Mentalidad el tema es claridad y dirección. ¿Qué decisión pequeña puedes tomar ya para avanzar sin dispersarte?",
+  negocio: "Centra la conversación en oferta, seguimiento y cierre. ¿Cuál es la siguiente acción comercial concreta?",
+  trading:
+    "En Trading el foco es tu sistema: reglas, riesgo y ejecución sin improvisar. ¿Qué parte de tu plan vas a honrar en la próxima operación?",
+  habitos: "La constancia se entrena con repetición. ¿Qué bloque de tu rutina vas a cerrar hoy?",
+  general: "Elige un solo paso claro y ejecutable en los próximos minutos."
+};
+
+const TITO_MOD_FORBIDDEN_SRV = {
+  mentalidad: [
+    /\b(clientes?|ventas?|prospecci[oó]n|prospectos?|pipeline|crm)\b/i,
+    /\b(setup\s+operativo|backtesting|stop\s*loss|spread\b|strike\b|mercado\s+ahora)\b/i,
+    /\b(gimnasio|pesas?\b|cardio\b)\b/i
+  ],
+  negocio: [/\b(stop\s*loss|backtesting|strike|spread|put\s+spread)\b/i],
+  trading: [
+    /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial|pipeline|crm|facturaci[oó]n)\b/i,
+    /\b(prospectar|prospecto)\b/i
+  ],
+  habitos: [
+    /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial)\b/i,
+    /\b(backtesting|stop\s*loss|strike|spread)\b/i
+  ],
+  general: []
+};
+
+function sanitizeTitoReplyByModule(text, contextoModulo) {
+  if (text == null || typeof text !== "string") return "";
+  let t = text.replace(/\r\n/g, "\n").trim();
+  if (!t) return "";
+  const rawMod = contextoModulo && contextoModulo.moduloActivo;
+  const mod = ["mentalidad", "negocio", "trading", "habitos", "general"].includes(rawMod) ? rawMod : "general";
+  const list = TITO_MOD_FORBIDDEN_SRV[mod] || [];
+  if (!list.length) return t;
+
+  function cleanBlock(block) {
+    const sentences = block.split(/(?<=[.!?])\s+/);
+    const kept = [];
+    for (let s = 0; s < sentences.length; s++) {
+      const sent = sentences[s].trim();
+      if (!sent) continue;
+      let bad = false;
+      for (let i = 0; i < list.length; i++) {
+        list[i].lastIndex = 0;
+        if (list[i].test(sent)) {
+          bad = true;
+          break;
+        }
+      }
+      if (!bad) kept.push(sent);
+    }
+    return kept.join(" ").trim();
+  }
+
+  const paras = t
+    .split(/\n+/)
+    .map(cleanBlock)
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+  if (paras.length >= 12) return paras;
+  return TITO_MOD_FALLBACK_SRV[mod] || TITO_MOD_FALLBACK_SRV.general;
+}
+
 /**
  * Construye instructions para OpenAI desde Firestore; si titoCore es null o vacío, usa SYSTEM_PROMPT.
  */
-function buildTitoSystemPrompt(titoCore) {
+function buildTitoSystemPrompt(titoCore, contextoModulo) {
+  let base;
   if (!titoCore || typeof titoCore !== "object") {
-    return SYSTEM_PROMPT;
-  }
-  const parts = [];
-  Object.keys(TITO_CORE_FIELD_LABELS).forEach((key) => {
-    const text = titoCore[key];
-    if (typeof text === "string" && text.trim()) {
-      parts.push(TITO_CORE_FIELD_LABELS[key] + ":\n" + text.trim());
+    base = SYSTEM_PROMPT;
+  } else {
+    const parts = [];
+    Object.keys(TITO_CORE_FIELD_LABELS).forEach((key) => {
+      const text = titoCore[key];
+      if (typeof text === "string" && text.trim()) {
+        parts.push(TITO_CORE_FIELD_LABELS[key] + ":\n" + text.trim());
+      }
+    });
+    if (!parts.length) {
+      base = SYSTEM_PROMPT;
+    } else {
+      base = parts.join("\n\n---\n\n");
     }
-  });
-  if (!parts.length) {
-    return SYSTEM_PROMPT;
   }
-  const base = parts.join("\n\n---\n\n");
-  const ops = `Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas "Detecto…"/"Corrijo…". Sin narrar el proceso. Acción clara si aplica problema.`;
-  return (base + "\n\n---\n\n" + ops).trim();
+  const rawMod = contextoModulo && contextoModulo.moduloActivo;
+  const mod = ["mentalidad", "negocio", "trading", "habitos", "general"].includes(rawMod) ? rawMod : "general";
+  const anchor = TITO_MOD_ANCHORS[mod];
+  const ops =
+    "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. Acción clara si aplica problema. Respeta el módulo activo ENFO.";
+  if (base === SYSTEM_PROMPT) {
+    return (base + "\n\n---\n\n" + anchor + "\n\n" + ops).trim();
+  }
+  return (base + "\n\n---\n\n" + anchor + "\n\n---\n\n" + ops).trim();
 }
 
 function extractResponsesText(data) {
@@ -210,7 +299,14 @@ function extractResponsesText(data) {
   return "";
 }
 
-function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo, contextoEstrategias) {
+function buildOpenAIInput(
+  userText,
+  coachHistory,
+  coachMemory,
+  contextoTiempo,
+  contextoEstrategias,
+  contextoModulo
+) {
   const parts = [];
 
   if (
@@ -228,6 +324,17 @@ function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo, c
     if (contextoTiempo.periodo) bits.push(`periodo del día: ${contextoTiempo.periodo}`);
     if (contextoTiempo.diaSemanaNombre) bits.push(`día: ${contextoTiempo.diaSemanaNombre}`);
     parts.push("Contexto temporal (ahora, cliente):\n" + bits.join(", ") + ".");
+  }
+
+  if (contextoModulo && typeof contextoModulo === "object" && contextoModulo.moduloActivo) {
+    const ma = String(contextoModulo.moduloActivo).slice(0, 32);
+    const pa = contextoModulo.pantallaActiva ? String(contextoModulo.pantallaActiva).slice(0, 64) : "";
+    parts.push(
+      "Contexto de pantalla ENFO: módulo activo = " +
+        ma +
+        (pa ? ". Pantalla: " + pa + "." : ".") +
+        " Mantén el vocabulario y los ejemplos acordes a ese módulo únicamente."
+    );
   }
 
   if (
@@ -300,6 +407,8 @@ async function privateCoachChatCore(data) {
     data.contextoEstrategias && typeof data.contextoEstrategias === "object"
       ? data.contextoEstrategias
       : null;
+  const contextoModulo =
+    data.contextoModulo && typeof data.contextoModulo === "object" ? data.contextoModulo : null;
 
   const key = openaiApiKey.value();
   if (!key) {
@@ -310,10 +419,17 @@ async function privateCoachChatCore(data) {
   try {
     console.time("[tito] firestore+prompt");
     const titoCore = await getTitoCoreFromFirestore();
-    const instructions = buildTitoSystemPrompt(titoCore);
+    const instructions = buildTitoSystemPrompt(titoCore, contextoModulo);
     console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
 
-    const input = buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo, contextoEstrategias);
+    const input = buildOpenAIInput(
+      userText,
+      coachHistory,
+      coachMemory,
+      contextoTiempo,
+      contextoEstrategias,
+      contextoModulo
+    );
     console.timeEnd("[tito] firestore+prompt");
 
     console.time("[tito] openai");
@@ -342,12 +458,13 @@ async function privateCoachChatCore(data) {
       throw new HttpsError("internal", msg);
     }
 
-    const reply = extractResponsesText(json);
-    if (!reply) {
+    const replyRaw = extractResponsesText(json);
+    if (!replyRaw) {
       console.error("OpenAI empty output", JSON.stringify(json).slice(0, 500));
       throw new HttpsError("internal", "Respuesta vacía del modelo.");
     }
 
+    const reply = sanitizeTitoReplyByModule(replyRaw, contextoModulo);
     return {reply: reply.slice(0, 4000)};
   } finally {
     try {

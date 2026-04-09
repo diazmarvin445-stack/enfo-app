@@ -3090,6 +3090,9 @@
           ef.setAttribute("aria-hidden", "true");
         }
       }
+      try {
+        refreshTitoContext();
+      } catch (errNavTito) {}
     }
 
     function setDates() { startLiveClock(); }
@@ -6685,6 +6688,95 @@ const ENFO_PRIVATE_COACH_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
 
 let privateCoachOpen = false;
 let privateCoachActiveCategory = "mentalidad";
+
+/** Contexto de módulo ENFO para Tito (lectura; actualizar con refreshTitoContext). */
+var TITO_CONTEXT = Object.seal({
+  moduloActivo: "general",
+  pantallaActiva: ""
+});
+
+/** Prioridad: pantalla (Trading en Estrategias, Hábitos en Diario/Horario) > pestaña del coach en Inicio. */
+function getTitoModuloActivo() {
+  var el = document.querySelector("#app .screen.active");
+  var id = el ? el.id : "";
+  if (id === "s-estrategias") return "trading";
+  if (id === "s-diario" || id === "s-horario") return "habitos";
+  if (id === "s-biblioteca") return "general";
+  if (id === "s-inicio") {
+    var cat = privateCoachActiveCategory;
+    if (cat === "mentalidad" || cat === "negocio" || cat === "trading" || cat === "habitos") return cat;
+    return "mentalidad";
+  }
+  return "general";
+}
+
+function refreshTitoContext() {
+  var el = document.querySelector("#app .screen.active");
+  TITO_CONTEXT.pantallaActiva = el ? el.id : "";
+  TITO_CONTEXT.moduloActivo = getTitoModuloActivo();
+}
+
+var TITO_MOD_FORBIDDEN = {
+  mentalidad: [
+    /\b(clientes?|ventas?|prospecci[oó]n|prospectos?|pipeline|crm)\b/i,
+    /\b(setup\s+operativo|backtesting|stop\s*loss|spread\b|strike\b|mercado\s+ahora)\b/i,
+    /\b(gimnasio|pesas?\b|cardio\b)\b/i
+  ],
+  negocio: [/\b(stop\s*loss|backtesting|strike|spread|put\s+spread)\b/i],
+  trading: [
+    /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial|pipeline|crm|facturaci[oó]n)\b/i,
+    /\b(prospectar|prospecto)\b/i
+  ],
+  habitos: [
+    /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial)\b/i,
+    /\b(backtesting|stop\s*loss|strike|spread)\b/i
+  ],
+  general: []
+};
+
+var TITO_MOD_FALLBACK = {
+  mentalidad:
+    "En Mentalidad el tema es claridad y dirección, no ventas ni gráficos. ¿Qué decisión pequeña puedes tomar ya para avanzar sin dispersarte?",
+  negocio:
+    "Aquí hablamos de oferta, seguimiento y cierre. ¿Cuál es el siguiente contacto o acción comercial concreta?",
+  trading:
+    "En Trading el foco es tu sistema: reglas, riesgo y ejecución sin improvisar. ¿Qué parte de tu plan vas a honrar en la próxima operación?",
+  habitos:
+    "Los hábitos se sostienen con repetición y cumplimiento. ¿Qué bloque de tu rutina vas a cerrar hoy sin negociarlo?",
+  general: "Elige un solo paso claro y ejecutable en los próximos minutos."
+};
+
+function privateCoachSanitizeModuleReply(text, mod) {
+  if (text == null || typeof text !== "string") return "";
+  var t = text.replace(/\r\n/g, "\n").trim();
+  if (!t) return "";
+  var list = TITO_MOD_FORBIDDEN[mod] || TITO_MOD_FORBIDDEN.general;
+  if (!list || !list.length) return t;
+
+  function cleanBlock(block) {
+    var sentences = block.split(/(?<=[.!?])\s+/);
+    var kept = [];
+    for (var s = 0; s < sentences.length; s++) {
+      var sent = sentences[s].trim();
+      if (!sent) continue;
+      var bad = false;
+      for (var i = 0; i < list.length; i++) {
+        list[i].lastIndex = 0;
+        if (list[i].test(sent)) {
+          bad = true;
+          break;
+        }
+      }
+      if (!bad) kept.push(sent);
+    }
+    return kept.join(" ").trim();
+  }
+
+  var paras = t.split(/\n+/).map(cleanBlock).filter(Boolean).join("\n\n").trim();
+  if (paras.length >= 12) return paras;
+  return TITO_MOD_FALLBACK[mod] || TITO_MOD_FALLBACK.general;
+}
+
 /** Evita repetir la misma respuesta del coach dos veces seguidas. */
 let privateCoachLastCoachReply = "";
 /** Un solo saludo del coach cada vez que se abre el panel. */
@@ -7360,6 +7452,13 @@ function togglePrivateCoach(force) {
     if (!privateCoachOpen) privateCoachResetOpenGreeting();
     syncPrivateCoachPanelDom();
     if (privateCoachOpen) {
+      const actScr = document.querySelector("#app .screen.active");
+      if (actScr) {
+        if (actScr.id === "s-estrategias") privateCoachActiveCategory = "trading";
+        else if (actScr.id === "s-diario" || actScr.id === "s-horario") privateCoachActiveCategory = "habitos";
+      }
+      renderPrivateCoach();
+      refreshTitoContext();
       privateCoachAppendOpenGreetingOnce();
       preloadPrivateCoachMemoria();
       const input = document.getElementById("enfo-coach-input");
@@ -7375,6 +7474,13 @@ function togglePrivateCoach(force) {
   }
   if (!isPrivateCoachTitoSectionActive()) return;
   privateCoachOpen = true;
+  const actScr2 = document.querySelector("#app .screen.active");
+  if (actScr2) {
+    if (actScr2.id === "s-estrategias") privateCoachActiveCategory = "trading";
+    else if (actScr2.id === "s-diario" || actScr2.id === "s-horario") privateCoachActiveCategory = "habitos";
+  }
+  renderPrivateCoach();
+  refreshTitoContext();
   syncPrivateCoachPanelDom();
   privateCoachAppendOpenGreetingOnce();
   preloadPrivateCoachMemoria();
@@ -7614,6 +7720,26 @@ const PRIVATE_COACH_IMPLACABLE = {
     ]
   }
 };
+
+/** Banda PRIVATE_COACH_IMPLACABLE permitida según módulo (evita respuestas cruzadas). */
+function privateCoachModAllowsBand(mod, bandKey) {
+  var map = {
+    mentalidad: { fear: 1, fatigue: 1, focus: 1, discipline: 1, default: 1 },
+    negocio: { fear: 1, fatigue: 1, focus: 1, discipline: 1, negocio: 1, default: 1 },
+    trading: { fear: 1, fatigue: 1, focus: 1, discipline: 1, trading: 1, default: 1 },
+    habitos: { fear: 1, fatigue: 1, focus: 1, discipline: 1, habits: 1, default: 1 },
+    general: { fear: 1, fatigue: 1, focus: 1, discipline: 1, habits: 1, trading: 1, negocio: 1, default: 1 }
+  };
+  var m = map[mod] || map.general;
+  return !!(m && m[bandKey]);
+}
+
+function privateCoachBandsForMod(mod, bandKey) {
+  if (privateCoachModAllowsBand(mod, bandKey) && PRIVATE_COACH_IMPLACABLE[bandKey]) {
+    return PRIVATE_COACH_IMPLACABLE[bandKey];
+  }
+  return PRIVATE_COACH_IMPLACABLE.default;
+}
 
 function privateCoachNormalizeText(s) {
   return String(s || "")
@@ -7858,17 +7984,17 @@ function privateCoachPersistTurn(userText, coachReply) {
 }
 
 /**
- * Detección tolerante: texto normalizado + subcadenas (frases largas, mayúsculas/acentos ya limpios).
- * Categorías: miedo → cansancio → estrategia → negocio → hábitos → disciplina → enfoque → default.
+ * Detección tolerante + módulo activo (pantalla/pestaña): evita mezclar ventas, trading y hábitos.
  */
 function buildPrivateCoachReply(userText) {
+  const mod = getTitoModuloActivo();
   const t = privateCoachNormalizeText(userText);
   if (!t) {
-    return privateCoachPickFromBands("default", PRIVATE_COACH_IMPLACABLE.default, userText || "");
+    return privateCoachPickFromBands("default", privateCoachBandsForMod(mod, "default"), userText || "");
   }
 
-  if (privateCoachTextIncludesAny(t, ["miedo"])) {
-    return privateCoachPickFromBands("fear", PRIVATE_COACH_IMPLACABLE.fear, userText);
+  if (privateCoachTextIncludesAny(t, ["miedo"]) && privateCoachModAllowsBand(mod, "fear")) {
+    return privateCoachPickFromBands("fear", privateCoachBandsForMod(mod, "fear"), userText);
   }
   if (
     privateCoachTextIncludesAny(t, [
@@ -7877,30 +8003,47 @@ function buildPrivateCoachReply(userText) {
       "cnsansio",
       "cansansio",
       "cansanci"
-    ])
+    ]) &&
+    privateCoachModAllowsBand(mod, "fatigue")
   ) {
-    return privateCoachPickFromBands("fatigue", PRIVATE_COACH_IMPLACABLE.fatigue, userText);
+    return privateCoachPickFromBands("fatigue", privateCoachBandsForMod(mod, "fatigue"), userText);
   }
-  if (privateCoachTextIncludesAny(t, ["estrategia", "estrateg"])) {
-    return privateCoachPickFromBands("trading", PRIVATE_COACH_IMPLACABLE.trading, userText);
+  if (
+    privateCoachTextIncludesAny(t, ["negocios", "negocio", "ventas", "venta", "cliente", "clientes", "prospect"]) &&
+    privateCoachModAllowsBand(mod, "negocio")
+  ) {
+    return privateCoachPickFromBands("negocio", privateCoachBandsForMod(mod, "negocio"), userText);
   }
-  if (privateCoachTextIncludesAny(t, ["negocios", "negocio"])) {
-    return privateCoachPickFromBands("negocio", PRIVATE_COACH_IMPLACABLE.negocio, userText);
+  if (
+    privateCoachTextIncludesAny(t, [
+      "estrategia",
+      "estrateg",
+      "trade",
+      "trading",
+      "riesgo",
+      "stop",
+      "entrad",
+      "salid",
+      "operativa",
+      "backtest"
+    ]) &&
+    privateCoachModAllowsBand(mod, "trading")
+  ) {
+    return privateCoachPickFromBands("trading", privateCoachBandsForMod(mod, "trading"), userText);
   }
-  if (privateCoachTextIncludesAny(t, ["habitos", "habito"])) {
-    return privateCoachPickFromBands("habits", PRIVATE_COACH_IMPLACABLE.habits, userText);
+  if (
+    privateCoachTextIncludesAny(t, ["habitos", "habito", "rutina", "constanc"]) &&
+    privateCoachModAllowsBand(mod, "habits")
+  ) {
+    return privateCoachPickFromBands("habits", privateCoachBandsForMod(mod, "habits"), userText);
   }
-  if (privateCoachTextIncludesAny(t, ["disciplina", "disciplin"])) {
-    return privateCoachPickFromBands(
-      "discipline",
-      PRIVATE_COACH_IMPLACABLE.discipline,
-      userText
-    );
+  if (privateCoachTextIncludesAny(t, ["disciplina", "disciplin"]) && privateCoachModAllowsBand(mod, "discipline")) {
+    return privateCoachPickFromBands("discipline", privateCoachBandsForMod(mod, "discipline"), userText);
   }
-  if (privateCoachTextIncludesAny(t, ["enfoque", "enfoq"])) {
-    return privateCoachPickFromBands("focus", PRIVATE_COACH_IMPLACABLE.focus, userText);
+  if (privateCoachTextIncludesAny(t, ["enfoque", "enfoq"]) && privateCoachModAllowsBand(mod, "focus")) {
+    return privateCoachPickFromBands("focus", privateCoachBandsForMod(mod, "focus"), userText);
   }
-  return privateCoachPickFromBands("default", PRIVATE_COACH_IMPLACABLE.default, userText);
+  return privateCoachPickFromBands("default", privateCoachBandsForMod(mod, "default"), userText);
 }
 
 /**
@@ -7957,6 +8100,13 @@ function privateCoachFormatTitoReply(raw) {
   return out.slice(0, 4000);
 }
 
+function privateCoachFinalizeCoachText(raw, skipFormat) {
+  refreshTitoContext();
+  var mod = getTitoModuloActivo();
+  var f = skipFormat ? String(raw || "").replace(/\r\n/g, "\n").trim() : privateCoachFormatTitoReply(raw);
+  return privateCoachSanitizeModuleReply(f, mod);
+}
+
 async function getCoachReplyFromCloud(data, token) {
   const res = await fetch("https://us-central1-enfo-ee211.cloudfunctions.net/privateCoachChatHttp", {
     method: "POST",
@@ -7986,6 +8136,7 @@ async function sendPrivateCoachMessage() {
   let skipCloud = false;
   let skipPrivateCoachFormat = false;
   var ctxTito = construirContextoTiempo();
+  refreshTitoContext();
 
   if (u && typeof db !== "undefined" && db) {
     try {
@@ -8090,11 +8241,9 @@ async function sendPrivateCoachMessage() {
     if (!String(reply || "").trim()) {
       reply = buildPrivateCoachReply(text);
     }
-    if (!skipPrivateCoachFormat) {
-      reply = privateCoachFormatTitoReply(reply);
-    }
+    reply = privateCoachFinalizeCoachText(reply, skipPrivateCoachFormat);
     if (!String(reply || "").trim()) {
-      reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
+      reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false);
     }
     appendPrivateCoachMessage("coach", reply);
     if (sendBtn) sendBtn.disabled = false;
@@ -8134,7 +8283,11 @@ async function sendPrivateCoachMessage() {
         diaSemana: ctxCloud.diaSemana,
         diaSemanaNombre: ctxCloud.diaSemanaNombre
       },
-      contextoEstrategias: getContextoEstrategiasParaTito()
+      contextoEstrategias: getContextoEstrategiasParaTito(),
+      contextoModulo: {
+        moduloActivo: getTitoModuloActivo(),
+        pantallaActiva: TITO_CONTEXT.pantallaActiva || ""
+      }
     };
     const json = await getCoachReplyFromCloud(data, token);
     if (json && json.error != null && json.reply == null) {
@@ -8155,9 +8308,9 @@ async function sendPrivateCoachMessage() {
   if (!String(reply || "").trim()) {
     reply = buildPrivateCoachReply(text);
   }
-  reply = privateCoachFormatTitoReply(reply);
+  reply = privateCoachFinalizeCoachText(reply, false);
   if (!String(reply || "").trim()) {
-    reply = privateCoachFormatTitoReply(buildPrivateCoachReply(text));
+    reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false);
   }
   appendPrivateCoachMessage("coach", reply);
   setTimeout(function () {
@@ -8206,6 +8359,7 @@ function initPrivateCoachUiOnce() {
     const cat = tab.getAttribute("data-category");
     if (!cat) return;
     privateCoachActiveCategory = cat;
+    refreshTitoContext();
     renderPrivateCoach();
   });
   const inp = document.getElementById("enfo-coach-input");
