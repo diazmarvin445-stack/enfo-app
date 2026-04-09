@@ -2658,6 +2658,7 @@
         coachHistory: [],
         coachMemory: [],
         titoSessions: { global: [], diario: [], trading: [] },
+        titoGlobalState: { enfoqueActual: null, enfoqueAnterior: null, ultimoCoachReply: "" },
         titoLexikon: { terms: {} },
         estrategiasNotas: "",
         dayStickyNotes: {}
@@ -3087,6 +3088,16 @@
       data.titoLexikon = data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : { terms: {} };
       data.titoLexikon.terms =
         data.titoLexikon.terms && typeof data.titoLexikon.terms === "object" ? data.titoLexikon.terms : {};
+      data.titoGlobalState = data.titoGlobalState && typeof data.titoGlobalState === "object" ? data.titoGlobalState : {};
+      data.titoGlobalState.enfoqueActual =
+        data.titoGlobalState.enfoqueActual != null && String(data.titoGlobalState.enfoqueActual).trim()
+          ? String(data.titoGlobalState.enfoqueActual).trim().slice(0, 400)
+          : null;
+      data.titoGlobalState.enfoqueAnterior =
+        data.titoGlobalState.enfoqueAnterior != null && String(data.titoGlobalState.enfoqueAnterior).trim()
+          ? String(data.titoGlobalState.enfoqueAnterior).trim().slice(0, 400)
+          : null;
+      data.titoGlobalState.ultimoCoachReply = String(data.titoGlobalState.ultimoCoachReply || "").slice(0, 4000);
       data.coachMemory.forEach((x) => {
         x.id = x.id || uid();
         x.at = x.at || new Date().toISOString();
@@ -7472,9 +7483,96 @@ function getTitoLexikonPayload() {
   return out;
 }
 
+function ensureTitoGlobalState() {
+  if (typeof D === "undefined" || !D) return;
+  if (!D.titoGlobalState || typeof D.titoGlobalState !== "object") {
+    D.titoGlobalState = { enfoqueActual: null, enfoqueAnterior: null, ultimoCoachReply: "" };
+  }
+  if (!("enfoqueActual" in D.titoGlobalState)) D.titoGlobalState.enfoqueActual = null;
+  if (!("enfoqueAnterior" in D.titoGlobalState)) D.titoGlobalState.enfoqueAnterior = null;
+  if (typeof D.titoGlobalState.ultimoCoachReply !== "string") D.titoGlobalState.ultimoCoachReply = "";
+}
+
+/** Reloj mínimo (hoy ISO + timestamp) para capa global. */
+function getContextoTiempoGlobal() {
+  var now = new Date();
+  return {
+    hoy: now.toISOString().split("T")[0],
+    timestamp: now.getTime()
+  };
+}
+
+/** Limpia mensajes >10 min (reutiliza la misma ventana que el historial de sesión). */
+function limpiarContextoAntiguoGlobal() {
+  limpiarTodasLasSesionesTito();
+}
+
+function titoGlobalDetectarCambioEnfoque(raw) {
+  var texto = String(raw || "").toLowerCase();
+  var cambio = [
+    "ya cambié el enfoque",
+    "cambié el enfoque",
+    "mueve el foco",
+    "cambiar foco",
+    "ya no es prioridad",
+    "ya no importa",
+    "borra eso",
+    "elimina eso",
+    "si mueve el foco"
+  ];
+  return cambio.some(function (p) {
+    return texto.indexOf(p) !== -1;
+  });
+}
+
+function titoGlobalDetectarAgradecimiento(raw) {
+  var texto = String(raw || "").trim().toLowerCase();
+  if (!texto || texto.length > 72) return false;
+  var agradecimientos = ["gracias", "muchas gracias", "te lo agradezco", "mil gracias", "thanks", "thank you"];
+  return agradecimientos.some(function (p) {
+    return texto.indexOf(p) !== -1;
+  });
+}
+
+function titoGlobalPuedeDefinirEnfoque(raw) {
+  var t = String(raw || "").trim();
+  if (t.length < 8) return false;
+  if (titoGlobalDetectarCambioEnfoque(t)) return false;
+  if (t.length >= 14) return true;
+  return /\b(enfoque|prioridad|meta|objetivo|plan|quiero|necesito|hoy\s+voy|esta\s+semana)\b/i.test(t);
+}
+
+function titoGlobalAplicarCambioEnfoqueYLimpiarChat() {
+  ensureTitoGlobalState();
+  var st = D.titoGlobalState;
+  st.enfoqueAnterior = st.enfoqueActual;
+  st.enfoqueActual = null;
+  st.ultimoCoachReply = "";
+  ensureTitoSessionsState();
+  D.titoSessions.global = [];
+  renderPrivateCoachSessionHistory();
+}
+
+function titoGlobalEvitarRepeticionCoach(reply) {
+  ensureTitoGlobalState();
+  if (getTitoSessionKey() !== "global") return String(reply || "").trim();
+  var st = D.titoGlobalState;
+  var r = String(reply || "").trim();
+  if (!r) return r;
+  if (st.ultimoCoachReply && st.ultimoCoachReply === r) {
+    r = "Ya sabes lo que tienes que hacer. Ejecuta.";
+  }
+  st.ultimoCoachReply = r;
+  try {
+    sv();
+  } catch (eSv) {}
+  return r;
+}
+
 function titoEsMensajeQuimica(raw) {
   var s = String(raw || "").trim();
   if (!s || s.length > 36) return false;
+  if (s.length <= 40 && /\b(muchas\s+gracias|mil\s+gracias|te\s+lo\s+agradezco)\b/i.test(s)) return true;
   var n = privateCoachNormalizeText(s);
   if (!n) return false;
   var exact = [
@@ -8825,22 +8923,41 @@ async function getCoachReplyFromCloud(data, token) {
 
 async function sendPrivateCoachMessage() {
   if (!isPrivateCoachUiAllowed()) return;
-  limpiarTodasLasSesionesTito();
+  limpiarContextoAntiguoGlobal();
   const input = document.getElementById("enfo-coach-input");
   if (!input) return;
   const text = (input.value || "").trim();
   if (!text) return;
   input.value = "";
   const sendBtn = document.getElementById("enfo-coach-send");
-  appendPrivateCoachMessage("user", text);
   if (sendBtn) sendBtn.disabled = true;
+
+  refreshTitoContext();
+  if (getTitoSessionKey() === "global" && titoGlobalDetectarCambioEnfoque(text)) {
+    titoGlobalAplicarCambioEnfoqueYLimpiarChat();
+    appendPrivateCoachMessage("user", text);
+    var replyCambio = "Listo. Cerramos ese enfoque. ¿Cuál es el nuevo?";
+    replyCambio = privateCoachFinalizeCoachText(replyCambio, true, text);
+    replyCambio = titoGlobalEvitarRepeticionCoach(replyCambio);
+    appendPrivateCoachMessage("coach", replyCambio);
+    if (sendBtn) sendBtn.disabled = false;
+    setTimeout(function () {
+      privateCoachPersistTurn(text, replyCambio);
+    }, 0);
+    try {
+      sv();
+    } catch (eSv0) {}
+    return;
+  }
+
+  appendPrivateCoachMessage("user", text);
 
   syncTitoTimeContext();
   try {
     if (titoAprenderTerminosDelMensaje(text)) sv();
   } catch (eLex) {}
 
-  if (titoEsMensajeQuimica(text)) {
+  if (titoEsMensajeQuimica(text) && getTitoSessionKey() !== "global") {
     var replyQ = titoRespuestaQuimicaCorta(getTitoModuloActivo());
     replyQ = privateCoachFinalizeCoachText(replyQ, true, text);
     appendPrivateCoachMessage("coach", replyQ);
@@ -8862,6 +8979,20 @@ async function sendPrivateCoachMessage() {
     try {
       await cargarMemoria(u.uid);
       var memoFiltrada = getMemoriaTitoFiltrada();
+      if (getTitoSessionKey() === "global") {
+        ensureTitoGlobalState();
+        if (!D.titoGlobalState.enfoqueActual) {
+          var pendAuto = verificarPendientes(memoFiltrada);
+          if (pendAuto.length && pendAuto[0].accion) {
+            D.titoGlobalState.enfoqueActual = String(resumirCompromiso(pendAuto[0].accion))
+              .trim()
+              .slice(0, 160);
+            try {
+              sv();
+            } catch (eSvAuto) {}
+          }
+        }
+      }
 
       var limpiezaHecha = false;
       if (detectarIntencionLimpiarPendientes(text)) {
@@ -8961,6 +9092,56 @@ async function sendPrivateCoachMessage() {
     }
   }
 
+  if (getTitoSessionKey() === "global" && !skipCloud) {
+    ensureTitoGlobalState();
+    var gstPost = D.titoGlobalState;
+    if (!gstPost.enfoqueActual && titoGlobalPuedeDefinirEnfoque(text)) {
+      gstPost.enfoqueActual = String(resumirCompromiso(text))
+        .trim()
+        .slice(0, 160);
+      try {
+        sv();
+      } catch (eSvG) {}
+    }
+    if (!gstPost.enfoqueActual) {
+      if (titoGlobalDetectarAgradecimiento(text) || titoEsMensajeQuimica(text)) {
+        var replyGG = titoGlobalDetectarAgradecimiento(text)
+          ? "Bien. Seguimos. Ejecuta."
+          : titoRespuestaQuimicaCorta("general");
+        replyGG = privateCoachFinalizeCoachText(replyGG, true, text);
+        replyGG = titoGlobalEvitarRepeticionCoach(replyGG);
+        appendPrivateCoachMessage("coach", replyGG);
+        if (sendBtn) sendBtn.disabled = false;
+        setTimeout(function () {
+          privateCoachPersistTurn(text, replyGG);
+        }, 0);
+        return;
+      }
+      var replyDD = privateCoachFinalizeCoachText("Define el enfoque actual.", true, text);
+      replyDD = titoGlobalEvitarRepeticionCoach(replyDD);
+      appendPrivateCoachMessage("coach", replyDD);
+      if (sendBtn) sendBtn.disabled = false;
+      setTimeout(function () {
+        privateCoachPersistTurn(text, replyDD);
+      }, 0);
+      return;
+    }
+  }
+
+  if (titoEsMensajeQuimica(text) && getTitoSessionKey() === "global") {
+    var replyQg = titoGlobalDetectarAgradecimiento(text)
+      ? "Bien. Seguimos. Ejecuta."
+      : titoRespuestaQuimicaCorta("general");
+    replyQg = privateCoachFinalizeCoachText(replyQg, true, text);
+    replyQg = titoGlobalEvitarRepeticionCoach(replyQg);
+    appendPrivateCoachMessage("coach", replyQg);
+    if (sendBtn) sendBtn.disabled = false;
+    setTimeout(function () {
+      privateCoachPersistTurn(text, replyQg);
+    }, 0);
+    return;
+  }
+
   if (skipCloud) {
     if (!String(reply || "").trim()) {
       reply = buildPrivateCoachReply(text);
@@ -8969,6 +9150,7 @@ async function sendPrivateCoachMessage() {
     if (!String(reply || "").trim()) {
       reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false, text);
     }
+    reply = titoGlobalEvitarRepeticionCoach(reply);
     appendPrivateCoachMessage("coach", reply);
     if (sendBtn) sendBtn.disabled = false;
     setTimeout(function () {
@@ -9018,8 +9200,13 @@ async function sendPrivateCoachMessage() {
       contextoModulo: {
         moduloActivo: getTitoModuloActivo(),
         sessionKey: sessionKey,
-        pantallaActiva: TITO_CONTEXT.pantallaActiva || ""
-      }
+        pantallaActiva: TITO_CONTEXT.pantallaActiva || "",
+        titoEnfoqueGlobal:
+          sessionKey === "global" && typeof D !== "undefined" && D.titoGlobalState
+            ? D.titoGlobalState.enfoqueActual
+            : null
+      },
+      contextoTiempoGlobal: sessionKey === "global" ? getContextoTiempoGlobal() : null
     };
     const json = await getCoachReplyFromCloud(data, token);
     if (json && json.error != null && json.reply == null) {
@@ -9044,6 +9231,7 @@ async function sendPrivateCoachMessage() {
   if (!String(reply || "").trim()) {
     reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false, text);
   }
+  reply = titoGlobalEvitarRepeticionCoach(reply);
   appendPrivateCoachMessage("coach", reply);
   setTimeout(function () {
     console.time("[tito_client] persist");
