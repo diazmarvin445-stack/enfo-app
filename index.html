@@ -6862,15 +6862,31 @@ function detectarCambioDeTema(texto) {
   return false;
 }
 
+/** Minúsculas + sin acentos para coincidir "borrás" / "limpiá" / etc. */
+function titoTextoSinAcentos(s) {
+  try {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  } catch (e) {
+    return String(s || "").toLowerCase();
+  }
+}
+
 /**
  * Usuario quiere dejar de ver / borrar compromisos pendientes (sin cerrarlos como hechos).
  */
 function detectarIntencionLimpiarPendientes(texto) {
   var raw = String(texto || "").trim();
-  var t = raw.toLowerCase();
+  var t = titoTextoSinAcentos(raw);
   if (t.length < 2 || t.length > 220) return false;
   if (/\bno\s+(quiero\s+que\s+)?(borres|elimines|quites)\b/.test(t)) return false;
   if (/\bno\s+voy\s+a\s+borrar\b/.test(t)) return false;
+  if (/\b(borr|limpia|elimina|quita|cancela|olvida)\w*\s+(esos\s+|estos\s+|los\s+)?pendientes\b/.test(t)) {
+    return true;
+  }
+  if (/\bpendientes\b.*\b(borr|limpia|elimina|cancela|quita)\w*\b/.test(t)) return true;
   var marcas = [
     "borra esos pendientes",
     "borra estos pendientes",
@@ -6922,7 +6938,8 @@ function detectarIntencionLimpiarPendientes(texto) {
   ];
   var i;
   for (i = 0; i < marcas.length; i++) {
-    if (t.indexOf(marcas[i]) !== -1) return true;
+    var m = titoTextoSinAcentos(marcas[i]);
+    if (t.indexOf(m) !== -1) return true;
   }
   if (/^\s*ya\s*no\s*[!?.…]*\s*$/i.test(raw)) return true;
   if (/^\s*(no|olvida|olvídalo|olvidalo)\s*[!?.…]*\s*$/i.test(raw)) return true;
@@ -7713,23 +7730,26 @@ async function sendPrivateCoachMessage() {
 
       var limpiezaHecha = false;
       if (detectarIntencionLimpiarPendientes(text)) {
-        var pendLimp = verificarPendientes(memoriaTito);
-        if (pendLimp.length > 0) {
-          await cancelarTodosCompromisosPendientes(u.uid);
-          await cargarMemoria(u.uid);
-          reply =
-            "Bien. Limpié esos pendientes.\n\n" +
-            "Ya no los voy a tomar en cuenta.\n\n" +
-            "Ahora dime en qué te quieres enfocar.";
-          skipPrivateCoachFormat = true;
-          skipCloud = true;
-        } else {
-          reply =
-            "No tenías pendientes activos. Dime en qué te quieres enfocar.";
-          skipPrivateCoachFormat = true;
-          skipCloud = true;
-        }
         limpiezaHecha = true;
+        skipCloud = true;
+        skipPrivateCoachFormat = true;
+        try {
+          var pendLimp = verificarPendientes(memoriaTito);
+          if (pendLimp.length > 0) {
+            await cancelarTodosCompromisosPendientes(u.uid);
+            await cargarMemoria(u.uid);
+            reply =
+              "Bien. Limpié esos pendientes. Ya no los tomaré en cuenta.\n\n" +
+              "Dime en qué te quieres enfocar ahora.";
+          } else {
+            reply =
+              "No tenías pendientes activos. Dime en qué te quieres enfocar.";
+          }
+        } catch (errLimp) {
+          console.error("tito limpieza pendientes:", errLimp);
+          reply =
+            "No pude aplicar la limpieza ahora. Revisa la conexión e inténtalo otra vez.";
+        }
       }
 
       var ajusteHecho = false;
