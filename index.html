@@ -385,6 +385,42 @@
 
     .page-title { font-family: "Orbitron", monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
 
+    /* Estrategias: cabecera alineada a la izquierda; Tito junto al título; acciones a la derecha */
+    .page-header--estrategias {
+      justify-content: flex-start;
+      align-items: center;
+      gap: 12px;
+    }
+    .page-header-estrat-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .page-header-estrat-left .page-title {
+      flex: 0 1 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .estrat-tito-inline {
+      display: none;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .page-header-estrat-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .page-header-estrat-actions > button {
+      flex-shrink: 0;
+    }
+
     .si {
       background: var(--card);
       border: 1px solid var(--border);
@@ -2100,20 +2136,21 @@
 </div>
 
 <div id="s-estrategias" class="screen">
-  <div class="page-header">
+  <div class="page-header page-header--estrategias">
     <button class="back-btn" onclick="nav('inicio')">‹</button>
-    <div class="page-title" style="flex:1;min-width:0;">ESTRATEGIAS</div>
-    <div class="diario-header-tools estrat-header-tools">
-      <div id="estrat-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
-        <div id="estrat-tito-tip" class="diario-tito-tip tito-context-tip--wide" style="display:none;"></div>
+    <div class="page-header-estrat-left">
+      <div class="page-title">ESTRATEGIAS</div>
+      <div id="estrat-tito-float" class="estrat-tito-inline diario-tito-float" style="display:none;" aria-hidden="true">
         <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot tito-mascot-btn" onclick="openTitoFromEstrategias()" aria-label="Abrir Tito">
           <span class="diario-tito-head"></span>
           <span class="diario-tito-body"></span>
         </button>
       </div>
-      <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
-      <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
-      <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
+    </div>
+    <div class="page-header-estrat-actions diario-header-tools estrat-header-tools">
+      <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
+      <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
+      <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
     </div>
   </div>
   <div class="estrategias-hoy-wrap" id="estrategias-hoy-wrap" aria-label="Estrategias con operaciones hoy">
@@ -3673,9 +3710,7 @@ function renderEstrategiasHoy() {
     .join("");
 }
 
-var titoEstrategiasBubbleAlt = 0;
-
-/** Contexto serializable del módulo Estrategias para Tito (bubble + chat cloud). */
+/** Contexto serializable del módulo Estrategias para Tito (chat cloud). */
 function getContextoEstrategiasParaTito() {
   var out = {
     modulo: "ninguno",
@@ -3732,39 +3767,8 @@ function getContextoDiarioParaTito() {
   return out;
 }
 
-function buildEstrategiasTitoBubbleMessage() {
-  var nStrat = (D.strategies && D.strategies.length) || 0;
-  if (nStrat === 0) {
-    return "No tienes estrategias definidas. Crea una antes de operar.";
-  }
-  var det = document.getElementById("strat-detail");
-  var detailOpen = det && det.classList.contains("open");
-  var s = detailOpen && cur ? gS() : null;
-  if (!s) {
-    return "Selecciona una estrategia para revisar reglas, tipo y operaciones de la semana.";
-  }
-  var ops = getCurrentWeekOps(s);
-  var w = ops.filter(function (o) { return o.result === "win"; }).length;
-  var lb = ops.filter(function (o) { return o.result === "lose"; }).length;
-  var t = ops.length;
-  var weak = t > 0 && (lb > w || (lb >= 2 && w === 0));
-  var name = String(s.name || "esta estrategia").trim() || "esta estrategia";
-  if (weak) {
-    return "Si esta estrategia no está dando resultados, revísala antes de repetirla.";
-  }
-  if (t === 0) {
-    return "Aún no has ejecutado esta estrategia esta semana. No improvises.";
-  }
-  var useAlt = (titoEstrategiasBubbleAlt++ % 2) === 1;
-  if (useAlt) {
-    return "Antes de ejecutar, asegúrate de seguir esta estrategia tal como fue definida.";
-  }
-  return "Estás viendo: " + name + ". Revisa sus reglas antes de entrar.";
-}
-
 function renderEstrategiasTitoFloat() {
   var wrap = document.getElementById("estrat-tito-float");
-  var tip = document.getElementById("estrat-tito-tip");
   if (!wrap) return;
   var active = document.querySelector("#app .screen.active");
   if (!active || active.id !== "s-estrategias" || !isPrivateCoachEnabled()) {
@@ -3774,9 +3778,6 @@ function renderEstrategiasTitoFloat() {
   }
   wrap.style.display = "flex";
   wrap.removeAttribute("aria-hidden");
-  if (!tip) return;
-  tip.textContent = buildEstrategiasTitoBubbleMessage();
-  tip.style.display = "block";
 }
 
 function rstrat() {
