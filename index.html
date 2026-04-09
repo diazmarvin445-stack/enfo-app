@@ -1401,6 +1401,24 @@
         0 12px 40px rgba(0, 0, 0, 0.5);
     }
     .private-coach-fab:active { transform: scale(0.96); }
+    .private-coach-fab .diario-tito-head {
+      width: 24px;
+      height: 24px;
+      border-width: 1.8px;
+    }
+    .private-coach-fab .diario-tito-head::before,
+    .private-coach-fab .diario-tito-head::after {
+      width: 3px;
+      height: 3px;
+      top: 8px;
+    }
+    .private-coach-fab .diario-tito-head::before { left: 6px; }
+    .private-coach-fab .diario-tito-head::after { right: 6px; }
+    .private-coach-fab .diario-tito-body {
+      width: 4px;
+      height: 12px;
+      margin-top: 0;
+    }
     .private-coach-panel {
       position: fixed;
       inset: 0;
@@ -1919,7 +1937,7 @@
     <span class="status-pill" id="mind-status-pill">EMPTY</span>
     <div class="mind-toolbar-actions">
       <button class="tiny-btn" onclick="toggleMindHistory()">Historial</button>
-      <button type="button" id="private-coach-fab" class="private-coach-fab" hidden aria-label="Biblioteca IA privada" aria-expanded="false" onclick="togglePrivateCoach()">🧠</button>
+      <button type="button" id="private-coach-fab" class="private-coach-fab" hidden aria-label="Abrir Tito global" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
     </div>
   </div>
 
@@ -2024,7 +2042,7 @@
     <div class="diario-header-tools estrat-header-tools">
       <div id="estrat-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
         <div id="estrat-tito-tip" class="diario-tito-tip tito-context-tip--wide" style="display:none;"></div>
-        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
+        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromEstrategias()" aria-label="Abrir Tito">
           <span class="diario-tito-head"></span>
           <span class="diario-tito-body"></span>
         </button>
@@ -2537,6 +2555,7 @@
         calendario: {},
         coachHistory: [],
         coachMemory: [],
+        titoSessions: { global: [], diario: [], trading: [] },
         estrategiasNotas: "",
         dayStickyNotes: {}
       };
@@ -2926,6 +2945,26 @@
         x.role = x.role === "coach" ? "coach" : "user";
         x.text = String(x.text || "").slice(0, 4000);
       });
+      var rawSessions = data.titoSessions && typeof data.titoSessions === "object" ? data.titoSessions : {};
+      var normalizedSessions = { global: [], diario: [], trading: [] };
+      ["global", "diario", "trading"].forEach(function (k) {
+        var arr = Array.isArray(rawSessions[k]) ? rawSessions[k] : [];
+        normalizedSessions[k] = arr.map(function (x) {
+          var role = x && x.role === "coach" ? "coach" : "user";
+          return {
+            id: (x && x.id) || uid(),
+            at: (x && x.at) || new Date().toISOString(),
+            role: role,
+            text: String((x && x.text) || "").slice(0, 4000)
+          };
+        });
+      });
+      if (!normalizedSessions.global.length && data.coachHistory.length) {
+        normalizedSessions.global = data.coachHistory.slice(0, 32).map(function (x) {
+          return { id: x.id || uid(), at: x.at || new Date().toISOString(), role: x.role === "coach" ? "coach" : "user", text: String(x.text || "").slice(0, 4000) };
+        });
+      }
+      data.titoSessions = normalizedSessions;
       data.coachMemory.forEach((x) => {
         x.id = x.id || uid();
         x.at = x.at || new Date().toISOString();
@@ -3588,6 +3627,27 @@ function getContextoEstrategiasParaTito() {
     perdidasSemana: lb,
     estadoSemanal: estadoEtiqueta
   };
+  return out;
+}
+
+function getContextoDiarioParaTito() {
+  var out = {
+    modulo: "ninguno",
+    fecha: fmtDateYMD(new Date()),
+    entradaActual: "",
+    entradasRecientes: []
+  };
+  var act = document.querySelector("#app .screen.active");
+  if (!act || act.id !== "s-diario") return out;
+  out.modulo = "diario";
+  var dinp = document.getElementById("dinp");
+  out.entradaActual = String((dinp && dinp.value) || "").trim().slice(0, 2000);
+  out.entradasRecientes = (Array.isArray(D.diary) ? D.diary : []).slice(0, 5).map(function (en) {
+    return {
+      date: String(en.date || "").slice(0, 30),
+      text: String(en.text || "").slice(0, 1500)
+    };
+  });
   return out;
 }
 
@@ -6831,6 +6891,7 @@ const ENFO_PRIVATE_COACH_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
 
 let privateCoachOpen = false;
 let privateCoachActiveCategory = "mentalidad";
+let privateCoachSessionOverride = "";
 
 /** Contexto de módulo ENFO para Tito (lectura; actualizar con refreshTitoContext). */
 var TITO_CONTEXT = Object.seal({
@@ -6840,17 +6901,47 @@ var TITO_CONTEXT = Object.seal({
 
 /** Prioridad: pantalla (Trading en Estrategias, Hábitos en Diario/Horario) > pestaña del coach en Inicio. */
 function getTitoModuloActivo() {
+  var sessionKey = getTitoSessionKey();
+  if (sessionKey === "trading") return "trading";
+  if (sessionKey === "diario") return "diario";
+  return "general";
+}
+
+function getTitoSessionKey() {
+  if (privateCoachSessionOverride === "global" || privateCoachSessionOverride === "diario" || privateCoachSessionOverride === "trading") {
+    return privateCoachSessionOverride;
+  }
   var el = document.querySelector("#app .screen.active");
   var id = el ? el.id : "";
+  if (id === "s-diario") return "diario";
   if (id === "s-estrategias") return "trading";
-  if (id === "s-diario" || id === "s-horario") return "habitos";
-  if (id === "s-biblioteca") return "general";
-  if (id === "s-inicio") {
-    var cat = privateCoachActiveCategory;
-    if (cat === "mentalidad" || cat === "negocio" || cat === "trading" || cat === "habitos") return cat;
-    return "mentalidad";
+  return "global";
+}
+
+function ensureTitoSessionsState() {
+  if (typeof D === "undefined" || !D || typeof D !== "object") return;
+  if (!D.titoSessions || typeof D.titoSessions !== "object") {
+    D.titoSessions = { global: [], diario: [], trading: [] };
   }
-  return "general";
+  if (!Array.isArray(D.titoSessions.global)) D.titoSessions.global = [];
+  if (!Array.isArray(D.titoSessions.diario)) D.titoSessions.diario = [];
+  if (!Array.isArray(D.titoSessions.trading)) D.titoSessions.trading = [];
+}
+
+function getTitoSessionHistory(sessionKey) {
+  ensureTitoSessionsState();
+  var key = (sessionKey === "diario" || sessionKey === "trading") ? sessionKey : "global";
+  return D.titoSessions[key];
+}
+
+function renderPrivateCoachSessionHistory() {
+  const list = document.getElementById("enfo-coach-messages");
+  if (!list) return;
+  list.innerHTML = "";
+  const sessionHistory = getTitoSessionHistory(getTitoSessionKey());
+  sessionHistory.slice().reverse().forEach(function (msg) {
+    appendPrivateCoachMessage(msg.role === "coach" ? "coach" : "user", String(msg.text || ""));
+  });
 }
 
 function refreshTitoContext() {
@@ -6860,32 +6951,22 @@ function refreshTitoContext() {
 }
 
 var TITO_MOD_FORBIDDEN = {
-  mentalidad: [
-    /\b(clientes?|ventas?|prospecci[oó]n|prospectos?|pipeline|crm)\b/i,
-    /\b(setup\s+operativo|backtesting|stop\s*loss|spread\b|strike\b|mercado\s+ahora)\b/i,
-    /\b(gimnasio|pesas?\b|cardio\b)\b/i
-  ],
-  negocio: [/\b(stop\s*loss|backtesting|strike|spread|put\s+spread)\b/i],
   trading: [
     /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial|pipeline|crm|facturaci[oó]n)\b/i,
-    /\b(prospectar|prospecto)\b/i
+    /\b(prospectar|prospecto)\b/i,
+    /\b(diario|reflexi[oó]n|emociones?|jornada personal)\b/i
   ],
-  habitos: [
-    /\b(clientes?|ventas?|prospecci[oó]n|propuesta\s+comercial)\b/i,
-    /\b(backtesting|stop\s*loss|strike|spread)\b/i
+  diario: [
+    /\b(trading|trade|mercado|setup|backtesting|stop\s*loss|strike|spread|call|put|operativa)\b/i
   ],
   general: []
 };
 
 var TITO_MOD_FALLBACK = {
-  mentalidad:
-    "En Mentalidad el tema es claridad y dirección, no ventas ni gráficos. ¿Qué decisión pequeña puedes tomar ya para avanzar sin dispersarte?",
-  negocio:
-    "Aquí hablamos de oferta, seguimiento y cierre. ¿Cuál es el siguiente contacto o acción comercial concreta?",
   trading:
     "En Trading el foco es tu sistema: reglas, riesgo y ejecución sin improvisar. ¿Qué parte de tu plan vas a honrar en la próxima operación?",
-  habitos:
-    "Los hábitos se sostienen con repetición y cumplimiento. ¿Qué bloque de tu rutina vas a cerrar hoy sin negociarlo?",
+  diario:
+    "En Diario trabajamos lo que escribiste hoy y tus entradas recientes. ¿Qué aprendizaje concreto te deja esta jornada?",
   general: "Elige un solo paso claro y ejecutable en los próximos minutos."
 };
 
@@ -7592,16 +7673,20 @@ function togglePrivateCoach(force) {
   if (typeof force === "boolean") {
     privateCoachOpen = force;
     if (privateCoachOpen && !isPrivateCoachTitoSectionActive()) privateCoachOpen = false;
-    if (!privateCoachOpen) privateCoachResetOpenGreeting();
+    if (!privateCoachOpen) {
+      privateCoachSessionOverride = "";
+      privateCoachResetOpenGreeting();
+    }
     syncPrivateCoachPanelDom();
     if (privateCoachOpen) {
       const actScr = document.querySelector("#app .screen.active");
       if (actScr) {
         if (actScr.id === "s-estrategias") privateCoachActiveCategory = "trading";
-        else if (actScr.id === "s-diario" || actScr.id === "s-horario") privateCoachActiveCategory = "habitos";
+        else if (actScr.id === "s-diario") privateCoachActiveCategory = "mentalidad";
       }
       renderPrivateCoach();
       refreshTitoContext();
+      renderPrivateCoachSessionHistory();
       privateCoachAppendOpenGreetingOnce();
       preloadPrivateCoachMemoria();
       const input = document.getElementById("enfo-coach-input");
@@ -7611,6 +7696,7 @@ function togglePrivateCoach(force) {
   }
   if (privateCoachOpen) {
     privateCoachOpen = false;
+    privateCoachSessionOverride = "";
     privateCoachResetOpenGreeting();
     syncPrivateCoachPanelDom();
     return;
@@ -7620,11 +7706,12 @@ function togglePrivateCoach(force) {
   const actScr2 = document.querySelector("#app .screen.active");
   if (actScr2) {
     if (actScr2.id === "s-estrategias") privateCoachActiveCategory = "trading";
-    else if (actScr2.id === "s-diario" || actScr2.id === "s-horario") privateCoachActiveCategory = "habitos";
+    else if (actScr2.id === "s-diario") privateCoachActiveCategory = "mentalidad";
   }
   renderPrivateCoach();
   refreshTitoContext();
   syncPrivateCoachPanelDom();
+  renderPrivateCoachSessionHistory();
   privateCoachAppendOpenGreetingOnce();
   preloadPrivateCoachMemoria();
   const input = document.getElementById("enfo-coach-input");
@@ -7634,6 +7721,14 @@ function togglePrivateCoach(force) {
 function openTitoFromDiario(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
   if (!isPrivateCoachEnabled()) return;
+  privateCoachSessionOverride = "diario";
+  togglePrivateCoach(true);
+}
+
+function openTitoFromEstrategias(ev) {
+  if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+  if (!isPrivateCoachEnabled()) return;
+  privateCoachSessionOverride = "trading";
   togglePrivateCoach(true);
 }
 
@@ -7867,10 +7962,8 @@ const PRIVATE_COACH_IMPLACABLE = {
 /** Banda PRIVATE_COACH_IMPLACABLE permitida según módulo (evita respuestas cruzadas). */
 function privateCoachModAllowsBand(mod, bandKey) {
   var map = {
-    mentalidad: { fear: 1, fatigue: 1, focus: 1, discipline: 1, default: 1 },
-    negocio: { fear: 1, fatigue: 1, focus: 1, discipline: 1, negocio: 1, default: 1 },
+    diario: { fear: 1, fatigue: 1, focus: 1, discipline: 1, habits: 1, default: 1 },
     trading: { fear: 1, fatigue: 1, focus: 1, discipline: 1, trading: 1, default: 1 },
-    habitos: { fear: 1, fatigue: 1, focus: 1, discipline: 1, habits: 1, default: 1 },
     general: { fear: 1, fatigue: 1, focus: 1, discipline: 1, habits: 1, trading: 1, negocio: 1, default: 1 }
   };
   var m = map[mod] || map.general;
@@ -8088,14 +8181,14 @@ function privateCoachMessageWorthMemory(norm, rawLen) {
 
 function privateCoachAppendHistory(userText, coachReply) {
   if (typeof D === "undefined") return;
-  if (!Array.isArray(D.coachHistory)) D.coachHistory = [];
+  var hist = getTitoSessionHistory(getTitoSessionKey());
   const at = new Date().toISOString();
   const u = String(userText || "").slice(0, 4000);
   const c = String(coachReply || "").slice(0, 4000);
-  D.coachHistory.unshift({ id: uid(), at, role: "user", text: u });
-  D.coachHistory.unshift({ id: uid(), at, role: "coach", text: c });
-  if (D.coachHistory.length > PRIVATE_COACH_HISTORY_MAX) {
-    D.coachHistory = D.coachHistory.slice(0, PRIVATE_COACH_HISTORY_MAX);
+  hist.unshift({ id: uid(), at, role: "user", text: u });
+  hist.unshift({ id: uid(), at, role: "coach", text: c });
+  if (hist.length > PRIVATE_COACH_HISTORY_MAX) {
+    hist.splice(PRIVATE_COACH_HISTORY_MAX);
   }
 }
 
@@ -8119,7 +8212,7 @@ function privateCoachMaybeAppendMemory(userText) {
 
 function privateCoachPersistTurn(userText, coachReply) {
   if (typeof D === "undefined") return;
-  if (!Array.isArray(D.coachHistory)) D.coachHistory = [];
+  ensureTitoSessionsState();
   if (!Array.isArray(D.coachMemory)) D.coachMemory = [];
   privateCoachAppendHistory(userText, coachReply);
   privateCoachMaybeAppendMemory(userText);
@@ -8405,7 +8498,8 @@ async function sendPrivateCoachMessage() {
     console.time("[tito_client] roundtrip");
     if (!u) throw new Error("Sin sesión");
     const token = await u.getIdToken();
-    const history = Array.isArray(D.coachHistory) ? D.coachHistory.slice(0, 12) : [];
+    const sessionKey = getTitoSessionKey();
+    const history = getTitoSessionHistory(sessionKey).slice(0, 12);
     var ctxCloud = construirContextoTiempo();
     const data = {
       message: text,
@@ -8426,9 +8520,11 @@ async function sendPrivateCoachMessage() {
         diaSemana: ctxCloud.diaSemana,
         diaSemanaNombre: ctxCloud.diaSemanaNombre
       },
-      contextoEstrategias: getContextoEstrategiasParaTito(),
+      contextoDiario: sessionKey === "diario" ? getContextoDiarioParaTito() : null,
+      contextoEstrategias: sessionKey === "trading" ? getContextoEstrategiasParaTito() : null,
       contextoModulo: {
         moduloActivo: getTitoModuloActivo(),
+        sessionKey: sessionKey,
         pantallaActiva: TITO_CONTEXT.pantallaActiva || ""
       }
     };
@@ -8577,7 +8673,7 @@ Object.assign(window, {
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
   closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
-  togglePrivateCoach, sendPrivateCoachMessage, openTitoFromDiario,
+  togglePrivateCoach, sendPrivateCoachMessage, openTitoFromDiario, openTitoFromEstrategias,
   openDaySticky, closeDaySticky, dayStickyEditorInput
 });
 
