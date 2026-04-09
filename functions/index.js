@@ -162,6 +162,8 @@ async function getTitoCoreFromFirestore() {
 const TITO_MOD_ANCHORS = {
   mentalidad:
     "MÓDULO ACTIVO ENFO: Mentalidad. Habla SOLO de claridad, disciplina, enfoque, miedo, ejecución mental, pensamiento y dirección. NO menciones clientes, ventas, prospección, CRM, setup de trading, strike/spread, ni hábitos físicos (gimnasio).",
+  diario:
+    "MÓDULO ACTIVO ENFO: Diario. Solo reflexión escrita, jornada, orden mental y lo que el usuario registró. NO operativa de mercado: sin setups, stops, strikes, spreads, calls/puts ni backtesting salvo que el usuario lo pida para salir de Diario.",
   negocio:
     "MÓDULO ACTIVO ENFO: Negocio. Puedes hablar de clientes, ventas, propuesta, seguimiento, oferta y ejecución comercial. Evita jerga fina de trading (stop, strike, spread) salvo analogía de una frase.",
   trading:
@@ -175,6 +177,8 @@ const TITO_MOD_ANCHORS = {
 const TITO_MOD_FALLBACK_SRV = {
   mentalidad:
     "En Mentalidad el tema es claridad y dirección. ¿Qué decisión pequeña puedes tomar ya para avanzar sin dispersarte?",
+  diario:
+    "En Diario trabajamos lo que escribiste y tu jornada. ¿Qué aprendizaje concreto te deja esto, en una sola línea?",
   negocio: "Centra la conversación en oferta, seguimiento y cierre. ¿Cuál es la siguiente acción comercial concreta?",
   trading:
     "En Trading el foco es tu sistema: reglas, riesgo y ejecución sin improvisar. ¿Qué parte de tu plan vas a honrar en la próxima operación?",
@@ -187,6 +191,9 @@ const TITO_MOD_FORBIDDEN_SRV = {
     /\b(clientes?|ventas?|prospecci[oó]n|prospectos?|pipeline|crm)\b/i,
     /\b(setup\s+operativo|backtesting|stop\s*loss|spread\b|strike\b|mercado\s+ahora)\b/i,
     /\b(gimnasio|pesas?\b|cardio\b)\b/i
+  ],
+  diario: [
+    /\b(trading|trade|mercado|setup|backtesting|stop\s*loss|strike|spread|call|put|operativa)\b/i
   ],
   negocio: [/\b(stop\s*loss|backtesting|strike|spread|put\s+spread)\b/i],
   trading: [
@@ -205,7 +212,9 @@ function sanitizeTitoReplyByModule(text, contextoModulo) {
   let t = text.replace(/\r\n/g, "\n").trim();
   if (!t) return "";
   const rawMod = contextoModulo && contextoModulo.moduloActivo;
-  const mod = ["mentalidad", "negocio", "trading", "habitos", "general"].includes(rawMod) ? rawMod : "general";
+  const mod = ["mentalidad", "diario", "negocio", "trading", "habitos", "general"].includes(rawMod)
+    ? rawMod
+    : "general";
   const list = TITO_MOD_FORBIDDEN_SRV[mod] || [];
   if (!list.length) return t;
 
@@ -260,10 +269,12 @@ function buildTitoSystemPrompt(titoCore, contextoModulo) {
     }
   }
   const rawMod = contextoModulo && contextoModulo.moduloActivo;
-  const mod = ["mentalidad", "negocio", "trading", "habitos", "general"].includes(rawMod) ? rawMod : "general";
+  const mod = ["mentalidad", "diario", "negocio", "trading", "habitos", "general"].includes(rawMod)
+    ? rawMod
+    : "general";
   const anchor = TITO_MOD_ANCHORS[mod];
   const ops =
-    "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. Acción clara si aplica problema. Respeta el módulo activo ENFO.";
+    "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. No repitas texto largo del usuario ni cites párrafos enteros; resume en una frase si hace falta. Acción clara si aplica problema. Respeta el módulo activo ENFO.";
   if (base === SYSTEM_PROMPT) {
     return (base + "\n\n---\n\n" + anchor + "\n\n" + ops).trim();
   }
@@ -305,9 +316,27 @@ function buildOpenAIInput(
   coachMemory,
   contextoTiempo,
   contextoEstrategias,
-  contextoModulo
+  contextoModulo,
+  titoExtras
 ) {
   const parts = [];
+  titoExtras = titoExtras && typeof titoExtras === "object" ? titoExtras : {};
+
+  if (
+    titoExtras.titoTimeContext &&
+    typeof titoExtras.titoTimeContext === "object"
+  ) {
+    const tc = titoExtras.titoTimeContext;
+    const bits = [];
+    if (tc.nowISO) bits.push(`ISO: ${String(tc.nowISO).slice(0, 40)}`);
+    if (tc.localDate) bits.push(`fecha local: ${tc.localDate}`);
+    if (tc.localTime) bits.push(`hora local: ${tc.localTime}`);
+    if (tc.weekday) bits.push(`día: ${tc.weekday}`);
+    if (tc.timeZone) bits.push(`zona: ${tc.timeZone}`);
+    if (bits.length) {
+      parts.push("Reloj del dispositivo (cliente, ahora):\n" + bits.join(", ") + ".");
+    }
+  }
 
   if (
     contextoTiempo &&
@@ -360,6 +389,27 @@ function buildOpenAIInput(
     parts.push(block);
   }
 
+  if (titoExtras.titoLexikon && typeof titoExtras.titoLexikon === "object") {
+    const terms = titoExtras.titoLexikon;
+    const keys = Object.keys(terms).slice(0, 24);
+    if (keys.length) {
+      const lines = keys.map((k) => {
+        const o = terms[k];
+        const def = o && o.def ? String(o.def).trim().slice(0, 160) : "";
+        return def ? `${k}: ${def}` : k;
+      });
+      parts.push("Términos del usuario (prioridad):\n" + lines.join("\n"));
+    }
+  }
+
+  if (titoExtras.titoMarcoTemporal && String(titoExtras.titoMarcoTemporal).trim()) {
+    parts.push(
+      "Marco temporal del mensaje: " +
+        String(titoExtras.titoMarcoTemporal).trim() +
+        " (pasado=aprendizaje; hoy=ejecución/foco; manana=preparación; semana=seguimiento; plan_semana=planificación)."
+    );
+  }
+
   if (Array.isArray(coachMemory) && coachMemory.length) {
     const blocks = coachMemory
       .map((m) => (m && m.text ? String(m.text).trim() : ""))
@@ -410,6 +460,13 @@ async function privateCoachChatCore(data) {
   const contextoModulo =
     data.contextoModulo && typeof data.contextoModulo === "object" ? data.contextoModulo : null;
 
+  const titoExtras = {
+    titoTimeContext:
+      data.titoTimeContext && typeof data.titoTimeContext === "object" ? data.titoTimeContext : null,
+    titoLexikon: data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : null,
+    titoMarcoTemporal: typeof data.titoMarcoTemporal === "string" ? data.titoMarcoTemporal.trim() : ""
+  };
+
   const key = openaiApiKey.value();
   if (!key) {
     throw new HttpsError("failed-precondition", "OPENAI_API_KEY no configurada en Functions.");
@@ -428,7 +485,8 @@ async function privateCoachChatCore(data) {
       coachMemory,
       contextoTiempo,
       contextoEstrategias,
-      contextoModulo
+      contextoModulo,
+      titoExtras
     );
     console.timeEnd("[tito] firestore+prompt");
 

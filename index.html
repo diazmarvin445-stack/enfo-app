@@ -2658,6 +2658,7 @@
         coachHistory: [],
         coachMemory: [],
         titoSessions: { global: [], diario: [], trading: [] },
+        titoLexikon: { terms: {} },
         estrategiasNotas: "",
         dayStickyNotes: {}
       };
@@ -3083,6 +3084,9 @@
         });
       }
       data.titoSessions = normalizedSessions;
+      data.titoLexikon = data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : { terms: {} };
+      data.titoLexikon.terms =
+        data.titoLexikon.terms && typeof data.titoLexikon.terms === "object" ? data.titoLexikon.terms : {};
       data.coachMemory.forEach((x) => {
         x.id = x.id || uid();
         x.at = x.at || new Date().toISOString();
@@ -7385,6 +7389,145 @@ function buildTitoTimeContext() {
   };
 }
 
+/** Snapshot actualizado en cada interacción (misma forma que buildTitoTimeContext). */
+var TITO_TIME_CONTEXT = buildTitoTimeContext();
+function syncTitoTimeContext() {
+  TITO_TIME_CONTEXT = buildTitoTimeContext();
+  return TITO_TIME_CONTEXT;
+}
+
+function ensureTitoLexikon() {
+  if (typeof D === "undefined") return;
+  if (!D.titoLexikon || typeof D.titoLexikon !== "object") D.titoLexikon = { terms: {} };
+  if (!D.titoLexikon.terms || typeof D.titoLexikon.terms !== "object") D.titoLexikon.terms = {};
+}
+
+/**
+ * t normalizado (privateCoachNormalizeText): pasado | hoy | manana | semana | plan_semana | null
+ */
+function titoDetectarMarcoTemporal(t) {
+  if (!t) return null;
+  if (/\bayer\b/.test(t)) return "pasado";
+  if (/\bmanana\b|\bma[nñ]ana\b/.test(t)) return "manana";
+  if (/\bdentro\s+de\s+una\s+semana\b/.test(t)) return "plan_semana";
+  if (/\bpara\s+la\s+semana\b|\besperando\s+.*(semana|semanas)|\buna\s+semana\b/.test(t)) {
+    return "plan_semana";
+  }
+  if (/\besta\s+semana\b/.test(t)) return "semana";
+  if (/\bhoy\b/.test(t)) return "hoy";
+  return null;
+}
+
+function titoLexikonRegistrar(clave, definicion) {
+  ensureTitoLexikon();
+  var k = String(clave || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!k) return;
+  var prev = D.titoLexikon.terms[k] || { n: 0 };
+  D.titoLexikon.terms[k] = {
+    def: definicion || prev.def || "",
+    n: (prev.n || 0) + 1,
+    lastSeen: new Date().toISOString()
+  };
+}
+
+/**
+ * Aprende términos frecuentes del usuario (gap, call/put, setups propios).
+ * Devuelve true si hubo cambios para persistir.
+ */
+function titoAprenderTerminosDelMensaje(raw) {
+  if (typeof D === "undefined") return false;
+  ensureTitoLexikon();
+  var before = JSON.stringify(D.titoLexikon.terms);
+  var s = String(raw || "");
+  if (/\bgap\s+al\s+alza\b|\bgap\s+alcista\b/i.test(s)) {
+    titoLexikonRegistrar("gap alcista", "Apertura por encima del cierre previo; hueco alcista.");
+  } else if (/\bgap\s+a\s+la\s+baja\b|\bgap\s+bajista\b/i.test(s)) {
+    titoLexikonRegistrar("gap bajista", "Apertura por debajo del cierre previo; hueco bajista.");
+  } else if (/\bgap\b/i.test(s)) {
+    titoLexikonRegistrar("gap", "Hueco entre el cierre previo y la apertura actual.");
+  }
+  if (/\bprimera\s+vela\s+roja\b/i.test(s)) {
+    titoLexikonRegistrar("primera vela roja", "Primera vela bajista en el marco temporal que miras.");
+  }
+  if (/\breportes?\s+de\s+utilidades?\b|\bearnings\b/i.test(s)) {
+    titoLexikonRegistrar("reportes de utilidades", "Ventana de resultados; volatilidad y gaps frecuentes.");
+  }
+  if (/\bcalls?\b/i.test(s)) titoLexikonRegistrar("call", "Opción alcista.");
+  if (/\bputs?\b/i.test(s)) titoLexikonRegistrar("put", "Opción bajista.");
+  return before !== JSON.stringify(D.titoLexikon.terms);
+}
+
+function getTitoLexikonPayload() {
+  ensureTitoLexikon();
+  var terms = D.titoLexikon.terms || {};
+  var keys = Object.keys(terms);
+  var out = {};
+  keys.slice(0, 24).forEach(function (k) {
+    var o = terms[k];
+    out[k] = { def: (o && o.def) || "", n: (o && o.n) || 0 };
+  });
+  return out;
+}
+
+function titoEsMensajeQuimica(raw) {
+  var s = String(raw || "").trim();
+  if (!s || s.length > 36) return false;
+  var n = privateCoachNormalizeText(s);
+  if (!n) return false;
+  var exact = [
+    "gracias",
+    "ok",
+    "okay",
+    "vale",
+    "perfecto",
+    "listo",
+    "entendido",
+    "de acuerdo",
+    "dale",
+    "genial",
+    "bien",
+    "claro",
+    "bueno",
+    "si",
+    "sí",
+    "thanks",
+    "thank you"
+  ];
+  if (exact.indexOf(n) !== -1) return true;
+  if (n.length <= 18 && /^(gracias|ok|vale|perfecto|listo|genial|claro)\b/.test(n)) return true;
+  return false;
+}
+
+function titoRespuestaQuimicaCorta(mod) {
+  var pool = [
+    "Bien. Sigue.",
+    "Perfecto. Mantén el foco.",
+    "Eso es. Disciplina.",
+    "Gracias a ti. Ejecuta.",
+    "Listo. Siguiente paso.",
+    "Bien. Una cosa menos; ahora acción."
+  ];
+  var salt = String(mod || "g") + "\0" + String(privateCoachOpenGreetingIdx || 0);
+  var idx = privateCoachHashStr(salt + Date.now()) % pool.length;
+  return pool[idx];
+}
+
+function privateCoachStripEchoUser(reply, userText) {
+  var r = String(reply || "").trim();
+  var u = String(userText || "").trim();
+  if (!u || u.length < 20) return r;
+  var low = u.toLowerCase();
+  var rl = r.toLowerCase();
+  if (rl.indexOf(low) !== -1 && low.split(/\s+/).length >= 5) {
+    var mod = getTitoModuloActivo();
+    return TITO_MOD_FALLBACK[mod] || TITO_MOD_FALLBACK.general;
+  }
+  return r;
+}
+
 function getModuloOrigenDesdeSesion() {
   var k = getTitoSessionKey();
   if (k === "diario") return "diario";
@@ -8443,6 +8586,12 @@ function buildPrivateCoachReply(userText) {
     return privateCoachPickFromBands("default", privateCoachBandsForMod(mod, "default"), userText || "");
   }
 
+  if (titoEsMensajeQuimica(userText)) {
+    return titoRespuestaQuimicaCorta(mod);
+  }
+
+  var marco = titoDetectarMarcoTemporal(t);
+
   if (mod === "diario") {
     if (
       privateCoachTextIncludesAny(t, [
@@ -8478,6 +8627,18 @@ function buildPrivateCoachReply(userText) {
     ) {
       return privateCoachPickFromBands("default", privateCoachBandsForMod(mod, "default"), userText);
     }
+    if (marco === "pasado") {
+      return "Ayer quedó atrás: una línea de aprendizaje hoy, sin relleno.";
+    }
+    if (marco === "manana") {
+      return "Mañana se prepara hoy: escribe una condición clara para avanzar sin dramatizar.";
+    }
+    if (marco === "hoy") {
+      return "Si es para hoy, baja a una sola acción de claridad: qué escribes y qué cierras.";
+    }
+    if (marco === "semana" || marco === "plan_semana") {
+      return "Eso es seguimiento en el tiempo: revisa consistencia de la semana, no solo el impulso del día.";
+    }
   }
   if (mod === "trading") {
     if (
@@ -8495,6 +8656,40 @@ function buildPrivateCoachReply(userText) {
     ) {
       return "En Estrategias solo vemos reglas, setup y ejecución. Lo emocional y el diario van en Diario.";
     }
+    if (/\bno\s+(se\s+)?dio\b/.test(t) || /\bno\s+hubo\s+(setup|entrada|senal|señal)\b/.test(t)) {
+      return "Si no se dio la condición, no hubo trade que validar: quédate con la observación y la regla.";
+    }
+    if (/\bno\s+se\s+dieron\b|\bdescartad[oa]s?\b|\bno\s+aplica\b/.test(t)) {
+      return "Si no aplicó o lo descartaste, es aprendizaje de proceso: anota qué faltó y cierra el capítulo.";
+    }
+    if (/\besperando\b/.test(t) && /\bhoy\b/.test(t) && (/\bgap\b/.test(t) || /\bapertura\b/.test(t))) {
+      return "Hoy es vigilancia de gap/apertura: solo disparas si tu checklist lo autoriza; si no, es espera, no FOMO.";
+    }
+    if (/\bma[nñ]ana\b|\bmanana\b/.test(t) && /revisar|reporte|estudiar|calendario|utilidad/.test(t)) {
+      return "Eso es preparación: define hoy criterio y horario; mañana revisas con checklist frío.";
+    }
+    if (/esperando.*estrateg|estrategias\s+para\s+una\s+semana|\buna\s+semana\b/.test(t)) {
+      return "Eso es planificación, no disparo inmediato: evalúa consistencia y reglas antes de repetir.";
+    }
+    if (/\bgap\b/.test(t)) {
+      return "Gap: hueco entre cierre previo y apertura. Valida dirección, tamaño y si tu plan permite operar ese contexto.";
+    }
+    if (marco === "hoy") {
+      return "Si es para hoy, ejecutas solo si cumples reglas, setup y riesgo definido. Si no, no improvises.";
+    }
+    if (marco === "manana") {
+      return "Mañana es preparación hoy: escribe condición de entrada, invalidación y tamaño antes de abrir.";
+    }
+    if (marco === "pasado") {
+      return "Ayer esa condición no se dio: quédate con el aprendizaje, no con la culpa.";
+    }
+    if (marco === "semana" || marco === "plan_semana") {
+      return "En ventana de semana mides consistencia del sistema, no un solo resultado aislado.";
+    }
+  }
+
+  if (mod === "general" && marco === "plan_semana") {
+    return "Ventana de varios días: prioriza criterios y seguimiento, no reaccionar cada hora.";
   }
 
   if (privateCoachTextIncludesAny(t, ["miedo"]) && privateCoachModAllowsBand(mod, "fear")) {
@@ -8604,11 +8799,15 @@ function privateCoachFormatTitoReply(raw) {
   return out.slice(0, 4000);
 }
 
-function privateCoachFinalizeCoachText(raw, skipFormat) {
+function privateCoachFinalizeCoachText(raw, skipFormat, originalUserText) {
   refreshTitoContext();
   var mod = getTitoModuloActivo();
   var f = skipFormat ? String(raw || "").replace(/\r\n/g, "\n").trim() : privateCoachFormatTitoReply(raw);
-  return privateCoachSanitizeModuleReply(f, mod);
+  f = privateCoachSanitizeModuleReply(f, mod);
+  if (!skipFormat && originalUserText) {
+    f = privateCoachStripEchoUser(f, originalUserText);
+  }
+  return f;
 }
 
 async function getCoachReplyFromCloud(data, token) {
@@ -8635,6 +8834,22 @@ async function sendPrivateCoachMessage() {
   const sendBtn = document.getElementById("enfo-coach-send");
   appendPrivateCoachMessage("user", text);
   if (sendBtn) sendBtn.disabled = true;
+
+  syncTitoTimeContext();
+  try {
+    if (titoAprenderTerminosDelMensaje(text)) sv();
+  } catch (eLex) {}
+
+  if (titoEsMensajeQuimica(text)) {
+    var replyQ = titoRespuestaQuimicaCorta(getTitoModuloActivo());
+    replyQ = privateCoachFinalizeCoachText(replyQ, true, text);
+    appendPrivateCoachMessage("coach", replyQ);
+    if (sendBtn) sendBtn.disabled = false;
+    setTimeout(function () {
+      privateCoachPersistTurn(text, replyQ);
+    }, 0);
+    return;
+  }
 
   const u = auth && auth.currentUser;
   let reply = "";
@@ -8750,9 +8965,9 @@ async function sendPrivateCoachMessage() {
     if (!String(reply || "").trim()) {
       reply = buildPrivateCoachReply(text);
     }
-    reply = privateCoachFinalizeCoachText(reply, skipPrivateCoachFormat);
+    reply = privateCoachFinalizeCoachText(reply, skipPrivateCoachFormat, text);
     if (!String(reply || "").trim()) {
-      reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false);
+      reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false, text);
     }
     appendPrivateCoachMessage("coach", reply);
     if (sendBtn) sendBtn.disabled = false;
@@ -8786,7 +9001,9 @@ async function sendPrivateCoachMessage() {
       coachMemory: getCoachMemoryForCloud().slice(0, 24).map(function (m) {
         return { text: String(m.text || "").slice(0, 800), at: m.at || "" };
       }),
-      titoTimeContext: buildTitoTimeContext(),
+      titoTimeContext: TITO_TIME_CONTEXT,
+      titoLexikon: getTitoLexikonPayload(),
+      titoMarcoTemporal: titoDetectarMarcoTemporal(privateCoachNormalizeText(text)),
       contextoTiempo: {
         fechaISO: ctxCloud.fechaISO,
         hora: ctxCloud.hora,
@@ -8823,9 +9040,9 @@ async function sendPrivateCoachMessage() {
   if (!String(reply || "").trim()) {
     reply = buildPrivateCoachReply(text);
   }
-  reply = privateCoachFinalizeCoachText(reply, false);
+  reply = privateCoachFinalizeCoachText(reply, false, text);
   if (!String(reply || "").trim()) {
-    reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false);
+    reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false, text);
   }
   appendPrivateCoachMessage("coach", reply);
   setTimeout(function () {
