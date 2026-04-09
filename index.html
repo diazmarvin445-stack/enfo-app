@@ -6560,11 +6560,13 @@ function extraerAccion(texto) {
 
 function compromisoEstaPendiente(m) {
   if (!m) return false;
-  if (m.estado === "ajustado" || m.estado === "reemplazado") return false;
-  if (m.estado === "completado") return false;
   if (m.completado === true) return false;
-  if (m.estado === "pendiente") return true;
-  if (m.estado == null || m.estado === undefined) {
+  var st = m.estado;
+  if (st === "cancelado" || st === "eliminado") return false;
+  if (st === "completado") return false;
+  if (st === "ajustado" || st === "reemplazado") return false;
+  if (st === "pendiente") return true;
+  if (st == null || st === undefined) {
     return !m.completado;
   }
   return false;
@@ -6858,6 +6860,93 @@ function detectarCambioDeTema(texto) {
     return true;
   }
   return false;
+}
+
+/**
+ * Usuario quiere dejar de ver / borrar compromisos pendientes (sin cerrarlos como hechos).
+ */
+function detectarIntencionLimpiarPendientes(texto) {
+  var raw = String(texto || "").trim();
+  var t = raw.toLowerCase();
+  if (t.length < 2 || t.length > 220) return false;
+  if (/\bno\s+(quiero\s+que\s+)?(borres|elimines|quites)\b/.test(t)) return false;
+  if (/\bno\s+voy\s+a\s+borrar\b/.test(t)) return false;
+  var marcas = [
+    "borra esos pendientes",
+    "borra estos pendientes",
+    "borra los pendientes",
+    "borrar esos pendientes",
+    "borrar estos pendientes",
+    "quiero que borres esos pendientes",
+    "quiero que borres los pendientes",
+    "quiero que borres eso",
+    "quiero que borres",
+    "quiero que elimines",
+    "quiero que quites eso",
+    "quiero que quites",
+    "limpia esos pendientes",
+    "limpia estos pendientes",
+    "limpia los pendientes",
+    "limpia pendientes",
+    "limpiar pendientes",
+    "elimínalos",
+    "elimínalo",
+    "eliminalos",
+    "eliminalo",
+    "eliminalos todos",
+    "elimina esos",
+    "elimina eso",
+    "borra esos",
+    "borra eso",
+    "borra todo",
+    "borrá",
+    "quita eso",
+    "quítalo",
+    "quitalo",
+    "olvida eso",
+    "olvídalo",
+    "olvidalo",
+    "ya no quiero eso",
+    "ya no quiero",
+    "cierra eso",
+    "cancela eso",
+    "cancelalos",
+    "cancelá eso",
+    "cancela esos",
+    "no me repitas",
+    "no los repitas",
+    "no repitas eso",
+    "deja de repetir",
+    "olvida los pendientes",
+    "olvida esos pendientes"
+  ];
+  var i;
+  for (i = 0; i < marcas.length; i++) {
+    if (t.indexOf(marcas[i]) !== -1) return true;
+  }
+  if (/^\s*ya\s*no\s*[!?.…]*\s*$/i.test(raw)) return true;
+  if (/^\s*(no|olvida|olvídalo|olvidalo)\s*[!?.…]*\s*$/i.test(raw)) return true;
+  return false;
+}
+
+async function cancelarTodosCompromisosPendientes(uid) {
+  const lista = verificarPendientes(memoriaTito);
+  if (!lista.length) return 0;
+  const ref = titoMemoriaCollectionRef(uid);
+  if (!ref || typeof db === "undefined" || !db) return 0;
+  const ahora = new Date().toISOString();
+  var batch = db.batch();
+  var n = 0;
+  lista.forEach(function (p) {
+    if (!p || !p.id) return;
+    batch.update(ref.doc(p.id), {
+      estado: "cancelado",
+      canceladoAt: ahora
+    });
+    n++;
+  });
+  if (n) await batch.commit();
+  return n;
 }
 
 function detectarAjusteEnfoque(texto) {
@@ -7622,8 +7711,29 @@ async function sendPrivateCoachMessage() {
     try {
       await cargarMemoria(u.uid);
 
+      var limpiezaHecha = false;
+      if (detectarIntencionLimpiarPendientes(text)) {
+        var pendLimp = verificarPendientes(memoriaTito);
+        if (pendLimp.length > 0) {
+          await cancelarTodosCompromisosPendientes(u.uid);
+          await cargarMemoria(u.uid);
+          reply =
+            "Bien. Limpié esos pendientes.\n\n" +
+            "Ya no los voy a tomar en cuenta.\n\n" +
+            "Ahora dime en qué te quieres enfocar.";
+          skipPrivateCoachFormat = true;
+          skipCloud = true;
+        } else {
+          reply =
+            "No tenías pendientes activos. Dime en qué te quieres enfocar.";
+          skipPrivateCoachFormat = true;
+          skipCloud = true;
+        }
+        limpiezaHecha = true;
+      }
+
       var ajusteHecho = false;
-      if (detectarAjusteEnfoque(text)) {
+      if (!limpiezaHecha && detectarAjusteEnfoque(text)) {
         var pendAjuste = verificarPendientes(memoriaTito);
         if (pendAjuste.length >= 1) {
           var orgAjuste = getOrganizacionTemporal(memoriaTito, ctxTito);
@@ -7645,7 +7755,7 @@ async function sendPrivateCoachMessage() {
         }
       }
 
-      if (!ajusteHecho) {
+      if (!limpiezaHecha && !ajusteHecho) {
         var cierre = await cerrarCompromisoPendiente(u.uid, text);
         if (cierre.closed) {
           await cargarMemoria(u.uid);
