@@ -1612,6 +1612,80 @@
       50% { opacity: 1; }
     }
 
+    /* Tito flotante — Diario (discreto, no empuja layout) */
+    .diario-tito-float {
+      position: fixed;
+      right: max(12px, env(safe-area-inset-right, 0px));
+      bottom: calc(72px + 10px + env(safe-area-inset-bottom, 0px));
+      z-index: 38;
+      display: none;
+      flex-direction: row;
+      align-items: flex-end;
+      gap: 8px;
+      max-width: min(calc(100vw - 24px), 430px);
+      pointer-events: none;
+    }
+    .diario-tito-float > * {
+      pointer-events: auto;
+    }
+    .diario-tito-tip {
+      font-size: 11px;
+      line-height: 1.35;
+      color: var(--text2);
+      background: rgba(13, 22, 40, 0.92);
+      border: 1px solid rgba(59, 130, 246, 0.28);
+      border-radius: 12px;
+      padding: 8px 10px;
+      max-width: 132px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      margin-bottom: 10px;
+    }
+    .diario-tito-mascot {
+      width: 48px;
+      height: 56px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      -webkit-tap-highlight-color: transparent;
+      filter: drop-shadow(0 2px 10px rgba(0, 200, 255, 0.22));
+    }
+    .diario-tito-mascot:active {
+      transform: scale(0.94);
+    }
+    .diario-tito-head {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(155deg, #152a45, #0c1828);
+      border: 2px solid rgba(0, 200, 255, 0.45);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    .diario-tito-head::before,
+    .diario-tito-head::after {
+      content: "";
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(0, 200, 255, 0.55);
+      top: 10px;
+    }
+    .diario-tito-head::before { left: 7px; }
+    .diario-tito-head::after { right: 7px; }
+    .diario-tito-body {
+      width: 5px;
+      height: 16px;
+      margin-top: -1px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, var(--accent2), rgba(29, 106, 255, 0.85));
+    }
+
     .enfo-coach-thinking-dots {
       display: inline-block;
       width: 1.2em;
@@ -1932,16 +2006,11 @@
     <div class="page-title" style="flex:1;min-width:0;">DIARIO</div>
     <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
   </div>
-  <div id="diario-tito-enfoque-card" class="card diario-tito-enfoque" style="display:none;background:linear-gradient(135deg,#0a1525,#0d1e38);margin:4px 16px 12px;cursor:pointer;" role="button" tabindex="0" onclick="openTitoFromDiario(event)">
-    <div class="clabel cl-cyan">Tito — Enfoque</div>
-    <p id="diario-tito-enfoque-line" style="font-size:14px;line-height:1.55;color:var(--text2);margin:0 0 12px;">—</p>
-    <button type="button" class="btn btn-p" style="width:100%;text-transform:none;letter-spacing:0.4px;font-size:13px;" onclick="event.stopPropagation();openTitoFromDiario();">Abrir Tito</button>
-  </div>
   <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
     <div class="clabel cl-cyan" id="dlbl"></div>
     <textarea id="dinp" rows="6" placeholder="Este es tu espacio personal. Escribe libremente..."></textarea>
     <div style="height:12px;"></div>
-    <button class="btn btn-p" onclick="saveDiary()" style="text-transform:uppercase; letter-spacing:1.5px; font-size:13px;">Guardar entrada</button>
+    <button class="btn btn-p" onclick="saveDiary()" style="text-transform:uppercase; letter-spacing:1.5px; font-size:13px;">Guardar</button>
   </div>
   <div class="slabel">📅 ENTRADAS ANTERIORES</div>
   <div id="diary-list"></div>
@@ -2016,6 +2085,14 @@
   <button class="nb" id="nb-diario" onclick="nav('diario')"><span class="nb-icon">☰</span><span class="nb-lbl">DIARIO</span></button>
   <button class="nb" id="nb-biblioteca" onclick="nav('biblioteca')"><span class="nb-icon">📚</span><span class="nb-lbl">BIBLIOTECA</span></button>
 </nav>
+
+  <div id="diario-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
+    <div id="diario-tito-tip" class="diario-tito-tip" style="display:none;"></div>
+    <button type="button" id="diario-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
+      <span class="diario-tito-head"></span>
+      <span class="diario-tito-body"></span>
+    </button>
+  </div>
 
 <div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
   <div class="msheet">
@@ -2980,6 +3057,13 @@
       if (id === "biblioteca")  rquotes();
       if (id === "horario")     { renderBlocks(); requestNotifPermission(); }
       updatePrivateCoachVisibility();
+      if (id !== "diario") {
+        var df = document.getElementById("diario-tito-float");
+        if (df) {
+          df.style.display = "none";
+          df.setAttribute("aria-hidden", "true");
+        }
+      }
     }
 
     function setDates() { startLiveClock(); }
@@ -4027,19 +4111,19 @@ function startEditDiary(id) {
   if (!item) return;
   editingDiaryId = id;
   document.getElementById("dinp").value = item.text || "";
-  document.querySelector("#s-diario .btn.btn-p").textContent = "Actualizar entrada";
+  document.querySelector("#s-diario .btn.btn-p").textContent = "Actualizar";
   nav("diario");
 }
 
 function resetDiaryMode() {
   editingDiaryId = null;
   const btn = document.querySelector("#s-diario .btn.btn-p");
-  if (btn) btn.textContent = "Guardar entrada";
+  if (btn) btn.textContent = "Guardar";
 }
 
 function rdiary() {
   resetDiaryMode();
-  renderDiarioTitoEnfoqueCard();
+  void renderDiarioTitoFloat();
   const l = document.getElementById("diary-list");
   if (!D.diary.length) { l.innerHTML = ""; return; }
 
@@ -7201,32 +7285,37 @@ function obtenerEnfoquePendienteMasReciente() {
   return list[0];
 }
 
-async function renderDiarioTitoEnfoqueCard() {
-  var wrap = document.getElementById("diario-tito-enfoque-card");
-  var line = document.getElementById("diario-tito-enfoque-line");
-  if (!wrap || !line) return;
-  if (!isPrivateCoachEnabled()) {
+async function renderDiarioTitoFloat() {
+  var wrap = document.getElementById("diario-tito-float");
+  var tip = document.getElementById("diario-tito-tip");
+  if (!wrap) return;
+  var active = document.querySelector("#app .screen.active");
+  if (!active || active.id !== "s-diario" || !isPrivateCoachEnabled()) {
     wrap.style.display = "none";
+    wrap.setAttribute("aria-hidden", "true");
     return;
   }
-  wrap.style.display = "";
+  wrap.style.display = "flex";
+  wrap.removeAttribute("aria-hidden");
+  if (tip) tip.style.display = "none";
   var u = auth && auth.currentUser;
   if (!u || typeof db === "undefined" || !db) {
-    line.textContent = "No tienes un enfoque definido. Define uno ahora.";
     return;
   }
   try {
     await cargarMemoria(u.uid);
   } catch (err) {
-    console.error("diario tito enfoque:", err);
+    console.error("diario tito float:", err);
   }
+  if (!tip) return;
   var enfo = obtenerEnfoquePendienteMasReciente();
   if (enfo && String(enfo.accion || "").trim()) {
-    line.textContent =
-      "Tu enfoque actual: " + titoFormatearAccionCoach(enfo.accion);
+    var tips = ["Enfócate.", "Tienes un pendiente.", "Abre Tito."];
+    tip.textContent = tips[Math.abs(titoCoachControlVariant) % 3];
+    titoCoachControlVariant += 1;
+    tip.style.display = "block";
   } else {
-    line.textContent =
-      "No tienes un enfoque definido. Define uno ahora.";
+    tip.style.display = "none";
   }
 }
 
