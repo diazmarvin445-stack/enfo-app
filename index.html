@@ -1932,6 +1932,11 @@
     <div class="page-title" style="flex:1;min-width:0;">DIARIO</div>
     <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
   </div>
+  <div id="diario-tito-enfoque-card" class="card diario-tito-enfoque" style="display:none;background:linear-gradient(135deg,#0a1525,#0d1e38);margin:4px 16px 12px;cursor:pointer;" role="button" tabindex="0" onclick="openTitoFromDiario(event)">
+    <div class="clabel cl-cyan">Tito — Enfoque</div>
+    <p id="diario-tito-enfoque-line" style="font-size:14px;line-height:1.55;color:var(--text2);margin:0 0 12px;">—</p>
+    <button type="button" class="btn btn-p" style="width:100%;text-transform:none;letter-spacing:0.4px;font-size:13px;" onclick="event.stopPropagation();openTitoFromDiario();">Abrir Tito</button>
+  </div>
   <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
     <div class="clabel cl-cyan" id="dlbl"></div>
     <textarea id="dinp" rows="6" placeholder="Este es tu espacio personal. Escribe libremente..."></textarea>
@@ -4034,6 +4039,7 @@ function resetDiaryMode() {
 
 function rdiary() {
   resetDiaryMode();
+  renderDiarioTitoEnfoqueCard();
   const l = document.getElementById("diary-list");
   if (!D.diary.length) { l.innerHTML = ""; return; }
 
@@ -7108,9 +7114,19 @@ function isPrivateCoachMentalidadSectionActive() {
   return !!(el && el.id === "s-inicio");
 }
 
-/** FAB y panel solo si UID permitido y usuario está en Inicio (Mentalidad). */
+/** Inicio o Diario: pantallas donde puede mostrarse Tito (FAB en Inicio; tarjeta en Diario). */
+function isPrivateCoachTitoSectionActive() {
+  const app = document.getElementById("app");
+  if (!app) return false;
+  const cs = getComputedStyle(app);
+  if (cs.display === "none" || cs.visibility === "hidden") return false;
+  const el = app.querySelector(".screen.active");
+  return !!(el && (el.id === "s-inicio" || el.id === "s-diario"));
+}
+
+/** FAB y panel si UID permitido y usuario está en Inicio o Diario. */
 function isPrivateCoachUiAllowed() {
-  return isPrivateCoachEnabled() && isPrivateCoachMentalidadSectionActive();
+  return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
 }
 
 function isPrivateCoachEnabled() {
@@ -7143,7 +7159,7 @@ function togglePrivateCoach(force) {
   if (!isPrivateCoachEnabled()) return;
   if (typeof force === "boolean") {
     privateCoachOpen = force;
-    if (privateCoachOpen && !isPrivateCoachMentalidadSectionActive()) privateCoachOpen = false;
+    if (privateCoachOpen && !isPrivateCoachTitoSectionActive()) privateCoachOpen = false;
     if (!privateCoachOpen) privateCoachResetOpenGreeting();
     syncPrivateCoachPanelDom();
     if (privateCoachOpen) {
@@ -7160,13 +7176,58 @@ function togglePrivateCoach(force) {
     syncPrivateCoachPanelDom();
     return;
   }
-  if (!isPrivateCoachMentalidadSectionActive()) return;
+  if (!isPrivateCoachTitoSectionActive()) return;
   privateCoachOpen = true;
   syncPrivateCoachPanelDom();
   privateCoachAppendOpenGreetingOnce();
   preloadPrivateCoachMemoria();
   const input = document.getElementById("enfo-coach-input");
   if (input) setTimeout(() => { input.focus(); }, 220);
+}
+
+function openTitoFromDiario(ev) {
+  if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+  if (!isPrivateCoachEnabled()) return;
+  togglePrivateCoach(true);
+}
+
+/** MVP Diario: enfoque = compromiso pendiente más reciente (createdAtClient). */
+function obtenerEnfoquePendienteMasReciente() {
+  var list = verificarPendientes(memoriaTito);
+  if (!list.length) return null;
+  list.sort(function (a, b) {
+    return titoCommitmentClientMs(b) - titoCommitmentClientMs(a);
+  });
+  return list[0];
+}
+
+async function renderDiarioTitoEnfoqueCard() {
+  var wrap = document.getElementById("diario-tito-enfoque-card");
+  var line = document.getElementById("diario-tito-enfoque-line");
+  if (!wrap || !line) return;
+  if (!isPrivateCoachEnabled()) {
+    wrap.style.display = "none";
+    return;
+  }
+  wrap.style.display = "";
+  var u = auth && auth.currentUser;
+  if (!u || typeof db === "undefined" || !db) {
+    line.textContent = "No tienes un enfoque definido. Define uno ahora.";
+    return;
+  }
+  try {
+    await cargarMemoria(u.uid);
+  } catch (err) {
+    console.error("diario tito enfoque:", err);
+  }
+  var enfo = obtenerEnfoquePendienteMasReciente();
+  if (enfo && String(enfo.accion || "").trim()) {
+    line.textContent =
+      "Tu enfoque actual: " + titoFormatearAccionCoach(enfo.accion);
+  } else {
+    line.textContent =
+      "No tienes un enfoque definido. Define uno ahora.";
+  }
 }
 
 function appendPrivateCoachMessage(role, text) {
@@ -8016,7 +8077,7 @@ Object.assign(window, {
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
   closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
-  togglePrivateCoach, sendPrivateCoachMessage,
+  togglePrivateCoach, sendPrivateCoachMessage, openTitoFromDiario,
   openDaySticky, closeDaySticky, dayStickyEditorInput
 });
 
