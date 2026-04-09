@@ -1689,6 +1689,11 @@
       border-radius: 3px;
       background: linear-gradient(180deg, var(--accent2), rgba(29, 106, 255, 0.85));
     }
+    .tito-context-tip--wide {
+      max-width: 158px;
+      font-size: 9px;
+      line-height: 1.4;
+    }
 
     .enfo-coach-thinking-dots {
       display: inline-block;
@@ -1873,9 +1878,18 @@
   <div class="page-header">
     <button class="back-btn" onclick="nav('inicio')">‹</button>
     <div class="page-title" style="flex:1;min-width:0;">ESTRATEGIAS</div>
-    <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
-    <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
-    <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
+    <div class="diario-header-tools estrat-header-tools">
+      <div id="estrat-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
+        <div id="estrat-tito-tip" class="diario-tito-tip tito-context-tip--wide" style="display:none;"></div>
+        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
+          <span class="diario-tito-head"></span>
+          <span class="diario-tito-body"></span>
+        </button>
+      </div>
+      <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
+      <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
+      <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
+    </div>
   </div>
   <div class="estrategias-hoy-wrap" id="estrategias-hoy-wrap" aria-label="Estrategias con operaciones hoy">
     <div class="estrategias-hoy-title">Estrategias destacadas de hoy</div>
@@ -3069,6 +3083,13 @@
           df.setAttribute("aria-hidden", "true");
         }
       }
+      if (id !== "estrategias") {
+        var ef = document.getElementById("estrat-tito-float");
+        if (ef) {
+          ef.style.display = "none";
+          ef.setAttribute("aria-hidden", "true");
+        }
+      }
     }
 
     function setDates() { startLiveClock(); }
@@ -3386,7 +3407,48 @@ function renderEstrategiasHoy() {
     .join("");
 }
 
+/** Operación registrada en los últimos 14 días (fecha local YYYY-MM-DD). */
+function estrategiasHayOperacionesRecientes() {
+  var list = D.strategies || [];
+  var d = new Date();
+  d.setDate(d.getDate() - 14);
+  var cutoff = fmtDateYMD(d);
+  for (var i = 0; i < list.length; i++) {
+    var ops = list[i].ops || [];
+    for (var j = 0; j < ops.length; j++) {
+      var ymd = opDateToYMD(ops[j]);
+      if (ymd && ymd >= cutoff) return true;
+    }
+  }
+  return false;
+}
+
+function renderEstrategiasTitoFloat() {
+  var wrap = document.getElementById("estrat-tito-float");
+  var tip = document.getElementById("estrat-tito-tip");
+  if (!wrap) return;
+  var active = document.querySelector("#app .screen.active");
+  if (!active || active.id !== "s-estrategias" || !isPrivateCoachEnabled()) {
+    wrap.style.display = "none";
+    wrap.setAttribute("aria-hidden", "true");
+    return;
+  }
+  wrap.style.display = "flex";
+  wrap.removeAttribute("aria-hidden");
+  if (!tip) return;
+  var nStrat = D.strategies && D.strategies.length ? D.strategies.length : 0;
+  if (nStrat === 0) {
+    tip.textContent = "No tienes estrategias. Define una antes de operar.";
+  } else if (estrategiasHayOperacionesRecientes()) {
+    tip.textContent = "No improvises. Sigue tu sistema.";
+  } else {
+    tip.textContent = "Revisa tu estrategia antes de actuar.";
+  }
+  tip.style.display = "block";
+}
+
 function rstrat() {
+  renderEstrategiasTitoFloat();
   renderEstrategiasHoy();
   const l = document.getElementById("strat-list");
   if (!D.strategies.length) {
@@ -7203,17 +7265,17 @@ function isPrivateCoachMentalidadSectionActive() {
   return !!(el && el.id === "s-inicio");
 }
 
-/** Inicio o Diario: pantallas donde puede mostrarse Tito (FAB en Inicio; tarjeta en Diario). */
+/** Inicio, Diario o Estrategias: pantallas donde puede mostrarse Tito. */
 function isPrivateCoachTitoSectionActive() {
   const app = document.getElementById("app");
   if (!app) return false;
   const cs = getComputedStyle(app);
   if (cs.display === "none" || cs.visibility === "hidden") return false;
   const el = app.querySelector(".screen.active");
-  return !!(el && (el.id === "s-inicio" || el.id === "s-diario"));
+  return !!(el && (el.id === "s-inicio" || el.id === "s-diario" || el.id === "s-estrategias"));
 }
 
-/** FAB y panel si UID permitido y usuario está en Inicio o Diario. */
+/** FAB y panel si UID permitido y pantalla Tito activa. */
 function isPrivateCoachUiAllowed() {
   return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
 }
