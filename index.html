@@ -1612,33 +1612,32 @@
       50% { opacity: 1; }
     }
 
-    /* Tito flotante — Diario (discreto, no empuja layout) */
+    /* Tito — Diario: junto a Metas en cabecera (asistente compacto, sin fixed) */
+    .diario-header-tools {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
     .diario-tito-float {
-      position: fixed;
-      right: max(12px, env(safe-area-inset-right, 0px));
-      bottom: calc(72px + 10px + env(safe-area-inset-bottom, 0px));
-      z-index: 38;
+      position: relative;
       display: none;
       flex-direction: row;
-      align-items: flex-end;
-      gap: 8px;
-      max-width: min(calc(100vw - 24px), 430px);
-      pointer-events: none;
-    }
-    .diario-tito-float > * {
-      pointer-events: auto;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      z-index: 2;
     }
     .diario-tito-tip {
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.35;
       color: var(--text2);
-      background: rgba(13, 22, 40, 0.92);
+      background: rgba(13, 22, 40, 0.94);
       border: 1px solid rgba(59, 130, 246, 0.28);
-      border-radius: 12px;
-      padding: 8px 10px;
-      max-width: 132px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-      margin-bottom: 10px;
+      border-radius: 10px;
+      padding: 6px 8px;
+      max-width: 108px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
     .diario-tito-mascot {
       width: 48px;
@@ -1653,6 +1652,11 @@
       justify-content: flex-end;
       -webkit-tap-highlight-color: transparent;
       filter: drop-shadow(0 2px 10px rgba(0, 200, 255, 0.22));
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    .diario-tito-mascot:hover {
+      filter: drop-shadow(0 3px 14px rgba(0, 200, 255, 0.38));
+      transform: scale(1.04);
     }
     .diario-tito-mascot:active {
       transform: scale(0.94);
@@ -2004,7 +2008,16 @@
   <div class="page-header">
     <button class="back-btn" onclick="nav('inicio')">‹</button>
     <div class="page-title" style="flex:1;min-width:0;">DIARIO</div>
-    <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
+    <div class="diario-header-tools">
+      <div id="diario-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
+        <div id="diario-tito-tip" class="diario-tito-tip" style="display:none;"></div>
+        <button type="button" id="diario-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
+          <span class="diario-tito-head"></span>
+          <span class="diario-tito-body"></span>
+        </button>
+      </div>
+      <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
+    </div>
   </div>
   <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
     <div class="clabel cl-cyan" id="dlbl"></div>
@@ -2085,14 +2098,6 @@
   <button class="nb" id="nb-diario" onclick="nav('diario')"><span class="nb-icon">☰</span><span class="nb-lbl">DIARIO</span></button>
   <button class="nb" id="nb-biblioteca" onclick="nav('biblioteca')"><span class="nb-icon">📚</span><span class="nb-lbl">BIBLIOTECA</span></button>
 </nav>
-
-  <div id="diario-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
-    <div id="diario-tito-tip" class="diario-tito-tip" style="display:none;"></div>
-    <button type="button" id="diario-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
-      <span class="diario-tito-head"></span>
-      <span class="diario-tito-body"></span>
-    </button>
-  </div>
 
 <div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
   <div class="msheet">
