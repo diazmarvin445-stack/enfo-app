@@ -4162,8 +4162,8 @@ function saveLongTermGoal(id) {
 function askDelLongTermGoal(id) {
   opConf("🗑", "Eliminar meta", "¿Eliminar esta meta a largo plazo? No se puede deshacer.", function() {
     longTermGoals = longTermGoals.filter(function(x) { return x.id !== id; });
+    renderMetasLargoPanel();
     persistLongTermGoalsToFirestore().then(function() {
-      renderMetasLargoPanel();
       showCelebration("🗑");
     }).catch(function(err) {
       console.error(err);
@@ -4280,8 +4280,8 @@ function saveShortTermGoal(id) {
 function askDelShortTermGoal(id) {
   opConf("🗑", "Eliminar meta", "¿Eliminar esta meta a corto plazo? No se puede deshacer.", function() {
     shortTermGoals = shortTermGoals.filter(function(x) { return x.id !== id; });
+    renderMetasCortoPanel();
     persistShortTermGoalsToFirestore().then(function() {
-      renderMetasCortoPanel();
       showCelebration("🗑");
     }).catch(function(err) {
       console.error(err);
