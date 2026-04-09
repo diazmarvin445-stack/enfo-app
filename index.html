@@ -3407,20 +3407,72 @@ function renderEstrategiasHoy() {
     .join("");
 }
 
-/** Operación registrada en los últimos 14 días (fecha local YYYY-MM-DD). */
-function estrategiasHayOperacionesRecientes() {
-  var list = D.strategies || [];
-  var d = new Date();
-  d.setDate(d.getDate() - 14);
-  var cutoff = fmtDateYMD(d);
-  for (var i = 0; i < list.length; i++) {
-    var ops = list[i].ops || [];
-    for (var j = 0; j < ops.length; j++) {
-      var ymd = opDateToYMD(ops[j]);
-      if (ymd && ymd >= cutoff) return true;
-    }
+var titoEstrategiasBubbleAlt = 0;
+
+/** Contexto serializable del módulo Estrategias para Tito (bubble + chat cloud). */
+function getContextoEstrategiasParaTito() {
+  var out = {
+    modulo: "ninguno",
+    totalEstrategias: Array.isArray(D.strategies) ? D.strategies.length : 0,
+    viendoDetalle: false,
+    estrategia: null
+  };
+  var act = document.querySelector("#app .screen.active");
+  if (!act || act.id !== "s-estrategias") return out;
+  out.modulo = "estrategias";
+  var det = document.getElementById("strat-detail");
+  out.viendoDetalle = !!(det && det.classList.contains("open") && cur);
+  var s = out.viendoDetalle ? gS() : null;
+  if (!s) return out;
+  var ops = getCurrentWeekOps(s);
+  var w = ops.filter(function (o) { return o.result === "win"; }).length;
+  var lb = ops.filter(function (o) { return o.result === "lose"; }).length;
+  var t = ops.length;
+  var estadoEtiqueta;
+  if (t === 0) {
+    estadoEtiqueta = "Semana limpia (0 operaciones esta semana)";
+  } else {
+    estadoEtiqueta = w + "W " + lb + "L · " + t + " operación" + (t !== 1 ? "es" : "") + " esta semana";
   }
-  return false;
+  out.estrategia = {
+    nombre: String(s.name || "").slice(0, 200),
+    tipo: (s.side || "Call") === "Put" ? "Put" : "Call",
+    operacionesSemanaActual: t,
+    ganadasSemana: w,
+    perdidasSemana: lb,
+    estadoSemanal: estadoEtiqueta
+  };
+  return out;
+}
+
+function buildEstrategiasTitoBubbleMessage() {
+  var nStrat = (D.strategies && D.strategies.length) || 0;
+  if (nStrat === 0) {
+    return "No tienes estrategias definidas. Crea una antes de operar.";
+  }
+  var det = document.getElementById("strat-detail");
+  var detailOpen = det && det.classList.contains("open");
+  var s = detailOpen && cur ? gS() : null;
+  if (!s) {
+    return "Selecciona una estrategia para revisar reglas, tipo y operaciones de la semana.";
+  }
+  var ops = getCurrentWeekOps(s);
+  var w = ops.filter(function (o) { return o.result === "win"; }).length;
+  var lb = ops.filter(function (o) { return o.result === "lose"; }).length;
+  var t = ops.length;
+  var weak = t > 0 && (lb > w || (lb >= 2 && w === 0));
+  var name = String(s.name || "esta estrategia").trim() || "esta estrategia";
+  if (weak) {
+    return "Si esta estrategia no está dando resultados, revísala antes de repetirla.";
+  }
+  if (t === 0) {
+    return "Aún no has ejecutado esta estrategia esta semana. No improvises.";
+  }
+  var useAlt = (titoEstrategiasBubbleAlt++ % 2) === 1;
+  if (useAlt) {
+    return "Antes de ejecutar, asegúrate de seguir esta estrategia tal como fue definida.";
+  }
+  return "Estás viendo: " + name + ". Revisa sus reglas antes de entrar.";
 }
 
 function renderEstrategiasTitoFloat() {
@@ -3436,14 +3488,7 @@ function renderEstrategiasTitoFloat() {
   wrap.style.display = "flex";
   wrap.removeAttribute("aria-hidden");
   if (!tip) return;
-  var nStrat = D.strategies && D.strategies.length ? D.strategies.length : 0;
-  if (nStrat === 0) {
-    tip.textContent = "No tienes estrategias. Define una antes de operar.";
-  } else if (estrategiasHayOperacionesRecientes()) {
-    tip.textContent = "No improvises. Sigue tu sistema.";
-  } else {
-    tip.textContent = "Revisa tu estrategia antes de actuar.";
-  }
+  tip.textContent = buildEstrategiasTitoBubbleMessage();
   tip.style.display = "block";
 }
 
@@ -3581,6 +3626,7 @@ function openS(id) {
   renderWeeklyAnalysis();
   renderStrategyImageSection();
   document.getElementById("strat-detail").classList.add("open");
+  renderEstrategiasTitoFloat();
 }
 
 function closeDetail() {
@@ -8087,7 +8133,8 @@ async function sendPrivateCoachMessage() {
         periodo: ctxCloud.periodo,
         diaSemana: ctxCloud.diaSemana,
         diaSemanaNombre: ctxCloud.diaSemanaNombre
-      }
+      },
+      contextoEstrategias: getContextoEstrategiasParaTito()
     };
     const json = await getCoachReplyFromCloud(data, token);
     if (json && json.error != null && json.reply == null) {

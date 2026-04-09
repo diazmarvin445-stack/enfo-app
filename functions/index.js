@@ -210,7 +210,7 @@ function extractResponsesText(data) {
   return "";
 }
 
-function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo) {
+function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo, contextoEstrategias) {
   const parts = [];
 
   if (
@@ -228,6 +228,29 @@ function buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo) {
     if (contextoTiempo.periodo) bits.push(`periodo del día: ${contextoTiempo.periodo}`);
     if (contextoTiempo.diaSemanaNombre) bits.push(`día: ${contextoTiempo.diaSemanaNombre}`);
     parts.push("Contexto temporal (ahora, cliente):\n" + bits.join(", ") + ".");
+  }
+
+  if (
+    contextoEstrategias &&
+    typeof contextoEstrategias === "object" &&
+    contextoEstrategias.modulo === "estrategias"
+  ) {
+    const e = contextoEstrategias;
+    let block = "Contexto módulo Estrategias (ENFO):\n";
+    block += `Estrategias guardadas en total: ${Number(e.totalEstrategias) || 0}.\n`;
+    if (e.viendoDetalle && e.estrategia && typeof e.estrategia === "object") {
+      const z = e.estrategia;
+      block += "El usuario tiene abierto el detalle de una estrategia ahora.\n";
+      block += `Nombre: ${String(z.nombre || "").slice(0, 200)}.\n`;
+      block += `Tipo (Call/Put): ${z.tipo === "Put" ? "Put" : "Call"}.\n`;
+      block += `Operaciones esta semana: ${Number(z.operacionesSemanaActual) || 0} `;
+      block += `(ganadas: ${Number(z.ganadasSemana) || 0}, perdidas: ${Number(z.perdidasSemana) || 0}).\n`;
+      block += `Estado semanal (resumen): ${String(z.estadoSemanal || "").slice(0, 300)}.\n`;
+    } else {
+      block +=
+        "El usuario está en la pantalla Estrategias pero no tiene abierto el detalle de una estrategia concreta (lista o vista general).\n";
+    }
+    parts.push(block);
   }
 
   if (Array.isArray(coachMemory) && coachMemory.length) {
@@ -273,6 +296,10 @@ async function privateCoachChatCore(data) {
   const coachMemory = COACH_MEMORY_INPUT_BLOCKS;
   const contextoTiempo =
     data.contextoTiempo && typeof data.contextoTiempo === "object" ? data.contextoTiempo : null;
+  const contextoEstrategias =
+    data.contextoEstrategias && typeof data.contextoEstrategias === "object"
+      ? data.contextoEstrategias
+      : null;
 
   const key = openaiApiKey.value();
   if (!key) {
@@ -286,7 +313,7 @@ async function privateCoachChatCore(data) {
     const instructions = buildTitoSystemPrompt(titoCore);
     console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
 
-    const input = buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo);
+    const input = buildOpenAIInput(userText, coachHistory, coachMemory, contextoTiempo, contextoEstrategias);
     console.timeEnd("[tito] firestore+prompt");
 
     console.time("[tito] openai");
