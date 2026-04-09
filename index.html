@@ -5054,7 +5054,7 @@ function saveBlock() {
 function toggleBlockDone(id, dayKey) {
   const key = dayKey || getDayKey();
   const log = ensureBlockLog(key);
-  const wasDone = !!log[id];
+  const wasDone = log[id] === true;
   if (wasDone) delete log[id];
   else {
     log[id] = true;
@@ -5109,6 +5109,384 @@ function formatTime(t) {
   return h12 + ":" + String(m).padStart(2,"0") + " " + ampm;
 }
 
+/** Log de bloque: true = cumplido, "missed" = no_cumplido explícito (Tito / usuario). */
+function blockLogValorEstado(log, blockId) {
+  var v = log && log[blockId];
+  if (v === true) return "cumplido";
+  if (v === "missed") return "no_cumplido";
+  return "pendiente";
+}
+
+function titoMarcarBloqueDia(blockId, dayKey, estado) {
+  if (!blockId || !dayKey) return;
+  var log = ensureBlockLog(dayKey);
+  if (estado === "cumplido") {
+    log[blockId] = true;
+    showCelebration("🏆");
+  } else if (estado === "no_cumplido") {
+    log[blockId] = "missed";
+  } else {
+    delete log[blockId];
+  }
+  renderBlocks();
+  renderWeekSummary();
+  updateHorarioBanner();
+  try {
+    sv();
+  } catch (eSvBl) {}
+}
+
+function titoBloquesNombreDia(dow) {
+  var n = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  return n[dow] || "hoy";
+}
+
+function titoBloquesResumenHoyParaTito() {
+  var dayKey = getDayKey();
+  var dow = new Date().getDay();
+  var blocks = getBlocksForToday().slice().sort(function (a, b) {
+    return timeToMinutes(a.start) - timeToMinutes(b.start);
+  });
+  var log = ensureBlockLog(dayKey);
+  var total = blocks.length;
+  var hechos = blocks.filter(function (b) {
+    return log[b.id] === true;
+  }).length;
+  var marcadosMal = blocks.filter(function (b) {
+    return log[b.id] === "missed";
+  }).length;
+  var pendientesVis = 0;
+  var nowMin = getCurrentTimeMinutes();
+  blocks.forEach(function (b) {
+    var st = blockLogValorEstado(log, b.id);
+    if (st === "pendiente" && nowMin < timeToMinutes(b.end)) pendientesVis++;
+  });
+  return {
+    dayKey: dayKey,
+    dia: titoBloquesNombreDia(dow),
+    total: total,
+    hechos: hechos,
+    marcadosMal: marcadosMal,
+    pendientesFuturos: pendientesVis,
+    blocks: blocks,
+    log: log
+  };
+}
+
+function titoBloquesDetectarSaturacionBasica() {
+  var blocks = getBlocksForToday().slice().sort(function (a, b) {
+    return timeToMinutes(a.start) - timeToMinutes(b.start);
+  });
+  if (blocks.length < 3) return { saturado: false, detalle: "" };
+  var tieneDescanso = blocks.some(function (b) {
+    return /descanso|comer|almuerzo|break|coffee|café|cafe|stretch/i.test(b.name || "");
+  });
+  var minGap = 9999;
+  for (var i = 1; i < blocks.length; i++) {
+    var g = timeToMinutes(blocks[i].start) - timeToMinutes(blocks[i - 1].end);
+    if (g < minGap) minGap = g;
+  }
+  if (minGap < 8 && blocks.length >= 4) {
+    return {
+      saturado: true,
+      detalle: "Encadenas bloques casi sin hueco entre uno y otro."
+    };
+  }
+  if (blocks.length >= 7 && !tieneDescanso) {
+    return {
+      saturado: true,
+      detalle: "Muchos bloques seguidos y no veo uno claro de descanso o comida."
+    };
+  }
+  return { saturado: false, detalle: "" };
+}
+
+function titoBloqueResolverReferencia(text) {
+  var blocks = getBlocksForToday().slice().sort(function (a, b) {
+    return timeToMinutes(a.start) - timeToMinutes(b.start);
+  });
+  if (!blocks.length) return null;
+  var log = getTodayBlockLog();
+  var nowMin = getCurrentTimeMinutes();
+  var t = String(text || "").toLowerCase();
+  var hm = t.match(/\b(\d{1,2}):(\d{2})\b/);
+  if (hm) {
+    var target = parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+    var byHm = blocks.find(function (b) {
+      return Math.abs(timeToMinutes(b.start) - target) < 20;
+    });
+    if (byHm) return byHm;
+  }
+  var mLas = t.match(/a las\s+(\d{1,2})(?::(\d{2}))?/);
+  if (mLas) {
+    var h = parseInt(mLas[1], 10);
+    var mi = mLas[2] ? parseInt(mLas[2], 10) : 0;
+    if (h >= 1 && h <= 11 && t.indexOf("am") === -1 && t.indexOf("mañana") === -1) {
+      h += 12;
+    }
+    var tgt = h * 60 + mi;
+    var byLas = blocks.find(function (b) {
+      return Math.abs(timeToMinutes(b.start) - tgt) < 25;
+    });
+    if (byLas) return byLas;
+  }
+  var active = blocks.find(function (b) {
+    return nowMin >= timeToMinutes(b.start) && nowMin < timeToMinutes(b.end);
+  });
+  if (active && /este|actual|ahora|en curso|esto\b/i.test(t)) return active;
+  var siguiente = blocks.filter(function (b) {
+    return timeToMinutes(b.start) > nowMin;
+  })[0];
+  if (siguiente && /pr[oó]ximo|siguiente/i.test(t)) return siguiente;
+  var pend = blocks.find(function (b) {
+    return log[b.id] !== true && log[b.id] !== "missed";
+  });
+  return pend || active || blocks[0];
+}
+
+function titoParsePedidoEspacio(raw) {
+  var t = String(raw || "").toLowerCase();
+  var out = { ok: false };
+  var dow = new Date().getDay();
+  var map = {
+    lunes: 1,
+    martes: 2,
+    miércoles: 3,
+    miercoles: 3,
+    mié: 3,
+    jueves: 4,
+    viernes: 5,
+    sábado: 6,
+    sabado: 6,
+    domingo: 0
+  };
+  Object.keys(map).forEach(function (k) {
+    if (t.indexOf(k) !== -1) dow = map[k];
+  });
+  var h = 19;
+  var mi = 0;
+  var ma = t.match(/a las\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (ma) {
+    h = parseInt(ma[1], 10);
+    mi = ma[2] ? parseInt(ma[2], 10) : 0;
+    if (ma[3] && ma[3].toLowerCase() === "pm" && h < 12) h += 12;
+    if (ma[3] && ma[3].toLowerCase() === "am" && h === 12) h = 0;
+  } else {
+    var hm = t.match(/\b(\d{1,2}):(\d{2})\b/);
+    if (hm) {
+      h = parseInt(hm[1], 10);
+      mi = parseInt(hm[2], 10);
+    }
+  }
+  if (ma && h >= 1 && h <= 11 && !ma[3]) {
+    h += 12;
+  }
+  if (!ma && !t.match(/\b(\d{1,2}):(\d{2})\b/) && /\ba las\s+7\b|\b7\s+para\b|\ba las\s+19\b/.test(t)) {
+    h = 19;
+    mi = 0;
+  }
+  var dur = 30;
+  if (/media\s+hora|30\s*min|media\s*hora/.test(t)) dur = 30;
+  if (/una\s+hora|60\s*min|\b1\s*h\b/.test(t)) dur = 60;
+  var title = "Bloque";
+  var mp = t.match(/para\s+([^.\n?\!]+)/);
+  if (mp) title = mp[1].trim().slice(0, 80).replace(/^\s*(el|la|un|una)\s+/i, "");
+  var startMin = h * 60 + mi;
+  var endMin = startMin + dur;
+  if (endMin >= 24 * 60) endMin = 23 * 60 + 59;
+  var sh = Math.floor(startMin / 60) % 24;
+  var sm = startMin % 60;
+  var eh = Math.floor(endMin / 60) % 24;
+  var em = endMin % 60;
+  out.ok = title.length > 0;
+  out.dow = dow;
+  out.start =
+    String(sh).padStart(2, "0") + ":" + String(sm).padStart(2, "0");
+  out.end = String(eh).padStart(2, "0") + ":" + String(em).padStart(2, "0");
+  out.name = title || "Bloque";
+  return out;
+}
+
+function getContextoBloquesParaTito() {
+  var r = titoBloquesResumenHoyParaTito();
+  var sat = titoBloquesDetectarSaturacionBasica();
+  return {
+    dia: r.dia,
+    resumen: {
+      total: r.total,
+      cumplidos: r.hechos,
+      noCumplidosMarcados: r.marcadosMal
+    },
+    saturacion: sat,
+    bloques: r.blocks.map(function (b) {
+      var st = blockLogValorEstado(r.log, b.id);
+      return {
+        titulo: b.name,
+        horaInicio: b.start,
+        horaFin: b.end,
+        tipo: "productividad",
+        estado: st,
+        emoji: b.emoji || ""
+      };
+    })
+  };
+}
+
+function titoBloquesResponderStatsOperativo() {
+  var r = titoBloquesResumenHoyParaTito();
+  var sat = titoBloquesDetectarSaturacionBasica();
+  if (!r.total) {
+    return "No tienes bloques en el horario hoy. Abre Horario y crea tu primera franja.";
+  }
+  var pct = Math.round((r.hechos / r.total) * 100);
+  var lineas = [];
+  lineas.push(
+    "Llevas " + r.hechos + " de " + r.total + " bloques cumplidos hoy (" + pct + "%)."
+  );
+  if (r.marcadosMal) {
+    lineas.push(r.marcadosMal + " marcado(s) como no cumplido.");
+  }
+  if (sat.saturado) {
+    lineas.push("Te estás saturando: " + sat.detalle + " Ajusta antes de romper el sistema.");
+  } else if (r.total >= 5 && !/descanso|comer/i.test(r.blocks.map(function (b) { return b.name; }).join(" "))) {
+    lineas.push("No veo descanso/comida explícito: mete margen para recuperarte.");
+  }
+  return lineas.join("\n\n");
+}
+
+function titoProcesarAsistenteBloques(text) {
+  if (typeof D === "undefined") return null;
+  var raw = String(text || "").trim();
+  var tl = raw.toLowerCase();
+  if (
+    /\b(cómo voy|como voy|rev[ií]s|estad[ií]sticas|estadística|stats\b|qu[eé]\s+puedo\s+mejorar|cu[aá]nto\s+llevo|qu[eé]\s+hago\s+hoy|cómo me va|como me va)\b/i.test(
+      tl
+    )
+  ) {
+    return { handled: true, reply: titoBloquesResponderStatsOperativo() };
+  }
+
+  if (
+    /\b(m[áa]rca|m[áa]rcalo|marcar)\w*\s+como\s+(cumplido|listo|hecho)\b/i.test(tl) ||
+    /\b(m[áa]rca|marcar)\w*\s+esto\s+como\s+cumplido\b/i.test(tl) ||
+    (/\b(listo|cumplido|hecho)\b/i.test(tl) &&
+      /\bbloque\b/i.test(tl) &&
+      /\b(m[áa]rca|ya\s+est[áa]|est[áa]\s+hecho)\b/i.test(tl))
+  ) {
+    var b1 = titoBloqueResolverReferencia(raw);
+    if (!b1) {
+      return {
+        handled: true,
+        reply:
+          "No ubiqué el bloque. Di la hora (ej. 19:00) o el nombre tal como está en Horario."
+      };
+    }
+    titoMarcarBloqueDia(b1.id, getDayKey(), "cumplido");
+    return {
+      handled: true,
+      reply: "Listo. «" + b1.name + "» quedó como cumplido."
+    };
+  }
+
+  if (/\bno\s+cumpl[ií]|no cumpli|marc\w*\s+como\s+no\s+cumplido/i.test(tl)) {
+    var b2 = titoBloqueResolverReferencia(raw);
+    if (!b2) {
+      return { handled: true, reply: "¿Qué bloque? Indica hora o nombre." };
+    }
+    titoMarcarBloqueDia(b2.id, getDayKey(), "no_cumplido");
+    return {
+      handled: true,
+      reply: "Registrado como no cumplido: «" + b2.name + "». Reorganiza si hace falta."
+    };
+  }
+
+  if (
+    /\b(hazme|haz|quiero)\s+(un\s+)?(espacio|hueco|bloque)|meter\s+media\s+hora|un\s+hueco\s+(hoy|para)/i.test(
+      tl
+    )
+  ) {
+    var p = titoParsePedidoEspacio(raw);
+    if (!p || !p.ok) {
+      return {
+        handled: true,
+        reply:
+          'Te propongo ser explícito: "viernes 19:00 a 19:30 para código". ¿Lo tienes claro así?'
+      };
+    }
+    if (!D.blocks) D.blocks = [];
+    D.blocks.push({
+      id: uid(),
+      name: p.name,
+      start: p.start,
+      end: p.end,
+      emoji: "🟢",
+      days: [p.dow]
+    });
+    D.blocks.sort(function (a, b) {
+      return a.start.localeCompare(b.start);
+    });
+    try {
+      sv();
+    } catch (eIns) {}
+    renderBlocks();
+    scheduleBlockNotifs();
+    return {
+      handled: true,
+      reply:
+        "Te abrí espacio " +
+        p.start +
+        "–" +
+        p.end +
+        " («" +
+        p.name +
+        "») en " +
+        titoBloquesNombreDia(p.dow) +
+        ". Revisa Horario."
+    };
+  }
+
+  if (/\b(cómo vas con|este bloque\b|bloque actual)\b/i.test(tl)) {
+    var r2 = titoBloquesResumenHoyParaTito();
+    var act = r2.blocks.find(function (b) {
+      var now = getCurrentTimeMinutes();
+      return now >= timeToMinutes(b.start) && now < timeToMinutes(b.end);
+    });
+    if (act) {
+      var st = blockLogValorEstado(r2.log, act.id);
+      return {
+        handled: true,
+        reply:
+          "Ahora mismo: «" +
+          act.name +
+          "» (" +
+          act.start +
+          "–" +
+          act.end +
+          "). Estado: " +
+          st +
+          "."
+      };
+    }
+    return { handled: true, reply: "No hay bloque en curso ahora. " + titoBloquesResponderStatsOperativo() };
+  }
+
+  if (/\b(satur|demasiados bloques|muy apretado|sin descanso)\b/i.test(tl)) {
+    var s2 = titoBloquesDetectarSaturacionBasica();
+    if (s2.saturado) {
+      return {
+        handled: true,
+        reply: "Te estás saturando. " + s2.detalle + " Mete un bloque de descanso o reduce carga."
+      };
+    }
+    return {
+      handled: true,
+      reply: "El día está razonable a simple vista. Si notas fatiga, programa un hueco corto sin culpa."
+    };
+  }
+
+  return null;
+}
+
 function openStats() {
   closeUserMenu();
   renderStats();
@@ -5156,7 +5534,7 @@ function renderStats() {
       const log = logs[dayKey];
       const blocksForDay = allBlocks.filter(b => blockAppliesToDay(b, dow));
       const total = blocksForDay.length;
-      const done  = blocksForDay.filter(b => log[b.id]).length;
+      const done  = blocksForDay.filter(b => log[b.id] === true).length;
       weekMap[weekKey].days[dow] = { total, done, pct: total > 0 ? Math.round(done/total*100) : null };
     }
   });
@@ -5270,7 +5648,7 @@ function renderWeekView() {
         + (isToday ? "⚡ " : "") + dayNames[dow] + (isToday ? " — HOY" : "")
       + '</div>'
       + blocksForDay.map(b => {
-          const isDone = !!sectionLog[b.id];
+          const isDone = sectionLog[b.id] === true;
           return '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;">'
             + '<span style="font-size:18px;">' + (b.emoji || "🟢") + '</span>'
             + '<div style="flex:1;">'
@@ -5325,7 +5703,7 @@ function renderWeekSummary() {
     const log = (D.blockLogs && D.blockLogs[dayKey]) ? D.blockLogs[dayKey] : {};
     const blocksForDay = allBlocks.filter(b => blockAppliesToDay(b, dow));
     const total = blocksForDay.length;
-    const done  = blocksForDay.filter(b => log[b.id]).length;
+    const done  = blocksForDay.filter(b => log[b.id] === true).length;
     const pct   = total > 0 ? Math.round((done / total) * 100) : null;
     const isPast = d < today && dayKey !== d.toISOString().slice(0,10);
     const isToday = dayKey === (today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0"));
@@ -5401,11 +5779,14 @@ function renderBlocks() {
     const startMin = timeToMinutes(b.start);
     const endMin   = timeToMinutes(b.end);
     const isActive  = nowMin >= startMin && nowMin < endMin;
-    const isDone    = log[b.id];
+    const rawLog    = log[b.id];
+    const isDone    = rawLog === true;
     const isPast    = nowMin >= endMin;
     // Solo marcar como no cumplido si el bloque es de HOY (no de otro día)
     const blockIsForToday = blockAppliesToDay(b, todayDow);
-    const isMissed  = isPast && !isDone && !isActive && blockIsForToday;
+    const isExplicitMiss = rawLog === "missed";
+    const isMissed  =
+      isExplicitMiss || (isPast && !isDone && !isActive && blockIsForToday);
     let cardClass  = "block-card";
     if (isDone)        cardClass += " done-block";
     else if (isActive) cardClass += " active-block";
@@ -5479,7 +5860,7 @@ function updateHorarioBanner() {
                      .sort((a,b2) => timeToMinutes(a.start) - timeToMinutes(b2.start))[0];
 
   if (active) {
-    const isDone = log[active.id];
+    const isDone = log[active.id] === true;
     emojiEl.textContent = active.emoji || "⏱";
     nameEl.textContent  = (isDone ? "✓ " : "") + active.name;
     nameEl.style.color  = isDone ? "var(--green)" : "var(--accent2)";
@@ -5512,7 +5893,7 @@ function updateHorarioBanner() {
       fullEl.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;padding:8px 0;">Aún no tienes bloques. Agrégalos abajo.</div>';
     } else {
       fullEl.innerHTML = blocks.map(b => {
-        const isDone   = log[b.id];
+        const isDone   = log[b.id] === true;
         const startMin = timeToMinutes(b.start);
         const endMin   = timeToMinutes(b.end);
         const isNow    = nowMin >= startMin && nowMin < endMin;
@@ -5520,7 +5901,7 @@ function updateHorarioBanner() {
         const bStartMin = timeToMinutes(b.start);
         const bEndMin   = timeToMinutes(b.end);
         const bNow      = getCurrentTimeMinutes();
-        const bMissed   = bNow >= bEndMin && !isDone;
+        const bMissed   = log[b.id] === "missed" || (bNow >= bEndMin && !isDone);
         const bActive   = bNow >= bStartMin && bNow < bEndMin;
         const bColor    = isDone ? "var(--green)" : bMissed ? "var(--red)" : bActive ? "var(--accent2)" : "var(--text2)";
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">' +
@@ -9081,6 +9462,20 @@ async function sendPrivateCoachMessage() {
     if (titoAprenderTerminosDelMensaje(text)) sv();
   } catch (eLex) {}
 
+  if (getTitoSessionKey() === "global" && typeof D !== "undefined") {
+    var blOut = titoProcesarAsistenteBloques(text);
+    if (blOut && blOut.handled && blOut.reply) {
+      var replyBl = privateCoachFinalizeCoachText(blOut.reply, true, text);
+      replyBl = titoGlobalEvitarRepeticionCoach(replyBl);
+      appendPrivateCoachMessage("coach", replyBl);
+      if (sendBtn) sendBtn.disabled = false;
+      setTimeout(function () {
+        privateCoachPersistTurn(text, replyBl);
+      }, 0);
+      return;
+    }
+  }
+
   if (titoEsMensajeQuimica(text) && getTitoSessionKey() !== "global") {
     var replyQ = titoRespuestaQuimicaCorta(getTitoModuloActivo());
     replyQ = privateCoachFinalizeCoachText(replyQ, true, text);
@@ -9354,7 +9749,9 @@ async function sendPrivateCoachMessage() {
             ? D.titoGlobalState.enfoqueActual
             : null
       },
-      contextoTiempoGlobal: sessionKey === "global" ? getContextoTiempoGlobal() : null
+      contextoTiempoGlobal: sessionKey === "global" ? getContextoTiempoGlobal() : null,
+      contextoBloques:
+        sessionKey === "global" && typeof D !== "undefined" ? getContextoBloquesParaTito() : null
     };
     const json = await getCoachReplyFromCloud(data, token);
     if (json && json.error != null && json.reply == null) {

@@ -410,6 +410,36 @@ function buildOpenAIInput(
     );
   }
 
+  if (titoExtras.contextoBloques && typeof titoExtras.contextoBloques === "object") {
+    const cb = titoExtras.contextoBloques;
+    const lines = [];
+    if (cb.dia) lines.push(`día: ${String(cb.dia).slice(0, 32)}`);
+    if (cb.resumen && typeof cb.resumen === "object") {
+      const r = cb.resumen;
+      lines.push(
+        `cumplimiento hoy: ${Number(r.cumplidos) || 0}/${Number(r.total) || 0} bloques (no marcados mal: ${Number(r.noCumplidosMarcados) || 0})`
+      );
+    }
+    if (cb.saturacion && cb.saturacion.saturado) {
+      lines.push(`saturación: ${String(cb.saturacion.detalle || "día muy cargado").slice(0, 200)}`);
+    }
+    if (Array.isArray(cb.bloques)) {
+      cb.bloques.slice(0, 14).forEach((b, i) => {
+        lines.push(
+          `${i + 1}. ${String(b.titulo || "?").slice(0, 48)} ${String(b.horaInicio || "").slice(0, 8)}–${String(
+            b.horaFin || ""
+          ).slice(0, 8)} [${String(b.estado || "").slice(0, 16)}]`
+        );
+      });
+    }
+    if (lines.length) {
+      parts.push(
+        "Bloques de productividad (horario ENFO). Puedes ser breve y operativo si el usuario pregunta por ellos:\n" +
+          lines.join("\n")
+      );
+    }
+  }
+
   if (Array.isArray(coachMemory) && coachMemory.length) {
     const blocks = coachMemory
       .map((m) => (m && m.text ? String(m.text).trim() : ""))
@@ -464,7 +494,9 @@ async function privateCoachChatCore(data) {
     titoTimeContext:
       data.titoTimeContext && typeof data.titoTimeContext === "object" ? data.titoTimeContext : null,
     titoLexikon: data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : null,
-    titoMarcoTemporal: typeof data.titoMarcoTemporal === "string" ? data.titoMarcoTemporal.trim() : ""
+    titoMarcoTemporal: typeof data.titoMarcoTemporal === "string" ? data.titoMarcoTemporal.trim() : "",
+    contextoBloques:
+      data.contextoBloques && typeof data.contextoBloques === "object" ? data.contextoBloques : null
   };
 
   const key = openaiApiKey.value();
