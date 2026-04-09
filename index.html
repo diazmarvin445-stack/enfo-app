@@ -1740,6 +1740,29 @@
       border-radius: 3px;
       background: linear-gradient(180deg, var(--accent2), rgba(29, 106, 255, 0.85));
     }
+    .tito-mascot-btn {
+      width: 48px;
+      height: 56px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      -webkit-tap-highlight-color: transparent;
+      filter: drop-shadow(0 2px 10px rgba(0, 200, 255, 0.22));
+      transition: transform 0.15s ease, filter 0.15s ease;
+      flex-shrink: 0;
+    }
+    .tito-mascot-btn:hover {
+      filter: drop-shadow(0 3px 14px rgba(0, 200, 255, 0.38));
+      transform: scale(1.04);
+    }
+    .tito-mascot-btn:active {
+      transform: scale(0.94);
+    }
     .tito-context-tip--wide {
       max-width: 158px;
       font-size: 9px;
@@ -1750,6 +1773,14 @@
       display: inline-block;
       width: 1.2em;
       letter-spacing: 2px;
+    }
+
+    /* Mantener acciones de Estrategias compactas */
+    .si .btn-sm {
+      width: auto;
+      padding: 7px 13px;
+      font-size: 12px;
+      border-radius: 9px;
     }
 
     /* Tablet adaptation (keeps phone defaults untouched) */
@@ -1970,7 +2001,7 @@
     <span class="status-pill" id="mind-status-pill">EMPTY</span>
     <div class="mind-toolbar-actions">
       <button class="tiny-btn" onclick="toggleMindHistory()">Historial</button>
-      <button type="button" id="private-coach-fab" class="private-coach-fab" hidden aria-label="Abrir Tito global" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
+      <button type="button" id="private-coach-fab" class="private-coach-fab tito-mascot-btn" hidden aria-label="Abrir Tito global" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
     </div>
   </div>
 
@@ -2075,7 +2106,7 @@
     <div class="diario-header-tools estrat-header-tools">
       <div id="estrat-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
         <div id="estrat-tito-tip" class="diario-tito-tip tito-context-tip--wide" style="display:none;"></div>
-        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromEstrategias()" aria-label="Abrir Tito">
+        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot tito-mascot-btn" onclick="openTitoFromEstrategias()" aria-label="Abrir Tito">
           <span class="diario-tito-head"></span>
           <span class="diario-tito-body"></span>
         </button>
@@ -2219,7 +2250,7 @@
     <div class="diario-header-tools">
       <div id="diario-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
         <div id="diario-tito-tip" class="diario-tito-tip" style="display:none;"></div>
-        <button type="button" id="diario-tito-mascot" class="diario-tito-mascot" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
+        <button type="button" id="diario-tito-mascot" class="diario-tito-mascot tito-mascot-btn" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
           <span class="diario-tito-head"></span>
           <span class="diario-tito-body"></span>
         </button>
@@ -2985,9 +3016,18 @@
         var arr = Array.isArray(rawSessions[k]) ? rawSessions[k] : [];
         normalizedSessions[k] = arr.map(function (x) {
           var role = x && x.role === "coach" ? "coach" : "user";
+          var timeNum = 0;
+          if (x && typeof x.time === "number" && !isNaN(x.time)) {
+            timeNum = x.time;
+          } else if (x && x.at) {
+            var parsed = Date.parse(x.at);
+            timeNum = isNaN(parsed) ? 0 : parsed;
+          }
+          if (!timeNum) timeNum = Date.now();
           return {
             id: (x && x.id) || uid(),
             at: (x && x.at) || new Date().toISOString(),
+            time: timeNum,
             role: role,
             text: String((x && x.text) || "").slice(0, 4000)
           };
@@ -2995,7 +3035,14 @@
       });
       if (!normalizedSessions.global.length && data.coachHistory.length) {
         normalizedSessions.global = data.coachHistory.slice(0, 32).map(function (x) {
-          return { id: x.id || uid(), at: x.at || new Date().toISOString(), role: x.role === "coach" ? "coach" : "user", text: String(x.text || "").slice(0, 4000) };
+          var parsedAt = Date.parse(x.at || "");
+          return {
+            id: x.id || uid(),
+            at: x.at || new Date().toISOString(),
+            time: isNaN(parsedAt) ? Date.now() : parsedAt,
+            role: x.role === "coach" ? "coach" : "user",
+            text: String(x.text || "").slice(0, 4000)
+          };
         });
       }
       data.titoSessions = normalizedSessions;
@@ -6962,8 +7009,31 @@ function ensureTitoSessionsState() {
   if (!Array.isArray(D.titoSessions.trading)) D.titoSessions.trading = [];
 }
 
+function limpiarHistorial(session) {
+  const ahora = Date.now();
+  const LIMITE = 10 * 60 * 1000;
+  const list = Array.isArray(session) ? session : [];
+  return list.filter(function (msg) {
+    var tm = 0;
+    if (msg && typeof msg.time === "number" && !isNaN(msg.time)) tm = msg.time;
+    else if (msg && msg.at) {
+      var p = Date.parse(msg.at);
+      tm = isNaN(p) ? 0 : p;
+    }
+    return tm > 0 && (ahora - tm) < LIMITE;
+  });
+}
+
+function limpiarTodasLasSesionesTito() {
+  ensureTitoSessionsState();
+  D.titoSessions.global = limpiarHistorial(D.titoSessions.global);
+  D.titoSessions.diario = limpiarHistorial(D.titoSessions.diario);
+  D.titoSessions.trading = limpiarHistorial(D.titoSessions.trading);
+}
+
 function getTitoSessionHistory(sessionKey) {
   ensureTitoSessionsState();
+  limpiarTodasLasSesionesTito();
   var key = (sessionKey === "diario" || sessionKey === "trading") ? sessionKey : "global";
   return D.titoSessions[key];
 }
@@ -6971,6 +7041,7 @@ function getTitoSessionHistory(sessionKey) {
 function renderPrivateCoachSessionHistory() {
   const list = document.getElementById("enfo-coach-messages");
   if (!list) return;
+  limpiarTodasLasSesionesTito();
   list.innerHTML = "";
   const sessionHistory = getTitoSessionHistory(getTitoSessionKey());
   sessionHistory.slice().reverse().forEach(function (msg) {
@@ -8232,12 +8303,14 @@ function privateCoachMessageWorthMemory(norm, rawLen) {
 
 function privateCoachAppendHistory(userText, coachReply) {
   if (typeof D === "undefined") return;
+  limpiarTodasLasSesionesTito();
   var hist = getTitoSessionHistory(getTitoSessionKey());
   const at = new Date().toISOString();
+  const nowMs = Date.now();
   const u = String(userText || "").slice(0, 4000);
   const c = String(coachReply || "").slice(0, 4000);
-  hist.unshift({ id: uid(), at, role: "user", text: u });
-  hist.unshift({ id: uid(), at, role: "coach", text: c });
+  hist.unshift({ id: uid(), at, time: nowMs, role: "user", text: u });
+  hist.unshift({ id: uid(), at, time: nowMs, role: "coach", text: c });
   if (hist.length > PRIVATE_COACH_HISTORY_MAX) {
     hist.splice(PRIVATE_COACH_HISTORY_MAX);
   }
@@ -8409,6 +8482,7 @@ async function getCoachReplyFromCloud(data, token) {
 
 async function sendPrivateCoachMessage() {
   if (!isPrivateCoachUiAllowed()) return;
+  limpiarTodasLasSesionesTito();
   const input = document.getElementById("enfo-coach-input");
   if (!input) return;
   const text = (input.value || "").trim();
