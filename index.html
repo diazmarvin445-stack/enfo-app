@@ -1490,6 +1490,39 @@
       margin-top: 6px;
       line-height: 1.45;
     }
+    .enfo-coach-context-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(29, 106, 255, 0.35);
+      background: rgba(13, 22, 40, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      line-height: 1.2;
+    }
+    .enfo-coach-context-badge.mod-global {
+      border-color: rgba(29, 106, 255, 0.45);
+      color: #7bb2ff;
+      box-shadow: inset 0 0 0 1px rgba(29, 106, 255, 0.12);
+    }
+    .enfo-coach-context-badge.mod-diario {
+      border-color: rgba(0, 212, 138, 0.4);
+      color: #6ff0be;
+      box-shadow: inset 0 0 0 1px rgba(0, 212, 138, 0.1);
+    }
+    .enfo-coach-context-badge.mod-estrategias {
+      border-color: rgba(0, 200, 255, 0.45);
+      color: #6de6ff;
+      box-shadow: inset 0 0 0 1px rgba(0, 200, 255, 0.12);
+    }
     .enfo-coach-close {
       flex-shrink: 0;
       width: 36px;
@@ -2453,6 +2486,7 @@
             <div>
               <div id="enfo-coach-title-el" class="enfo-coach-title">Biblioteca IA Privada</div>
               <div class="enfo-coach-sub">Mentalidad, Negocio, Trading y Hábitos</div>
+              <div id="enfo-coach-context-badge" class="enfo-coach-context-badge mod-global">TITO • GLOBAL</div>
             </div>
             <button type="button" class="enfo-coach-close" onclick="togglePrivateCoach(false)" aria-label="Cerrar">×</button>
           </div>
@@ -7652,6 +7686,8 @@ function isPrivateCoachEnabled() {
 function renderPrivateCoach() {
   const root = document.getElementById("private-coach-root");
   if (!root) return;
+  refreshTitoContext();
+  const titoModuloActivo = getTitoModuloActivo();
   const cat = privateCoachActiveCategory;
   root.querySelectorAll(".enfo-coach-tab").forEach((t) => {
     const c = t.getAttribute("data-category");
@@ -7659,6 +7695,21 @@ function renderPrivateCoach() {
   });
   const bib = document.getElementById("enfo-coach-biblio-label");
   if (bib) bib.textContent = PRIVATE_COACH_BIBLIO_LABELS[cat] || PRIVATE_COACH_BIBLIO_LABELS.mentalidad;
+  const badge = document.getElementById("enfo-coach-context-badge");
+  if (badge) {
+    let label = "GLOBAL";
+    let cls = "mod-global";
+    if (titoModuloActivo === "diario") {
+      label = "DIARIO";
+      cls = "mod-diario";
+    } else if (titoModuloActivo === "trading") {
+      label = "ESTRATEGIAS";
+      cls = "mod-estrategias";
+    }
+    badge.textContent = "TITO • " + label;
+    badge.classList.remove("mod-global", "mod-diario", "mod-estrategias");
+    badge.classList.add(cls);
+  }
 }
 
 function syncPrivateCoachPanelDom() {
