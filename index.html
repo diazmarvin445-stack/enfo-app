@@ -7209,8 +7209,15 @@ function compromisoEstaPendiente(m) {
   if (!m) return false;
   if (m.completado === true) return false;
   var st = m.estado;
-  if (st === "cancelado" || st === "eliminado") return false;
-  if (st === "completado") return false;
+  if (
+    st === "cancelado" ||
+    st === "eliminado" ||
+    st === "cerrado" ||
+    st === "resuelto" ||
+    st === "completado"
+  ) {
+    return false;
+  }
   if (st === "ajustado" || st === "reemplazado") return false;
   if (st === "pendiente") return true;
   if (st == null || st === undefined) {
@@ -7507,22 +7514,72 @@ function limpiarContextoAntiguoGlobal() {
   limpiarTodasLasSesionesTito();
 }
 
-function titoGlobalDetectarCambioEnfoque(raw) {
-  var texto = String(raw || "").toLowerCase();
-  var cambio = [
+/**
+ * explícito: cierre verbal del hilo + opcional limpieza de chat local.
+ * nueva_conversación: nueva pregunta (ej. consejo) — cierra FS y sigue el flujo sin reinyectar el pendiente viejo.
+ */
+function titoGlobalAnalizarCierreEnfoque(raw) {
+  var texto = String(raw || "").toLowerCase().trim();
+  var nuevaConv = [
+    "dame un consejo",
+    "da un consejo",
+    "dame consejo",
+    "quiero un consejo",
+    "necesito un consejo",
+    "qué hago hoy",
+    "que hago hoy",
+    "qué hago con esto",
+    "que hago con esto",
+    "quiero orientación",
+    "quiero orientacion",
+    "necesito orientación",
+    "necesito orientacion",
+    "dame orientación",
+    "dame orientacion",
+    "orientación para hoy",
+    "orientacion para hoy"
+  ];
+  if (nuevaConv.some(function (p) {
+    return texto.indexOf(p) !== -1;
+  })) {
+    return { detectado: true, tipo: "nueva_conversación" };
+  }
+  var explicito = [
+    "ya cambió el enfoque",
+    "ya cambio el enfoque",
     "ya cambié el enfoque",
     "cambié el enfoque",
+    "cambie el enfoque",
     "mueve el foco",
+    "si mueve el foco",
     "cambiar foco",
     "ya no es prioridad",
     "ya no importa",
+    "no es prioridad",
     "borra eso",
     "elimina eso",
-    "si mueve el foco"
+    "elimínalo",
+    "elimínala",
+    "eliminalo",
+    "eliminala"
   ];
-  return cambio.some(function (p) {
+  if (explicito.some(function (p) {
     return texto.indexOf(p) !== -1;
-  });
+  })) {
+    return { detectado: true, tipo: "explícito" };
+  }
+  if (/^\s*ya\s+no\s*[!?.…,]*\s*$/i.test(String(raw || ""))) {
+    return { detectado: true, tipo: "explícito" };
+  }
+  if (/\bya\s+no\s*$/i.test(texto) && texto.length <= 24) {
+    return { detectado: true, tipo: "explícito" };
+  }
+  return { detectado: false, tipo: null };
+}
+
+function titoGlobalDetectarCambioEnfoque(raw) {
+  var a = titoGlobalAnalizarCierreEnfoque(raw);
+  return a.detectado && (a.tipo === "explícito" || a.tipo === "nueva_conversación");
 }
 
 function titoGlobalDetectarAgradecimiento(raw) {
@@ -7537,7 +7594,8 @@ function titoGlobalDetectarAgradecimiento(raw) {
 function titoGlobalPuedeDefinirEnfoque(raw) {
   var t = String(raw || "").trim();
   if (t.length < 8) return false;
-  if (titoGlobalDetectarCambioEnfoque(t)) return false;
+  var c = titoGlobalAnalizarCierreEnfoque(t);
+  if (c.detectado) return false;
   if (t.length >= 14) return true;
   return /\b(enfoque|prioridad|meta|objetivo|plan|quiero|necesito|hoy\s+voy|esta\s+semana)\b/i.test(t);
 }
@@ -7902,6 +7960,41 @@ async function cancelarTodosCompromisosPendientes(uid) {
       estado: "cancelado",
       canceladoAt: ahora
     });
+    n++;
+  });
+  if (n) await batch.commit();
+  return n;
+}
+
+function compromisoEsModuloGlobal(p) {
+  var mo = p && p.moduloOrigen;
+  return mo === "global" || mo == null || mo === "";
+}
+
+/**
+ * Cierra en Firestore los compromisos globales aún pendientes (no diario/trading).
+ * estadoFinal: "cerrado" | "ajustado" | "resuelto"
+ */
+async function titoGlobalCerrarCompromisosActivos(uid, memoriaFiltrada, estadoFinal) {
+  estadoFinal = estadoFinal || "cerrado";
+  var ref = titoMemoriaCollectionRef(uid);
+  if (!ref || typeof db === "undefined" || !db) return 0;
+  var lista = compromisosPendientesLista(memoriaFiltrada || []).filter(compromisoEsModuloGlobal);
+  if (!lista.length) return 0;
+  var ahora = new Date().toISOString();
+  var batch = db.batch();
+  var n = 0;
+  lista.forEach(function (p) {
+    if (!p || !p.id) return;
+    var patch = {
+      estado: estadoFinal,
+      cerradoEnfoqueGlobalAt: ahora,
+      cerradoMotivo: "cambio_enfoque_global"
+    };
+    if (estadoFinal === "ajustado") {
+      patch.ajustadoAt = ahora;
+    }
+    batch.update(ref.doc(p.id), patch);
     n++;
   });
   if (n) await batch.commit();
@@ -8933,10 +9026,41 @@ async function sendPrivateCoachMessage() {
   if (sendBtn) sendBtn.disabled = true;
 
   refreshTitoContext();
-  if (getTitoSessionKey() === "global" && titoGlobalDetectarCambioEnfoque(text)) {
+  const uEarly = auth && auth.currentUser;
+  var cierreTop = titoGlobalAnalizarCierreEnfoque(text);
+  if (getTitoSessionKey() === "global" && cierreTop.detectado && cierreTop.tipo === "explícito") {
+    var pendienteActivoAntes = null;
+    try {
+      if (uEarly && typeof db !== "undefined" && db) {
+        await cargarMemoria(uEarly.uid);
+        var memoTop = getMemoriaTitoFiltrada();
+        pendienteActivoAntes = verificarPendientes(memoTop)[0] || null;
+        console.log("[tito_global] pendienteActivoAntes", pendienteActivoAntes);
+        console.log("[tito_global] inputUsuario", text);
+        console.log("[tito_global] cambioDetectado", true);
+        var nUpTop = await titoGlobalCerrarCompromisosActivos(uEarly.uid, memoTop, "cerrado");
+        console.log("[tito_global] pendienteActualizado", nUpTop);
+        await cargarMemoria(uEarly.uid);
+      } else {
+        console.log("[tito_global] inputUsuario", text);
+        console.log("[tito_global] cambioDetectado", true);
+        console.log("[tito_global] pendienteActualizado", 0);
+      }
+    } catch (eTop) {
+      console.error("[tito_global] cierre explícito:", eTop);
+    }
+    ensureTitoGlobalState();
+    D.titoGlobalState.enfoqueActual = null;
+    D.titoGlobalState.ultimoCoachReply = "";
+    if (pendienteActivoAntes && pendienteActivoAntes.accion) {
+      D.titoGlobalState.enfoqueAnterior = String(resumirCompromiso(pendienteActivoAntes.accion)).slice(0, 400);
+    }
+    try {
+      sv();
+    } catch (eSv0) {}
     titoGlobalAplicarCambioEnfoqueYLimpiarChat();
     appendPrivateCoachMessage("user", text);
-    var replyCambio = "Listo. Cerramos ese enfoque. ¿Cuál es el nuevo?";
+    var replyCambio = "Listo. Cerramos ese enfoque. Ahora dime qué necesitas.";
     replyCambio = privateCoachFinalizeCoachText(replyCambio, true, text);
     replyCambio = titoGlobalEvitarRepeticionCoach(replyCambio);
     appendPrivateCoachMessage("coach", replyCambio);
@@ -8946,7 +9070,7 @@ async function sendPrivateCoachMessage() {
     }, 0);
     try {
       sv();
-    } catch (eSv0) {}
+    } catch (eSv1) {}
     return;
   }
 
@@ -8980,6 +9104,30 @@ async function sendPrivateCoachMessage() {
       await cargarMemoria(u.uid);
       var memoFiltrada = getMemoriaTitoFiltrada();
       if (getTitoSessionKey() === "global") {
+        var anNv = titoGlobalAnalizarCierreEnfoque(text);
+        var pendGlob0 = verificarPendientes(memoFiltrada)[0] || null;
+        console.log("[tito_global] pendienteActivoAntes", pendGlob0);
+        console.log("[tito_global] inputUsuario", text);
+        console.log(
+          "[tito_global] cambioDetectado",
+          !!(anNv.detectado && anNv.tipo === "nueva_conversación")
+        );
+        if (anNv.detectado && anNv.tipo === "nueva_conversación") {
+          try {
+            var nNv = await titoGlobalCerrarCompromisosActivos(u.uid, memoFiltrada, "cerrado");
+            console.log("[tito_global] pendienteActualizado", nNv);
+            await cargarMemoria(u.uid);
+            memoFiltrada = getMemoriaTitoFiltrada();
+            ensureTitoGlobalState();
+            D.titoGlobalState.enfoqueActual = null;
+            D.titoGlobalState.ultimoCoachReply = "";
+            try {
+              sv();
+            } catch (eNv) {}
+          } catch (eNv2) {
+            console.error("[tito_global] nueva conversación:", eNv2);
+          }
+        }
         ensureTitoGlobalState();
         if (!D.titoGlobalState.enfoqueActual) {
           var pendAuto = verificarPendientes(memoFiltrada);
