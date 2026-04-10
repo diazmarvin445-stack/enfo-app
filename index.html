@@ -199,7 +199,7 @@
       -webkit-overflow-scrolling: touch;
     }
     #s-tito .tito-panel-sidebar {
-      width: 86px;
+      width: 94px;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -2616,12 +2616,24 @@
       <div class="tito-panel-head-text">
         <div class="tito-panel-title">TITO</div>
         <div class="tito-panel-greet">¿Qué tal va tu operativa?</div>
-        <div class="tito-panel-sub" id="tito-panel-subtitle">Tu asistente de operativa — datos de Estrategias</div>
+        <div class="tito-panel-sub" id="tito-panel-subtitle">Conversa con Tito sobre reglas, operaciones y seguimiento de tus estrategias.</div>
       </div>
     </div>
     <div class="tito-panel-layout" id="titoPanel">
       <div class="tito-panel-main">
         <div id="tito-view-estrategias" class="tito-view">
+          <div class="tito-card tito-card--compose">
+            <div class="tito-card-h">Escribe a Tito</div>
+            <textarea id="tito-panel-input" class="tito-panel-ta" rows="3" placeholder="Pregunta, contexto de mercado o reflexión breve…"></textarea>
+            <div class="tito-panel-compose-row">
+              <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
+              <button type="button" class="btn btn-p btn-sm" onclick="sendTitoPanelMessage()">Enviar a Tito</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="saveTitoPanelReflection()">Guardar nota</button>
+            </div>
+            <div id="tito-panel-thread" class="tito-panel-thread" aria-live="polite"></div>
+          </div>
+        </div>
+        <div id="tito-view-resumen" class="tito-view" style="display:none;">
           <div class="tito-card">
             <div class="tito-card-h">Resumen automático</div>
             <div class="tito-card-body" id="tito-card-summary-body"></div>
@@ -2634,27 +2646,18 @@
             <div class="tito-card-h">Acción recomendada</div>
             <div class="tito-card-body tito-card-body--prose" id="tito-card-action-body"></div>
           </div>
-          <div class="tito-card tito-card--compose">
-            <div class="tito-card-h">Escribe a Tito o guarda una nota</div>
-            <textarea id="tito-panel-input" class="tito-panel-ta" rows="3" placeholder="Pregunta, contexto de mercado o reflexión breve…"></textarea>
-            <div class="tito-panel-compose-row">
-              <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
-              <button type="button" class="btn btn-p btn-sm" onclick="sendTitoPanelMessage()">Enviar a Tito</button>
-              <button type="button" class="btn btn-g btn-sm" onclick="saveTitoPanelReflection()">Guardar nota</button>
-            </div>
-            <div id="tito-panel-thread" class="tito-panel-thread" aria-live="polite"></div>
-          </div>
         </div>
         <div id="tito-view-placeholder" class="tito-view tito-placeholder" style="display:none;">
           <div class="tito-placeholder-inner">
             <div class="tito-placeholder-title" id="tito-placeholder-label">Mente</div>
-            <p class="tito-placeholder-txt">Próximamente</p>
+            <p class="tito-placeholder-txt" id="tito-placeholder-txt">Próximamente. Tito aprenderá de esta área para ayudarte mejor.</p>
           </div>
         </div>
       </div>
       <aside class="tito-panel-sidebar" role="tablist" aria-label="Áreas Tito">
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="mente" onclick="setTitoPanelTab('mente')">Mente</button>
         <button type="button" role="tab" class="tito-sb-btn tito-sb-btn--on" data-tito-tab="estrategias" onclick="setTitoPanelTab('estrategias')">Estrategias</button>
+        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="resumen" onclick="setTitoPanelTab('resumen')">Resumen</button>
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="diario" onclick="setTitoPanelTab('diario')">Diario</button>
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="biblioteca" onclick="setTitoPanelTab('biblioteca')">Biblioteca</button>
       </aside>
@@ -4107,11 +4110,35 @@ function getTitoStrategyData() {
     return r.op;
   });
 
+  var allOpsFlat = [];
+  strategies.forEach(function (s) {
+    (s.ops || []).forEach(function (op) {
+      allOpsFlat.push({
+        strategyName: String(s.name || "").slice(0, 200),
+        op: op
+      });
+    });
+  });
+  allOpsFlat.sort(function (a, b) {
+    return String(b.op.date || "").localeCompare(String(a.op.date || ""));
+  });
+  var recentGlobalOps = allOpsFlat.slice(0, 10).map(function (r) {
+    var rk = titoOpResultKind(r.op);
+    var resLabel = rk === "win" ? "Se dio" : rk === "lose" ? "No se dio" : "Pendiente";
+    return {
+      estrategia: r.strategyName,
+      asset: String(r.op.asset || "").slice(0, 32),
+      fecha: String(r.op.date || "").slice(0, 16),
+      resultado: resLabel
+    };
+  });
+
   return {
     week: { key: cw.key, label: getWeekLabel(cw) },
     perStrategy: perStrategy,
     weekOps: weekOps,
-    recentWeekOps: recentWeekOps
+    recentWeekOps: recentWeekOps,
+    recentGlobalOps: recentGlobalOps
   };
 }
 
@@ -4185,6 +4212,7 @@ function getTitoStrategySummary() {
     estrategiaMasFallos: mostLoss,
     estrategiaMejorWinrate: bestWinrate,
     recienteSemana: data.recentWeekOps,
+    recienteGlobal: data.recentGlobalOps || [],
     primeraReglas: primeraReglas
   };
 }
@@ -4301,20 +4329,34 @@ function renderTitoStrategySection() {
   renderTitoPanel();
 }
 
-function renderTitoPanel() {
+function getTitoPanelActiveTab() {
+  var b = document.querySelector("#s-tito .tito-sb-btn--on");
+  return b && b.getAttribute("data-tito-tab") ? b.getAttribute("data-tito-tab") : "estrategias";
+}
+
+function syncTitoPanelHeaderSubtitle(tab) {
   var sub = document.getElementById("tito-panel-subtitle");
+  if (!sub) return;
+  if (tab === "estrategias") {
+    sub.textContent =
+      "Conversa con Tito sobre reglas, operaciones y seguimiento de tus estrategias.";
+  } else if (tab === "resumen") {
+    sub.textContent =
+      "Resumen completo: métricas y análisis con tus datos guardados (independiente del horario de mercado).";
+  } else if (tab === "mente" || tab === "diario" || tab === "biblioteca") {
+    sub.textContent = "Contenido en preparación.";
+  } else {
+    sub.textContent = "";
+  }
+}
+
+function renderTitoPanel() {
   var sumEl = document.getElementById("tito-card-summary-body");
   var anEl = document.getElementById("tito-card-analysis-body");
   var actEl = document.getElementById("tito-card-action-body");
   if (!sumEl || !anEl || !actEl) return;
   ensureWeeklyArchives();
   var summary = getTitoStrategySummary();
-  if (sub) {
-    sub.textContent =
-      summary.totalOps === 0
-        ? "Tu asistente de operativa — datos de Estrategias"
-        : "Datos reales · " + summary.semanaActual.label;
-  }
   var sumLines = [];
   sumLines.push(
     "<strong>" +
@@ -4362,11 +4404,17 @@ function renderTitoPanel() {
         "%)"
     );
   }
-  if (summary.recienteSemana && summary.recienteSemana.length) {
+  var recList =
+    summary.recienteGlobal && summary.recienteGlobal.length
+      ? summary.recienteGlobal
+      : summary.recienteSemana && summary.recienteSemana.length
+        ? summary.recienteSemana
+        : [];
+  if (recList.length) {
     sumLines.push(
-      '<div class="tito-reciente-wrap">Operaciones recientes (semana):<br>' +
-        summary.recienteSemana
-          .slice(0, 5)
+      '<div class="tito-reciente-wrap">Últimas operaciones registradas (ordenadas por fecha):<br>' +
+        recList
+          .slice(0, 8)
           .map(function (r) {
             return "· " + e(r.asset || "—") + " · " + e(r.resultado) + " · «" + e(r.estrategia) + "»";
           })
@@ -4381,29 +4429,37 @@ function renderTitoPanel() {
 
   anEl.textContent = getTitoStrategyAnalysis(summary);
   actEl.textContent = getTitoStrategyAction(summary);
+  syncTitoPanelHeaderSubtitle(getTitoPanelActiveTab());
 }
 
 function setTitoPanelTab(tab) {
-  var estrategias = document.getElementById("tito-view-estrategias");
+  var ve = document.getElementById("tito-view-estrategias");
+  var vr = document.getElementById("tito-view-resumen");
   var ph = document.getElementById("tito-view-placeholder");
-  document.querySelectorAll("[data-tito-tab]").forEach(function (btn) {
+  document.querySelectorAll("#s-tito [data-tito-tab]").forEach(function (btn) {
     var on = btn.getAttribute("data-tito-tab") === tab;
     btn.classList.toggle("tito-sb-btn--on", on);
   });
-  if (tab === "estrategias") {
-    if (estrategias) estrategias.style.display = "";
-    if (ph) ph.style.display = "none";
-    renderTitoPanel();
-  } else {
-    if (estrategias) estrategias.style.display = "none";
-    if (ph) {
-      ph.style.display = "";
+  if (ve) ve.style.display = tab === "estrategias" ? "" : "none";
+  if (vr) vr.style.display = tab === "resumen" ? "" : "none";
+  if (ph) {
+    var isPh = tab === "mente" || tab === "diario" || tab === "biblioteca";
+    ph.style.display = isPh ? "flex" : "none";
+    if (isPh) {
       var lbl = document.getElementById("tito-placeholder-label");
+      var txt = document.getElementById("tito-placeholder-txt");
       if (lbl) {
         lbl.textContent =
           tab === "mente" ? "Mente" : tab === "diario" ? "Diario" : tab === "biblioteca" ? "Biblioteca" : tab;
       }
+      if (txt) {
+        txt.textContent = "Próximamente. Tito aprenderá de esta área para ayudarte mejor.";
+      }
     }
+  }
+  syncTitoPanelHeaderSubtitle(tab);
+  if (tab === "resumen") {
+    renderTitoPanel();
   }
 }
 
