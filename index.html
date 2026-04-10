@@ -199,14 +199,16 @@
       -webkit-overflow-scrolling: touch;
     }
     #s-tito .tito-panel-sidebar {
-      width: 94px;
+      width: 108px;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
       gap: 6px;
       padding-top: 2px;
     }
-    #s-tito .tito-sb-btn {
+    #s-tito .tito-sb-btn,
+    #s-tito .tito-sb-root,
+    #s-tito .tito-sb-subbtn {
       width: 100%;
       padding: 8px 6px;
       font-size: 9px;
@@ -222,10 +224,37 @@
       font-family: inherit;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    #s-tito .tito-sb-btn--on {
+    #s-tito .tito-sb-sub {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 0 6px 8px;
+      border-left: 2px solid rgba(29, 106, 255, 0.25);
+      margin: 2px 0 4px 4px;
+    }
+    #s-tito .tito-sb-est-block {
+      width: 100%;
+    }
+    #s-tito .tito-sb-sub.tito-sb-sub--open {
+      display: flex;
+    }
+    #s-tito .tito-sb-subbtn {
+      font-size: 8px;
+      padding: 6px 5px;
+      text-transform: none;
+      letter-spacing: 0.2px;
+      font-weight: 600;
+    }
+    #s-tito .tito-sb-btn--on,
+    #s-tito .tito-sb-root--on {
       border-color: rgba(0, 200, 255, 0.45);
       color: var(--accent2);
       background: rgba(29, 106, 255, 0.12);
+    }
+    #s-tito .tito-sb-subbtn--on {
+      border-color: rgba(0, 200, 255, 0.55);
+      color: #cfe4ff;
+      background: rgba(29, 106, 255, 0.2);
     }
     #s-tito .tito-card {
       background: var(--card);
@@ -280,6 +309,11 @@
       gap: 8px;
       margin-bottom: 12px;
     }
+    #s-tito .tito-chat-send {
+      min-width: 120px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
     #s-tito .tito-panel-toast {
       font-size: 12px;
       color: var(--green);
@@ -287,10 +321,25 @@
       transition: opacity 0.2s;
     }
     #s-tito .tito-panel-thread {
-      max-height: 220px;
+      max-height: min(340px, 42vh);
       overflow-y: auto;
       border-top: 1px solid var(--border);
       padding-top: 10px;
+    }
+    #s-tito .tito-notas-ta {
+      width: 100%;
+      min-height: 280px;
+      box-sizing: border-box;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.55;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      resize: vertical;
+      outline: none;
     }
     #s-tito .tito-panel-msg { margin-bottom: 10px; }
     #s-tito .tito-panel-msg--user .tito-panel-msg-inner {
@@ -367,7 +416,10 @@
         flex-wrap: wrap;
         justify-content: center;
       }
-      #s-tito .tito-sb-btn { width: auto; flex: 1 1 40%; min-width: 72px; }
+      #s-tito .tito-sb-btn,
+      #s-tito .tito-sb-root { width: auto; flex: 1 1 40%; min-width: 72px; }
+      #s-tito .tito-sb-sub { width: 100%; margin-left: 0; border-left: none; padding-left: 0; }
+      #s-tito .tito-sb-subbtn { flex: 1 1 45%; }
     }
 
     @keyframes fadeUp {
@@ -2643,12 +2695,11 @@
       <div class="tito-panel-main">
         <div id="tito-view-estrategias" class="tito-view">
           <div class="tito-card tito-card--compose">
-            <div class="tito-card-h">Escribe a Tito</div>
-            <textarea id="tito-panel-input" class="tito-panel-ta" rows="3" placeholder="Pregunta, contexto de mercado o reflexión breve…"></textarea>
+            <div class="tito-card-h">Conversación</div>
+            <textarea id="tito-panel-input" class="tito-panel-ta" rows="4" placeholder="Escribe como en un chat: preguntas, pide que guarde una nota, un recordatorio o que revise tu operativa… (Enter envía · Shift+Enter nueva línea)" onkeydown="titoPanelInputKeydown(event)"></textarea>
             <div class="tito-panel-compose-row">
               <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
-              <button type="button" class="btn btn-p btn-sm" onclick="sendTitoPanelMessage()">Enviar a Tito</button>
-              <button type="button" class="btn btn-g btn-sm" onclick="saveTitoPanelReflection()">Guardar nota</button>
+              <button type="button" class="btn btn-p tito-chat-send" onclick="sendTitoPanelMessage()">Enviar</button>
             </div>
             <div id="tito-panel-thread" class="tito-panel-thread" aria-live="polite"></div>
           </div>
@@ -2670,6 +2721,13 @@
         <div id="tito-view-historial" class="tito-view" style="display:none;">
           <div id="tito-historial-list" class="tito-historial-list"></div>
         </div>
+        <div id="tito-view-notas" class="tito-view" style="display:none;">
+          <div class="tito-card">
+            <div class="tito-card-h">Notas de operativa</div>
+            <p class="tito-card-body" style="color:var(--text3);font-size:13px;margin:0 0 12px;">Ideas, seguimiento y lo mismo que en Estrategias → notas globales.</p>
+            <textarea id="tito-estrategias-notas-ta" class="tito-notas-ta" rows="14" placeholder="Observaciones del mercado, ideas, errores, patrones…" oninput="estrategiasNotasOnInput(this)"></textarea>
+          </div>
+        </div>
         <div id="tito-view-placeholder" class="tito-view tito-placeholder" style="display:none;">
           <div class="tito-placeholder-inner">
             <div class="tito-placeholder-title" id="tito-placeholder-label">Mente</div>
@@ -2677,13 +2735,19 @@
           </div>
         </div>
       </div>
-      <aside class="tito-panel-sidebar" role="tablist" aria-label="Áreas Tito">
-        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="mente" onclick="setTitoPanelTab('mente')">Mente</button>
-        <button type="button" role="tab" class="tito-sb-btn tito-sb-btn--on" data-tito-tab="estrategias" onclick="setTitoPanelTab('estrategias')">Estrategias</button>
-        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="resumen" onclick="setTitoPanelTab('resumen')">Resumen</button>
-        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="historial" onclick="setTitoPanelTab('historial')">Historial</button>
-        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="diario" onclick="setTitoPanelTab('diario')">Diario</button>
-        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="biblioteca" onclick="setTitoPanelTab('biblioteca')">Biblioteca</button>
+      <aside class="tito-panel-sidebar" role="navigation" aria-label="Áreas Tito">
+        <button type="button" class="tito-sb-root" data-tito-root="mente" onclick="setTitoPanelRoot('mente')">Mente</button>
+        <div class="tito-sb-est-block">
+          <button type="button" class="tito-sb-root tito-sb-root--on" id="tito-sb-est-toggle" data-tito-root="estrategias" aria-expanded="true" aria-controls="tito-sb-est-sub" onclick="onTitoEstrategiasRootClick(event)">Estrategias</button>
+          <div id="tito-sb-est-sub" class="tito-sb-sub tito-sb-sub--open" role="group" aria-label="Estrategias">
+            <button type="button" class="tito-sb-subbtn tito-sb-subbtn--on" data-tito-sub="chat" onclick="setTitoEstrategiasSub('chat')">Chat</button>
+            <button type="button" class="tito-sb-subbtn" data-tito-sub="resumen" onclick="setTitoEstrategiasSub('resumen')">Resumen</button>
+            <button type="button" class="tito-sb-subbtn" data-tito-sub="historial" onclick="setTitoEstrategiasSub('historial')">Historial</button>
+            <button type="button" class="tito-sb-subbtn" data-tito-sub="notas" onclick="setTitoEstrategiasSub('notas')">Notas</button>
+          </div>
+        </div>
+        <button type="button" class="tito-sb-root" data-tito-root="diario" onclick="setTitoPanelRoot('diario')">Diario</button>
+        <button type="button" class="tito-sb-root" data-tito-root="biblioteca" onclick="setTitoPanelRoot('biblioteca')">Biblioteca</button>
       </aside>
     </div>
   </div>
@@ -2984,6 +3048,7 @@
         estrategiasNotas: "",
         titoPanelReflections: [],
         titoSemanalHistorial: [],
+        titoReminderIntents: [],
         dayStickyNotes: {}
       };
     }
@@ -3468,6 +3533,21 @@
         })
         .slice(0, 104);
 
+      data.titoReminderIntents = Array.isArray(data.titoReminderIntents) ? data.titoReminderIntents : [];
+      data.titoReminderIntents = data.titoReminderIntents
+        .filter(function (x) {
+          return x && typeof x === "object";
+        })
+        .map(function (x) {
+          return {
+            id: String(x.id || uid()).slice(0, 40),
+            createdAt: String(x.createdAt || new Date().toISOString()).slice(0, 40),
+            rawText: String(x.rawText || "").slice(0, 4000),
+            status: String(x.status || "pending").slice(0, 24)
+          };
+        })
+        .slice(0, 200);
+
       const dsn = data.dayStickyNotes;
       data.dayStickyNotes = dsn && typeof dsn === "object" && !Array.isArray(dsn) ? dsn : {};
       Object.keys(data.dayStickyNotes).forEach((k) => {
@@ -3745,7 +3825,12 @@
       if (id === "estrategias") rstrat();
       if (id === "diario")      rdiary();
       if (id === "biblioteca")  rquotes();
-      if (id === "tito")        renderTitoPanel();
+      if (id === "tito") {
+        try {
+          applyTitoPanelUiFromState();
+        } catch (errTitoUi) {}
+        renderTitoPanel();
+      }
       if (id === "horario")     { renderBlocks(); requestNotifPermission(); }
       updatePrivateCoachVisibility();
       if (id !== "diario") {
@@ -4463,23 +4548,38 @@ function renderTitoStrategySection() {
   renderTitoPanel();
 }
 
-function getTitoPanelActiveTab() {
-  var b = document.querySelector("#s-tito .tito-sb-btn--on");
-  return b && b.getAttribute("data-tito-tab") ? b.getAttribute("data-tito-tab") : "estrategias";
+var titoPanelUi = { root: "estrategias", estSub: "chat" };
+
+function getTitoPanelUiState() {
+  return { root: titoPanelUi.root || "estrategias", estSub: titoPanelUi.estSub || "chat" };
 }
 
-function syncTitoPanelHeaderSubtitle(tab) {
+function syncTitoEstrategiasNotasTextareaFromData() {
+  var ta = document.getElementById("tito-estrategias-notas-ta");
+  if (!ta || typeof D === "undefined") return;
+  if (typeof D.estrategiasNotas !== "string") D.estrategiasNotas = "";
+  ta.value = D.estrategiasNotas || "";
+}
+
+function syncTitoPanelHeaderFromState() {
   var sub = document.getElementById("tito-panel-subtitle");
   if (!sub) return;
-  if (tab === "estrategias") {
-    sub.textContent =
-      "Conversa con Tito sobre reglas, operaciones y seguimiento de tus estrategias.";
-  } else if (tab === "resumen") {
-    sub.textContent =
-      "Semana activa (lun–vie): métricas solo de este bloque. Cierre automático viernes 4:20 p.m.";
-  } else if (tab === "historial") {
-    sub.textContent = "Semanas ya cerradas y congeladas (archivo automático tras el cierre).";
-  } else if (tab === "mente" || tab === "diario" || tab === "biblioteca") {
+  var st = getTitoPanelUiState();
+  if (st.root === "estrategias") {
+    if (st.estSub === "chat") {
+      sub.textContent =
+        "Un solo mensaje: Tito entiende si quieres charlar, guardar nota, recordatorio o revisar estrategias.";
+    } else if (st.estSub === "resumen") {
+      sub.textContent =
+        "Semana activa (lun–vie): métricas solo de este bloque. Cierre automático viernes 4:20 p.m.";
+    } else if (st.estSub === "historial") {
+      sub.textContent = "Semanas ya cerradas y congeladas (archivo automático tras el cierre).";
+    } else if (st.estSub === "notas") {
+      sub.textContent = "Notas globales de operativa e ideas (misma hoja que en el módulo Estrategias).";
+    } else {
+      sub.textContent = "";
+    }
+  } else if (st.root === "mente" || st.root === "diario" || st.root === "biblioteca") {
     sub.textContent = "Contenido en preparación.";
   } else {
     sub.textContent = "";
@@ -4581,7 +4681,7 @@ function renderTitoPanel() {
   sumEl.innerHTML = buildTitoResumenSummaryInnerHtml(summary);
   anEl.textContent = getTitoStrategyAnalysis(summary);
   actEl.textContent = getTitoStrategyAction(summary);
-  syncTitoPanelHeaderSubtitle(getTitoPanelActiveTab());
+  syncTitoPanelHeaderFromState();
 }
 
 function renderTitoHistorialPanel() {
@@ -4633,40 +4733,222 @@ function renderTitoHistorialPanel() {
     .join("");
 }
 
-function setTitoPanelTab(tab) {
+function titoPanelApplyMainViews(mode) {
   var ve = document.getElementById("tito-view-estrategias");
   var vr = document.getElementById("tito-view-resumen");
   var vh = document.getElementById("tito-view-historial");
+  var vn = document.getElementById("tito-view-notas");
   var ph = document.getElementById("tito-view-placeholder");
-  document.querySelectorAll("#s-tito [data-tito-tab]").forEach(function (btn) {
-    var on = btn.getAttribute("data-tito-tab") === tab;
-    btn.classList.toggle("tito-sb-btn--on", on);
-  });
-  if (ve) ve.style.display = tab === "estrategias" ? "" : "none";
-  if (vr) vr.style.display = tab === "resumen" ? "" : "none";
-  if (vh) vh.style.display = tab === "historial" ? "" : "none";
+  var showPh = mode === "placeholder";
+  if (ve) ve.style.display = mode === "chat" ? "" : "none";
+  if (vr) vr.style.display = mode === "resumen" ? "" : "none";
+  if (vh) vh.style.display = mode === "historial" ? "" : "none";
+  if (vn) vn.style.display = mode === "notas" ? "" : "none";
   if (ph) {
-    var isPh = tab === "mente" || tab === "diario" || tab === "biblioteca";
-    ph.style.display = isPh ? "flex" : "none";
-    if (isPh) {
+    ph.style.display = showPh ? "flex" : "none";
+    if (showPh) {
       var lbl = document.getElementById("tito-placeholder-label");
       var txt = document.getElementById("tito-placeholder-txt");
+      var root = titoPanelUi.root;
       if (lbl) {
         lbl.textContent =
-          tab === "mente" ? "Mente" : tab === "diario" ? "Diario" : tab === "biblioteca" ? "Biblioteca" : tab;
+          root === "mente" ? "Mente" : root === "diario" ? "Diario" : root === "biblioteca" ? "Biblioteca" : root;
       }
       if (txt) {
         txt.textContent = "Próximamente. Tito aprenderá de esta área para ayudarte mejor.";
       }
     }
   }
-  syncTitoPanelHeaderSubtitle(tab);
-  if (tab === "resumen") {
-    renderTitoPanel();
+}
+
+function titoPanelUpdateRootButtons() {
+  var root = titoPanelUi.root;
+  document.querySelectorAll("#s-tito [data-tito-root]").forEach(function (btn) {
+    var on = btn.getAttribute("data-tito-root") === root;
+    btn.classList.toggle("tito-sb-root--on", on);
+  });
+  var toggle = document.getElementById("tito-sb-est-toggle");
+  var subEl = document.getElementById("tito-sb-est-sub");
+  if (toggle && subEl) {
+    var open = root === "estrategias" && subEl.classList.contains("tito-sb-sub--open");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
   }
-  if (tab === "historial") {
-    renderTitoHistorialPanel();
+}
+
+function titoPanelUpdateEstrategiasSubButtons() {
+  var sub = titoPanelUi.estSub;
+  if ((titoPanelUi.root || "") !== "estrategias") {
+    document.querySelectorAll("#s-tito [data-tito-sub]").forEach(function (btn) {
+      btn.classList.remove("tito-sb-subbtn--on");
+    });
+    return;
   }
+  document.querySelectorAll("#s-tito [data-tito-sub]").forEach(function (btn) {
+    var on = btn.getAttribute("data-tito-sub") === sub;
+    btn.classList.toggle("tito-sb-subbtn--on", on);
+  });
+}
+
+function onTitoEstrategiasRootClick(ev) {
+  if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+  if (titoPanelUi.root === "estrategias") {
+    var subEl = document.getElementById("tito-sb-est-sub");
+    if (subEl) subEl.classList.toggle("tito-sb-sub--open");
+    titoPanelUpdateRootButtons();
+    return;
+  }
+  setTitoPanelRoot("estrategias");
+}
+
+function setTitoPanelRoot(root) {
+  var valid = { mente: 1, estrategias: 1, diario: 1, biblioteca: 1 };
+  if (!valid[root]) root = "estrategias";
+  titoPanelUi.root = root;
+  if (root === "estrategias") {
+    var subEl = document.getElementById("tito-sb-est-sub");
+    if (subEl) subEl.classList.add("tito-sb-sub--open");
+    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+  } else {
+    var subEl2 = document.getElementById("tito-sb-est-sub");
+    if (subEl2) subEl2.classList.remove("tito-sb-sub--open");
+    titoPanelApplyMainViews("placeholder");
+    syncTitoPanelHeaderFromState();
+  }
+  titoPanelUpdateRootButtons();
+}
+
+function setTitoEstrategiasSub(sub, skipRootEnsure) {
+  var valid = { chat: 1, resumen: 1, historial: 1, notas: 1 };
+  if (!valid[sub]) sub = "chat";
+  titoPanelUi.root = "estrategias";
+  titoPanelUi.estSub = sub;
+  if (!skipRootEnsure) {
+    var subEl = document.getElementById("tito-sb-est-sub");
+    if (subEl) subEl.classList.add("tito-sb-sub--open");
+  }
+  var mode = sub === "chat" ? "chat" : sub === "resumen" ? "resumen" : sub === "historial" ? "historial" : "notas";
+  titoPanelApplyMainViews(mode);
+  titoPanelUpdateRootButtons();
+  titoPanelUpdateEstrategiasSubButtons();
+  syncTitoPanelHeaderFromState();
+  if (sub === "resumen") renderTitoPanel();
+  if (sub === "historial") renderTitoHistorialPanel();
+  if (sub === "notas") syncTitoEstrategiasNotasTextareaFromData();
+}
+
+/** Restaura barra lateral y vistas al volver a la pantalla Tito. */
+function applyTitoPanelUiFromState() {
+  var r = titoPanelUi.root || "estrategias";
+  if (r === "estrategias") {
+    var subEl = document.getElementById("tito-sb-est-sub");
+    if (subEl) subEl.classList.add("tito-sb-sub--open");
+    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+  } else {
+    titoPanelUi.root = r;
+    var subEl2 = document.getElementById("tito-sb-est-sub");
+    if (subEl2) subEl2.classList.remove("tito-sb-sub--open");
+    titoPanelApplyMainViews("placeholder");
+    titoPanelUpdateRootButtons();
+    titoPanelUpdateEstrategiasSubButtons();
+    syncTitoPanelHeaderFromState();
+  }
+}
+
+
+function titoPanelInputKeydown(ev) {
+  if (!ev || ev.key !== "Enter" || ev.shiftKey) return;
+  if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  ev.preventDefault();
+  sendTitoPanelMessage();
+}
+
+function titoPanelFlashToast(msg) {
+  var ok = document.getElementById("tito-panel-save-toast");
+  if (!ok) return;
+  ok.textContent = msg || "";
+  ok.style.opacity = "1";
+  setTimeout(function () {
+    ok.style.opacity = "0";
+  }, 2200);
+}
+
+function resolveTitoPanelIntent(raw) {
+  var text = String(raw || "").trim();
+  if (!text) return { kind: "empty" };
+  var lower = text.toLowerCase();
+  var tail = text.replace(/^\s*tito\s*,?\s*/i, "").trim();
+
+  var noteProbe = tail.length ? tail : text;
+  if (
+    /guárdame\s+esta\s+nota\s*:/i.test(text) ||
+    /guarda\s+esta\s+nota\s*:/i.test(text) ||
+    /^nota\s*:/i.test(noteProbe) ||
+    /^apunta\s*:/i.test(noteProbe) ||
+    /guárdame\s+(esta\s+)?nota\b/i.test(lower) ||
+    /guarda(me)?\s+(esta\s+)?nota\b/i.test(lower)
+  ) {
+    var body = noteProbe.replace(/^nota\s*:\s*/i, "").replace(/^apunta\s*:\s*/i, "").trim();
+    var gm = text.match(/guárdame\s+esta\s+nota\s*:\s*(.*)$/i) || text.match(/guarda\s+esta\s+nota\s*:\s*(.*)$/i);
+    if (gm && gm[1]) body = gm[1].trim();
+    else
+      body = noteProbe
+        .replace(/^\s*tito\s*,?\s*/i, "")
+        .replace(/^guárdame\s+esta\s+nota\s*:\s*/i, "")
+        .replace(/^guarda\s+esta\s+nota\s*:\s*/i, "")
+        .trim();
+    if (!body) body = noteProbe;
+    return { kind: "note", body: body.slice(0, 8000) };
+  }
+
+  if (
+    /recu[eé]rdame\b|recordatorio\b|alarma\b/.test(lower) &&
+    (/\d/.test(text) ||
+      /\b(mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(text) ||
+      /a\s+las\b/i.test(lower))
+  ) {
+    return { kind: "reminder", raw: text.slice(0, 4000) };
+  }
+
+  if (
+    /rev[ií]s(ar)?\s+(esta\s+)?estrategia/i.test(lower) ||
+    /analiz\w*\s+.*estrategia/i.test(lower) ||
+    /compar\w+\s+.*estrategia/i.test(lower) ||
+    (/estrategia/i.test(lower) && /compar|rev[ií]s|analiz/i.test(lower))
+  ) {
+    return { kind: "strategy_chat", raw: text.slice(0, 4000) };
+  }
+
+  return { kind: "chat" };
+}
+
+function appendTitoNoteToEstrategiasNotas(body) {
+  if (typeof D === "undefined") return;
+  if (typeof D.estrategiasNotas !== "string") D.estrategiasNotas = "";
+  var stamp = new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+  var block = (D.estrategiasNotas ? D.estrategiasNotas.replace(/\s+$/, "") + "\n\n" : "") + "— " + stamp + " · Tito\n" + String(body || "").trim();
+  D.estrategiasNotas = block.slice(0, 200000);
+  var ta = document.getElementById("estrategias-notas-ta");
+  if (ta) ta.value = D.estrategiasNotas;
+  var titoTa = document.getElementById("tito-estrategias-notas-ta");
+  if (titoTa) titoTa.value = D.estrategiasNotas;
+  try {
+    sv();
+  } catch (eN) {}
+}
+
+function persistReminderIntent(raw) {
+  if (typeof D === "undefined") return;
+  if (!Array.isArray(D.titoReminderIntents)) D.titoReminderIntents = [];
+  D.titoReminderIntents.unshift({
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    rawText: String(raw || "").slice(0, 4000),
+    status: "pending_parse"
+  });
+  if (D.titoReminderIntents.length > 200) D.titoReminderIntents = D.titoReminderIntents.slice(0, 200);
+  try {
+    sv();
+  } catch (eR) {}
 }
 
 async function sendTitoPanelMessage() {
@@ -4674,45 +4956,54 @@ async function sendTitoPanelMessage() {
   if (!inp) return;
   var text = (inp.value || "").trim();
   if (!text) return;
-  inp.value = "";
   if (isPrivateCoachUiAllowed()) {
+    inp.value = "";
     var coachInp = document.getElementById("enfo-coach-input");
     if (coachInp) coachInp.value = text;
     await sendPrivateCoachMessage();
     return;
   }
+  var intent = resolveTitoPanelIntent(text);
+  if (intent.kind === "empty") return;
+
+  if (intent.kind === "note") {
+    inp.value = "";
+    appendTitoPanelThreadMessage("user", text);
+    appendTitoNoteToEstrategiasNotas(intent.body);
+    appendTitoPanelThreadMessage(
+      "coach",
+      "Listo: añadí eso a tus notas de operativa (Estrategias → Notas en este panel, o el bloc de notas del módulo Estrategias)."
+    );
+    titoPanelFlashToast("Nota guardada");
+    return;
+  }
+
+  if (intent.kind === "reminder") {
+    inp.value = "";
+    appendTitoPanelThreadMessage("user", text);
+    persistReminderIntent(text);
+    appendTitoPanelThreadMessage(
+      "coach",
+      "Entendido: dejé registrada la intención de recordatorio. Cuando haya avisos automáticos por hora, podré enlazarlo."
+    );
+    titoPanelFlashToast("Recordatorio registrado");
+    return;
+  }
+
+  inp.value = "";
   appendTitoPanelThreadMessage("user", text);
-  var reply = buildPrivateCoachReply(text);
+  var coachInput = text;
+  if (intent.kind === "strategy_chat") {
+    coachInput =
+      "[Pedido explícito sobre estrategia / comparación / revisión. Responde enfocado en reglas, operativa y seguimiento.]\n" +
+      text;
+  }
+  var reply = buildPrivateCoachReply(coachInput);
   reply = privateCoachFinalizeCoachText(reply, true, text);
   appendTitoPanelThreadMessage("coach", reply);
   try {
     privateCoachPersistTurn(text, reply);
   } catch (errTitoSend) {}
-}
-
-function saveTitoPanelReflection() {
-  var inp = document.getElementById("tito-panel-input");
-  if (!inp || typeof D === "undefined") return;
-  var text = (inp.value || "").trim();
-  if (!text) return;
-  if (!Array.isArray(D.titoPanelReflections)) D.titoPanelReflections = [];
-  D.titoPanelReflections.unshift({
-    id: uid(),
-    at: new Date().toISOString(),
-    text: text.slice(0, 8000)
-  });
-  inp.value = "";
-  try {
-    sv();
-  } catch (eSvRefl) {}
-  var ok = document.getElementById("tito-panel-save-toast");
-  if (ok) {
-    ok.textContent = "Nota guardada";
-    ok.style.opacity = "1";
-    setTimeout(function () {
-      ok.style.opacity = "0";
-    }, 2200);
-  }
 }
 
 /** Contexto serializable del módulo Estrategias para Tito (chat cloud). */
@@ -7941,6 +8232,11 @@ function estrategiasNotasOnInput(el) {
     el.value = t;
   }
   D.estrategiasNotas = t;
+  var otherId = el.id === "estrategias-notas-ta" ? "tito-estrategias-notas-ta" : el.id === "tito-estrategias-notas-ta" ? "estrategias-notas-ta" : null;
+  if (otherId) {
+    var other = document.getElementById(otherId);
+    if (other && other !== el) other.value = t;
+  }
   clearTimeout(estrategiasNotasSvTimer);
   estrategiasNotasSvTimer = setTimeout(function() {
     estrategiasNotasSvTimer = null;
@@ -7952,6 +8248,8 @@ function openEstrategiasNotasPanel() {
   if (typeof D.estrategiasNotas !== "string") D.estrategiasNotas = "";
   var ta = document.getElementById("estrategias-notas-ta");
   if (ta) ta.value = D.estrategiasNotas || "";
+  var titoTa = document.getElementById("tito-estrategias-notas-ta");
+  if (titoTa) titoTa.value = D.estrategiasNotas || "";
   var p = document.getElementById("estrategias-notas-panel");
   if (p) p.style.transform = "translateY(0)";
 }
@@ -7968,6 +8266,8 @@ function saveEstrategiasNotas() {
   var t = String(ta.value || "");
   if (t.length > 200000) t = t.slice(0, 200000);
   D.estrategiasNotas = t;
+  var titoTa = document.getElementById("tito-estrategias-notas-ta");
+  if (titoTa) titoTa.value = t;
   sv();
   showCelebration("💾");
 }
@@ -7980,6 +8280,8 @@ function clearEstrategiasNotasAll() {
   }
   var ta = document.getElementById("estrategias-notas-ta");
   if (ta) ta.value = "";
+  var titoTa = document.getElementById("tito-estrategias-notas-ta");
+  if (titoTa) titoTa.value = "";
   D.estrategiasNotas = "";
   sv();
   showCelebration("🗑");
