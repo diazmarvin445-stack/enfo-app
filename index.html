@@ -339,6 +339,26 @@
       color: var(--text3);
       margin: 0;
     }
+    #s-tito .tito-historial-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    #s-tito .tito-hist-card .tito-hist-head {
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border2);
+    }
+    #s-tito .tito-hist-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text2);
+      line-height: 1.35;
+    }
+    #s-tito .tito-hist-meta {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
     @media (max-width: 420px) {
       #s-tito .tito-panel-layout { flex-direction: column-reverse; }
       #s-tito .tito-panel-sidebar {
@@ -2647,6 +2667,9 @@
             <div class="tito-card-body tito-card-body--prose" id="tito-card-action-body"></div>
           </div>
         </div>
+        <div id="tito-view-historial" class="tito-view" style="display:none;">
+          <div id="tito-historial-list" class="tito-historial-list"></div>
+        </div>
         <div id="tito-view-placeholder" class="tito-view tito-placeholder" style="display:none;">
           <div class="tito-placeholder-inner">
             <div class="tito-placeholder-title" id="tito-placeholder-label">Mente</div>
@@ -2658,6 +2681,7 @@
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="mente" onclick="setTitoPanelTab('mente')">Mente</button>
         <button type="button" role="tab" class="tito-sb-btn tito-sb-btn--on" data-tito-tab="estrategias" onclick="setTitoPanelTab('estrategias')">Estrategias</button>
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="resumen" onclick="setTitoPanelTab('resumen')">Resumen</button>
+        <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="historial" onclick="setTitoPanelTab('historial')">Historial</button>
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="diario" onclick="setTitoPanelTab('diario')">Diario</button>
         <button type="button" role="tab" class="tito-sb-btn" data-tito-tab="biblioteca" onclick="setTitoPanelTab('biblioteca')">Biblioteca</button>
       </aside>
@@ -2959,6 +2983,7 @@
         titoLexikon: { terms: {} },
         estrategiasNotas: "",
         titoPanelReflections: [],
+        titoSemanalHistorial: [],
         dayStickyNotes: {}
       };
     }
@@ -3426,6 +3451,22 @@
         x.at = x.at || new Date().toISOString();
         x.text = String(x.text || "").slice(0, 8000);
       });
+      data.titoSemanalHistorial = Array.isArray(data.titoSemanalHistorial) ? data.titoSemanalHistorial : [];
+      data.titoSemanalHistorial = data.titoSemanalHistorial
+        .filter(function (h) {
+          return h && typeof h === "object" && h.weekKey;
+        })
+        .map(function (h) {
+          return {
+            weekKey: String(h.weekKey || "").slice(0, 32),
+            weekLabel: String(h.weekLabel || "").slice(0, 240),
+            closedAt: String(h.closedAt || "").slice(0, 40),
+            summary: h.summary && typeof h.summary === "object" ? h.summary : {},
+            analysisText: String(h.analysisText || "").slice(0, 8000),
+            actionText: String(h.actionText || "").slice(0, 2000)
+          };
+        })
+        .slice(0, 104);
 
       const dsn = data.dayStickyNotes;
       data.dayStickyNotes = dsn && typeof dsn === "object" && !Array.isArray(dsn) ? dsn : {};
@@ -3680,6 +3721,10 @@
 
         s.weeklyArchives = sortArchivesDesc(s.weeklyArchives);
       });
+
+      try {
+        ensureTitoSemanalCierre();
+      } catch (errTitoSemanal) {}
 
       if (!skipAutoSave) sv();
     }
@@ -4052,50 +4097,101 @@ function titoSumContractsInOps(ops) {
   return n;
 }
 
-function getTitoStrategyData() {
-  ensureWeeklyArchives();
-  var strategies = Array.isArray(D.strategies) ? D.strategies : [];
+/** Viernes 16:20 (cierre bloque semanal Tito). */
+function getTitoFriday420(cw) {
+  var d = new Date(cw.startDate);
+  d.setDate(d.getDate() + 4);
+  d.setHours(16, 20, 0, 0);
+  return d;
+}
+
+/** Semana en la que Tito acumula el resumen “activo” (tras Vie 16:20 o fin de semana → siguiente bloque L–V). */
+function getTitoSemanaActivaInfo() {
   var cw = getCurrentWeekInfo();
-  var perStrategy = [];
+  var cut = getTitoFriday420(cw);
+  var now = new Date();
+  var dow = now.getDay();
+  if (now.getTime() >= cut.getTime() || dow === 6 || dow === 0) {
+    var nextStart = new Date(cw.startDate);
+    nextStart.setDate(nextStart.getDate() + 7);
+    return getWeekInfo(nextStart);
+  }
+  return cw;
+}
+
+function titoCollectDistinctWeekKeysFromOps() {
+  var set = {};
+  (D.strategies || []).forEach(function (s) {
+    (s.ops || []).forEach(function (op) {
+      normalizeOperationWeek(op);
+      if (op.weekKey) set[op.weekKey] = true;
+    });
+  });
+  return Object.keys(set);
+}
+
+function titoWeekKeysToEvaluateForCierre() {
+  var set = {};
+  titoCollectDistinctWeekKeysFromOps().forEach(function (k) {
+    set[k] = true;
+  });
+  var cw = getCurrentWeekInfo();
+  set[cw.key] = true;
+  var i;
+  for (i = 1; i <= 14; i++) {
+    var d = new Date(cw.startDate);
+    d.setDate(d.getDate() - 7 * i);
+    set[getWeekInfo(d).key] = true;
+  }
+  return Object.keys(set);
+}
+
+function getTitoStrategyDataForWeekKey(weekKey) {
+  ensureWeeklyArchives();
+  var wk = getWeekInfo(weekKey);
+  var strategies = Array.isArray(D.strategies) ? D.strategies : [];
   var weekOpsFlat = [];
+  var perStrategy = [];
 
   strategies.forEach(function (s) {
     var ops = Array.isArray(s.ops) ? s.ops : [];
+    var weekOps = [];
+    ops.forEach(function (op) {
+      normalizeOperationWeek(op);
+      if (op.weekKey === weekKey) weekOps.push(op);
+    });
     var wins = 0;
     var losses = 0;
     var pend = 0;
-    ops.forEach(function (op) {
-      normalizeOperationWeek(op);
+    weekOps.forEach(function (op) {
       var rk = titoOpResultKind(op);
       if (rk === "win") wins++;
       else if (rk === "lose") losses++;
       else pend++;
-      if (op.weekKey === cw.key) {
-        weekOpsFlat.push({
-          strategyId: s.id,
-          strategyName: String(s.name || "").slice(0, 200),
-          op: op
-        });
-      }
+      weekOpsFlat.push({
+        strategyId: s.id,
+        strategyName: String(s.name || "").slice(0, 200),
+        op: op
+      });
     });
     perStrategy.push({
       id: s.id,
       name: String(s.name || "").slice(0, 200),
       side: (s.side || "Call") === "Put" ? "Put" : "Call",
       rulesSnippet: String(s.rules || "").replace(/\s+/g, " ").trim().slice(0, 220),
-      totalOps: ops.length,
+      totalOps: weekOps.length,
       wins: wins,
       losses: losses,
       pending: pend,
-      contracts: titoSumContractsInOps(ops),
-      winRate: ops.length ? Math.round((wins / ops.length) * 100) : 0
+      contracts: titoSumContractsInOps(weekOps),
+      winRate: weekOps.length ? Math.round((wins / weekOps.length) * 100) : 0
     });
   });
 
   weekOpsFlat.sort(function (a, b) {
     return String(b.op.date || "").localeCompare(String(a.op.date || ""));
   });
-  var recentWeekOps = weekOpsFlat.slice(0, 8).map(function (r) {
+  var recentWeekOps = weekOpsFlat.slice(0, 10).map(function (r) {
     var rk = titoOpResultKind(r.op);
     var resLabel = rk === "win" ? "Se dio" : rk === "lose" ? "No se dio" : "Pendiente";
     return {
@@ -4106,70 +4202,45 @@ function getTitoStrategyData() {
     };
   });
 
-  var weekOps = weekOpsFlat.map(function (r) {
+  var weekOpsOnly = weekOpsFlat.map(function (r) {
     return r.op;
   });
 
-  var allOpsFlat = [];
-  strategies.forEach(function (s) {
-    (s.ops || []).forEach(function (op) {
-      allOpsFlat.push({
-        strategyName: String(s.name || "").slice(0, 200),
-        op: op
-      });
-    });
-  });
-  allOpsFlat.sort(function (a, b) {
-    return String(b.op.date || "").localeCompare(String(a.op.date || ""));
-  });
-  var recentGlobalOps = allOpsFlat.slice(0, 10).map(function (r) {
-    var rk = titoOpResultKind(r.op);
-    var resLabel = rk === "win" ? "Se dio" : rk === "lose" ? "No se dio" : "Pendiente";
-    return {
-      estrategia: r.strategyName,
-      asset: String(r.op.asset || "").slice(0, 32),
-      fecha: String(r.op.date || "").slice(0, 16),
-      resultado: resLabel
-    };
-  });
-
   return {
-    week: { key: cw.key, label: getWeekLabel(cw) },
+    week: { key: wk.key, label: getWeekLabel(wk) },
     perStrategy: perStrategy,
-    weekOps: weekOps,
-    recentWeekOps: recentWeekOps,
-    recentGlobalOps: recentGlobalOps
+    weekOps: weekOpsOnly,
+    recentWeekOps: recentWeekOps
   };
 }
 
-function getTitoStrategySummary() {
-  var data = getTitoStrategyData();
+function getTitoStrategySummaryForWeek(weekKey) {
+  var data = getTitoStrategyDataForWeekKey(weekKey);
   var strategies = Array.isArray(D.strategies) ? D.strategies : [];
-  var totalStrategies = strategies.length;
-  var opsAll = [];
-  strategies.forEach(function (s) {
-    (s.ops || []).forEach(function (o) {
-      opsAll.push(o);
-    });
-  });
-  var totalOps = opsAll.length;
-  var seDio = opsAll.filter(function (o) {
+  var weekOpsAll = data.weekOps;
+  var totalOps = weekOpsAll.length;
+  var seDio = weekOpsAll.filter(function (o) {
     return o.result === "win";
   }).length;
-  var noSeDio = opsAll.filter(function (o) {
+  var noSeDio = weekOpsAll.filter(function (o) {
     return o.result === "lose";
   }).length;
-  var pendientes = opsAll.filter(function (o) {
+  var pendientes = weekOpsAll.filter(function (o) {
     return o.result !== "win" && o.result !== "lose";
   }).length;
-  var totalContratos = titoSumContractsInOps(opsAll);
+  var totalContratos = titoSumContractsInOps(weekOpsAll);
+  var wkInfo = getWeekInfo(weekKey);
+  var weekSummary = summarizeOps(data.weekOps, wkInfo);
 
-  var weekSummary = summarizeOps(data.weekOps, getCurrentWeekInfo());
+  var estrategiasConActividad = data.perStrategy.filter(function (p) {
+    return p.totalOps > 0;
+  }).length;
 
   var mostUsed = null;
   var mostLoss = null;
   var bestWinrate = null;
   data.perStrategy.forEach(function (p) {
+    if (p.totalOps === 0) return;
     if (!mostUsed || p.totalOps > mostUsed.totalOps) {
       mostUsed = { nombre: p.name, ops: p.totalOps };
     }
@@ -4188,13 +4259,23 @@ function getTitoStrategySummary() {
   if (mostLoss && mostLoss.losses === 0) mostLoss = null;
 
   var primeraReglas = "";
-  if (strategies.length === 1) {
-    var rs = String(strategies[0].rules || "").replace(/\s+/g, " ").trim();
-    if (rs) primeraReglas = rs.slice(0, 180);
+  if (estrategiasConActividad === 1) {
+    var conOp = data.perStrategy.find(function (p) {
+      return p.totalOps > 0;
+    });
+    if (conOp) {
+      var st = strategies.find(function (s) {
+        return s.id === conOp.id;
+      });
+      if (st && st.rules) {
+        primeraReglas = String(st.rules).replace(/\s+/g, " ").trim().slice(0, 180);
+      }
+    }
   }
 
   return {
-    totalEstrategias: totalStrategies,
+    totalEstrategiasEnCartera: strategies.length,
+    estrategiasConActividad: estrategiasConActividad,
     totalOps: totalOps,
     totalContratos: totalContratos,
     seDio: seDio,
@@ -4212,40 +4293,53 @@ function getTitoStrategySummary() {
     estrategiaMasFallos: mostLoss,
     estrategiaMejorWinrate: bestWinrate,
     recienteSemana: data.recentWeekOps,
-    recienteGlobal: data.recentGlobalOps || [],
+    recienteGlobal: data.recentWeekOps,
     primeraReglas: primeraReglas
   };
+}
+
+function getTitoStrategySummary() {
+  return getTitoStrategySummaryForWeek(getTitoSemanaActivaInfo().key);
 }
 
 function getTitoStrategyAnalysis(summary) {
   if (!summary) summary = getTitoStrategySummary();
   if (summary.totalOps === 0) {
     return privateCoachSanitizeModuleReply(
-      "Todavía no hay operaciones registradas en tus estrategias. Cuando registres trades con resultado, este análisis se alimentará solo de tus datos reales (semana actual e histórico).",
+      "En el bloque semanal activo aún no hay operaciones. Registra operaciones en Estrategias y este análisis reflejará solo esa semana.",
       "trading"
     );
   }
   var parts = [];
   var w = summary.semanaActual;
+  var cartera =
+    summary.totalEstrategiasEnCartera != null
+      ? summary.totalEstrategiasEnCartera
+      : summary.totalEstrategias != null
+        ? summary.totalEstrategias
+        : 0;
+  var conAct = summary.estrategiasConActividad != null ? summary.estrategiasConActividad : 0;
   parts.push(
-    "En la semana en curso: " +
+    "En el bloque " +
+      (w.label || "") +
+      ": " +
       w.total +
       " operación(es) — " +
       w.wins +
-      ' con «se dio» y ' +
+      ' «se dio», ' +
       w.losses +
-      " con «no se dio» (acierto semanal " +
+      " «no se dio» (acierto " +
       w.winRate +
-      "%)."
+      "% en este bloque)."
   );
   parts.push(
-    "En todo el histórico: " +
-      summary.totalOps +
-      " operaciones en " +
-      summary.totalEstrategias +
-      " estrategia(s); sumas " +
+    "En esta semana usaste " +
+      conAct +
+      " estrategia(s) con al menos una operación (de " +
+      cartera +
+      " en cartera). Contratos sumados en el bloque: " +
       summary.totalContratos +
-      " contrato(s) registrados."
+      "."
   );
   if (summary.estrategiaMasUsada) {
     parts.push(
@@ -4312,6 +4406,43 @@ function getTitoStrategyAction(summary) {
   return privateCoachSanitizeModuleReply(pick || TITO_MOD_FALLBACK.trading, "trading");
 }
 
+function buildTitoSemanalSnapshotForWeekKey(weekKey) {
+  var summary = getTitoStrategySummaryForWeek(weekKey);
+  return {
+    weekKey: weekKey,
+    weekLabel: getWeekLabel(getWeekInfo(weekKey)),
+    closedAt: new Date().toISOString(),
+    summary: summary,
+    analysisText: getTitoStrategyAnalysis(summary),
+    actionText: getTitoStrategyAction(summary)
+  };
+}
+
+function ensureTitoSemanalCierre() {
+  if (typeof D === "undefined" || !D) return;
+  D.titoSemanalHistorial = Array.isArray(D.titoSemanalHistorial) ? D.titoSemanalHistorial : [];
+  var histKeys = {};
+  D.titoSemanalHistorial.forEach(function (h) {
+    if (h && h.weekKey) histKeys[h.weekKey] = true;
+  });
+  var now = new Date();
+  titoWeekKeysToEvaluateForCierre().forEach(function (weekKey) {
+    var wk = getWeekInfo(weekKey);
+    var cut = getTitoFriday420(wk);
+    if (now.getTime() < cut.getTime()) return;
+    if (histKeys[weekKey]) return;
+    var snap = buildTitoSemanalSnapshotForWeekKey(weekKey);
+    D.titoSemanalHistorial.unshift(snap);
+    histKeys[weekKey] = true;
+  });
+  D.titoSemanalHistorial.sort(function (a, b) {
+    return (a.weekKey < b.weekKey ? 1 : -1);
+  });
+  if (D.titoSemanalHistorial.length > 104) {
+    D.titoSemanalHistorial = D.titoSemanalHistorial.slice(0, 104);
+  }
+}
+
 function appendTitoPanelThreadMessage(role, text) {
   var thread = document.getElementById("tito-panel-thread");
   if (!thread) return;
@@ -4342,7 +4473,9 @@ function syncTitoPanelHeaderSubtitle(tab) {
       "Conversa con Tito sobre reglas, operaciones y seguimiento de tus estrategias.";
   } else if (tab === "resumen") {
     sub.textContent =
-      "Resumen completo: métricas y análisis con tus datos guardados (independiente del horario de mercado).";
+      "Semana activa (lun–vie): métricas solo de este bloque. Cierre automático viernes 4:20 p.m.";
+  } else if (tab === "historial") {
+    sub.textContent = "Semanas ya cerradas y congeladas (archivo automático tras el cierre).";
   } else if (tab === "mente" || tab === "diario" || tab === "biblioteca") {
     sub.textContent = "Contenido en preparación.";
   } else {
@@ -4350,22 +4483,25 @@ function syncTitoPanelHeaderSubtitle(tab) {
   }
 }
 
-function renderTitoPanel() {
-  var sumEl = document.getElementById("tito-card-summary-body");
-  var anEl = document.getElementById("tito-card-analysis-body");
-  var actEl = document.getElementById("tito-card-action-body");
-  if (!sumEl || !anEl || !actEl) return;
-  ensureWeeklyArchives();
-  var summary = getTitoStrategySummary();
+function buildTitoResumenSummaryInnerHtml(summary) {
+  var cartera =
+    summary.totalEstrategiasEnCartera != null
+      ? summary.totalEstrategiasEnCartera
+      : summary.totalEstrategias != null
+        ? summary.totalEstrategias
+        : 0;
+  var conAct = summary.estrategiasConActividad != null ? summary.estrategiasConActividad : 0;
   var sumLines = [];
   sumLines.push(
     "<strong>" +
-      summary.totalEstrategias +
-      "</strong> estrategia(s) · <strong>" +
+      cartera +
+      "</strong> en cartera · <strong>" +
+      conAct +
+      "</strong> con operaciones en este bloque · <strong>" +
       summary.totalOps +
       "</strong> operación(es) · <strong>" +
       summary.totalContratos +
-      "</strong> contrato(s) (suma registrada)"
+      "</strong> contrato(s)"
   );
   sumLines.push(
     '<span class="tito-stat tito-stat--win">Se dio: ' +
@@ -4376,17 +4512,21 @@ function renderTitoPanel() {
       summary.pendientes
   );
   var w = summary.semanaActual;
-  sumLines.push(
-    "Semana actual: " +
-      w.total +
-      " ops · " +
-      w.wins +
-      " / " +
-      w.losses +
-      " · " +
-      w.winRate +
-      "% acierto"
-  );
+  if (w) {
+    sumLines.push(
+      "Bloque: " +
+        (w.label || "") +
+        " · " +
+        w.total +
+        " ops · " +
+        w.wins +
+        " / " +
+        w.losses +
+        " · " +
+        w.winRate +
+        "% acierto"
+    );
+  }
   if (summary.estrategiaMasUsada) {
     sumLines.push("Más actividad: «" + e(summary.estrategiaMasUsada.nombre) + "» (" + summary.estrategiaMasUsada.ops + " ops)");
   }
@@ -4412,7 +4552,7 @@ function renderTitoPanel() {
         : [];
   if (recList.length) {
     sumLines.push(
-      '<div class="tito-reciente-wrap">Últimas operaciones registradas (ordenadas por fecha):<br>' +
+      '<div class="tito-reciente-wrap">Operaciones recientes en este bloque:<br>' +
         recList
           .slice(0, 8)
           .map(function (r) {
@@ -4423,18 +4563,77 @@ function renderTitoPanel() {
     );
   }
   if (summary.primeraReglas) {
-    sumLines.push("Reglas (tu estrategia): «" + e(summary.primeraReglas) + (summary.primeraReglas.length >= 180 ? "…" : "") + "»");
+    sumLines.push("Reglas (estrategia activa): «" + e(summary.primeraReglas) + (summary.primeraReglas.length >= 180 ? "…" : "") + "»");
   }
-  sumEl.innerHTML = sumLines.join("<br><br>");
+  return sumLines.join("<br><br>");
+}
 
+function renderTitoPanel() {
+  var sumEl = document.getElementById("tito-card-summary-body");
+  var anEl = document.getElementById("tito-card-analysis-body");
+  var actEl = document.getElementById("tito-card-action-body");
+  if (!sumEl || !anEl || !actEl) return;
+  ensureWeeklyArchives();
+  var summary = getTitoStrategySummary();
+  sumEl.innerHTML = buildTitoResumenSummaryInnerHtml(summary);
   anEl.textContent = getTitoStrategyAnalysis(summary);
   actEl.textContent = getTitoStrategyAction(summary);
   syncTitoPanelHeaderSubtitle(getTitoPanelActiveTab());
 }
 
+function renderTitoHistorialPanel() {
+  var wrap = document.getElementById("tito-historial-list");
+  if (!wrap || typeof D === "undefined") return;
+  ensureTitoSemanalCierre();
+  var list = Array.isArray(D.titoSemanalHistorial) ? D.titoSemanalHistorial : [];
+  if (!list.length) {
+    wrap.innerHTML =
+      '<div class="tito-card"><div class="tito-card-body" style="color:var(--text3);">Aún no hay semanas cerradas. El viernes a las 4:20 p. m. se archiva el bloque semanal automáticamente.</div></div>';
+    return;
+  }
+  wrap.innerHTML = list
+    .map(function (snap) {
+      if (!snap || !snap.weekKey) return "";
+      var sum = snap.summary || {};
+      var cerrado = snap.closedAt ? new Date(snap.closedAt).toLocaleString("es", { dateStyle: "short", timeStyle: "short" }) : "";
+      var analysis = String(snap.analysisText || "").trim();
+      var action = String(snap.actionText || "").trim();
+      var sumHtml = buildTitoResumenSummaryInnerHtml(sum);
+      return (
+        '<div class="tito-card tito-hist-card" data-week-key="' +
+        e(snap.weekKey) +
+        '">' +
+        '<div class="tito-hist-head">' +
+        '<div class="tito-hist-title">' +
+        e(snap.weekLabel || snap.weekKey) +
+        "</div>" +
+        '<div class="tito-hist-meta">Cerrado · ' +
+        e(cerrado) +
+        "</div>" +
+        "</div>" +
+        '<div class="tito-card-h" style="margin-top:12px;">Resumen automático</div>' +
+        '<div class="tito-card-body">' +
+        sumHtml +
+        "</div>" +
+        '<div class="tito-card-h">Análisis Tito</div>' +
+        '<div class="tito-card-body tito-card-body--prose">' +
+        e(analysis).replace(/\n/g, "<br>") +
+        "</div>" +
+        '<div class="tito-card-h">Acción recomendada</div>' +
+        '<div class="tito-card-body tito-card-body--prose">' +
+        e(action).replace(/\n/g, "<br>") +
+        "</div>" +
+        "</div>"
+      );
+    })
+    .filter(Boolean)
+    .join("");
+}
+
 function setTitoPanelTab(tab) {
   var ve = document.getElementById("tito-view-estrategias");
   var vr = document.getElementById("tito-view-resumen");
+  var vh = document.getElementById("tito-view-historial");
   var ph = document.getElementById("tito-view-placeholder");
   document.querySelectorAll("#s-tito [data-tito-tab]").forEach(function (btn) {
     var on = btn.getAttribute("data-tito-tab") === tab;
@@ -4442,6 +4641,7 @@ function setTitoPanelTab(tab) {
   });
   if (ve) ve.style.display = tab === "estrategias" ? "" : "none";
   if (vr) vr.style.display = tab === "resumen" ? "" : "none";
+  if (vh) vh.style.display = tab === "historial" ? "" : "none";
   if (ph) {
     var isPh = tab === "mente" || tab === "diario" || tab === "biblioteca";
     ph.style.display = isPh ? "flex" : "none";
@@ -4460,6 +4660,9 @@ function setTitoPanelTab(tab) {
   syncTitoPanelHeaderSubtitle(tab);
   if (tab === "resumen") {
     renderTitoPanel();
+  }
+  if (tab === "historial") {
+    renderTitoHistorialPanel();
   }
 }
 
