@@ -4147,9 +4147,12 @@ function titoWeekKeysToEvaluateForCierre() {
 }
 
 function getTitoStrategyDataForWeekKey(weekKey) {
-  ensureWeeklyArchives();
-  var wk = getWeekInfo(weekKey);
+  /* No llamar ensureWeeklyArchives() aquí: evita recursión (ensureWeeklyArchives → ensureTitoSemanalCierre → este código). */
   var strategies = Array.isArray(D.strategies) ? D.strategies : [];
+  strategies.forEach(function (s) {
+    (s.ops || []).forEach(normalizeOperationWeek);
+  });
+  var wk = getWeekInfo(weekKey);
   var weekOpsFlat = [];
   var perStrategy = [];
 
