@@ -149,20 +149,23 @@
       user-select: none;
     }
 
-    /* Panel Tito — layout compacto: cabecera mínima, chat ~viewport, input fijo abajo */
+    /* Panel Tito — chat como sección compacta: lista con tope + input, sin “ventana” a pantalla completa */
     #s-tito.screen {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      align-items: stretch;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     #s-tito .tito-panel-wrap {
-      flex: 1;
-      min-height: 0;
+      flex: 0 0 auto;
+      width: 100%;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
-      max-height: calc(100dvh - 72px);
-      overflow: hidden;
+      min-height: 0;
+      overflow: visible;
     }
     #s-tito .tito-panel-header--minimal {
       display: flex;
@@ -219,28 +222,33 @@
     #s-tito .tito-panel-layout {
       display: flex;
       flex-direction: row;
-      flex: 1;
+      flex: 0 1 auto;
+      align-items: flex-start;
       gap: 6px;
-      padding: 2px 6px 4px;
+      padding: 2px 6px 10px;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
     }
     #s-tito .tito-panel-main {
-      flex: 1;
+      flex: 1 1 auto;
       min-width: 0;
       min-height: 0;
-      overflow-y: auto;
       overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
+      overflow-y: visible;
       display: flex;
       flex-direction: column;
+      align-items: stretch;
+      align-self: flex-start;
+      width: 100%;
+      max-width: 100%;
     }
     #s-tito #tito-view-estrategias.tito-view {
-      flex: 1;
+      flex: 0 1 auto;
+      width: 100%;
       min-height: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: visible;
     }
     #s-tito .tito-panel-sidebar {
       width: 108px;
@@ -347,9 +355,10 @@
     #s-tito .tito-card--compose.tito-card--chat {
       display: flex;
       flex-direction: column;
-      flex: 1 1 0;
+      flex: 0 1 auto;
+      width: 100%;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
       padding: 4px 6px 6px;
       margin-bottom: 0;
     }
@@ -427,11 +436,11 @@
       opacity: 0.95;
     }
     #s-tito .tito-chat-composer {
-      flex-shrink: 0;
+      flex: 0 0 auto;
       border-top: 1px solid rgba(26, 45, 80, 0.85);
       padding: 6px 0 2px;
       margin-top: 0;
-      background: linear-gradient(180deg, transparent, rgba(6, 10, 18, 0.45));
+      background: linear-gradient(180deg, transparent, rgba(6, 10, 18, 0.35));
     }
     #s-tito .tito-panel-compose-row {
       display: flex;
@@ -449,9 +458,11 @@
       transition: opacity 0.2s;
     }
     #s-tito .tito-panel-thread {
-      flex: 1 1 0;
+      flex: 0 1 auto;
+      align-self: stretch;
+      width: 100%;
       min-height: 0;
-      max-height: none;
+      max-height: min(34vh, 240px);
       overflow-y: auto;
       overflow-x: hidden;
       padding: 4px 4px 6px 2px;
@@ -540,11 +551,11 @@
       color: var(--text3);
       margin-top: 4px;
     }
-    /* Mobile: solo chat — barra lateral oculta (lógica intacta); layout tipo app de mensajes */
+    /* Mobile: solo chat — barra lateral oculta; altura según contenido (sin caja a pantalla completa) */
     @media (max-width: 540px) {
       #s-tito .tito-panel-wrap {
+        height: auto;
         max-height: none;
-        height: calc(100dvh - 72px);
         min-height: 0;
       }
       #s-tito .tito-panel-header--minimal {
@@ -580,16 +591,18 @@
       }
       #s-tito .tito-panel-layout {
         flex-direction: column;
-        flex: 1;
+        flex: 0 1 auto;
+        align-items: stretch;
         min-height: 0;
-        padding: 2px 6px 4px;
+        padding: 2px 6px 8px;
         gap: 0;
       }
       #s-tito .tito-panel-sidebar {
         display: none !important;
       }
       #s-tito .tito-panel-main {
-        flex: 1;
+        flex: 0 1 auto;
+        align-self: stretch;
         min-height: 0;
         width: 100%;
       }
@@ -628,6 +641,7 @@
         min-height: 0;
       }
       #s-tito .tito-panel-thread {
+        max-height: min(42vh, 260px);
         padding: 2px 2px 4px 0;
       }
     }
@@ -635,6 +649,8 @@
     @media (min-width: 541px) and (max-width: 900px) {
       #s-tito .tito-panel-layout {
         flex-direction: column-reverse;
+        flex: 0 1 auto;
+        align-items: stretch;
       }
       #s-tito .tito-panel-sidebar {
         width: 100%;
