@@ -149,54 +149,89 @@
       user-select: none;
     }
 
-    /* Panel Tito (datos + análisis Estrategias) */
+    /* Panel Tito — layout compacto: cabecera mínima, chat ~viewport, input fijo abajo */
+    #s-tito.screen {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
     #s-tito .tito-panel-wrap {
-      min-height: 100%;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
+      max-height: min(90vh, calc(100dvh - 72px));
+      overflow: hidden;
     }
-    #s-tito .tito-panel-header {
+    #s-tito .tito-panel-header--minimal {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 14px 12px;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px 8px;
       border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(13, 22, 40, 0.5), transparent);
+      background: var(--surface);
+      flex-shrink: 0;
     }
-    #s-tito .tito-panel-head-text { flex: 1; min-width: 0; }
-    #s-tito .tito-panel-title {
-      font-family: Orbitron, monospace;
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      color: #fff;
+    #s-tito .tito-panel-header--minimal .back-btn {
+      flex-shrink: 0;
     }
-    #s-tito .tito-panel-greet {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text2);
-      margin-top: 4px;
+    #s-tito .logo--tito {
+      font-size: 17px;
+      letter-spacing: 2px;
+      flex-shrink: 0;
     }
-    #s-tito .tito-panel-sub {
-      font-size: 12px;
-      color: var(--text3);
-      margin-top: 4px;
-      line-height: 1.45;
+    #s-tito .logo--tito .logo-o {
+      width: 22px;
+      height: 22px;
+      margin-left: 1px;
+    }
+    #s-tito .logo--tito .logo-o-inner {
+      width: 9px;
+      height: 9px;
+    }
+    #s-tito .tito-header-meta {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.15;
+    }
+    #s-tito .tito-panel-header--minimal .user-btn {
+      flex-shrink: 0;
+    }
+    #s-tito .user-menu--tito {
+      position: fixed;
+      top: 48px;
+      right: 10px;
+      z-index: 600;
     }
     #s-tito .tito-panel-layout {
       display: flex;
       flex-direction: row;
       flex: 1;
-      gap: 10px;
-      padding: 12px 12px 20px;
+      gap: 8px;
+      padding: 4px 8px 6px;
       min-height: 0;
+      overflow: hidden;
     }
     #s-tito .tito-panel-main {
       flex: 1;
       min-width: 0;
+      min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+    }
+    #s-tito #tito-view-estrategias.tito-view {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     #s-tito .tito-panel-sidebar {
       width: 108px;
@@ -303,8 +338,11 @@
     #s-tito .tito-card--compose.tito-card--chat {
       display: flex;
       flex-direction: column;
+      flex: 1;
       min-height: 0;
-      padding-top: 12px;
+      overflow: hidden;
+      padding: 6px 8px 8px;
+      margin-bottom: 0;
     }
     #s-tito .tito-chat-input-row {
       display: flex;
@@ -360,9 +398,11 @@
       fill: currentColor;
     }
     #s-tito .tito-chat-composer {
+      flex-shrink: 0;
       border-top: 1px solid var(--border);
-      padding-top: 12px;
-      margin-top: 4px;
+      padding-top: 8px;
+      margin-top: 0;
+      background: rgba(6, 10, 18, 0.35);
     }
     #s-tito .tito-panel-compose-row {
       display: flex;
@@ -381,11 +421,13 @@
     }
     #s-tito .tito-panel-thread {
       flex: 1;
-      min-height: 120px;
-      max-height: min(380px, 46vh);
+      min-height: 48px;
+      max-height: none;
       overflow-y: auto;
+      overflow-x: hidden;
       padding-right: 2px;
-      margin-bottom: 4px;
+      margin-bottom: 0;
+      -webkit-overflow-scrolling: touch;
     }
     #s-tito .tito-notas-ta {
       width: 100%;
@@ -2744,13 +2786,24 @@
 
 <div id="s-tito" class="screen">
   <div class="tito-panel-wrap">
-    <div class="tito-panel-header">
+    <div class="tito-panel-header tito-panel-header--minimal">
       <button type="button" class="back-btn" onclick="nav('inicio')">‹</button>
-      <div class="tito-panel-head-text">
-        <div class="tito-panel-title">TITO</div>
-        <div class="tito-panel-greet">¿Qué tal va tu operativa?</div>
-        <div class="tito-panel-sub" id="tito-panel-subtitle">Conversa con Tito sobre reglas, operaciones y seguimiento de tus estrategias.</div>
+      <div class="logo logo--tito" aria-hidden="true">ENF<span class="logo-o"><span class="logo-o-inner"></span></span></div>
+      <div class="tito-header-meta">
+        <div class="date-txt" id="tito-date-lbl"></div>
+        <div class="time-txt" id="tito-time-lbl"></div>
       </div>
+      <button type="button" class="user-btn" onclick="toggleUserMenu()" aria-label="Menú de usuario">👤</button>
+    </div>
+    <div id="user-menu-tito" class="user-menu user-menu--tito">
+      <div class="user-email" id="user-email-tito">Sin usuario</div>
+      <button class="user-menu-btn" onclick="openProfile()">👤 Perfil</button>
+      <button class="user-menu-btn" onclick="openFinanzas('personal')">💵 Finanzas Personales</button>
+      <button class="user-menu-btn" onclick="openPortafolio()">📈 Portafolio</button>
+      <button class="user-menu-btn" onclick="openFinanzas('negocio')">💼 Finanzas de Negocio</button>
+      <button class="user-menu-btn" onclick="openStats(); closeUserMenu()">📊 Productividad</button>
+      <button type="button" class="user-menu-btn user-menu-btn--refresh" onclick="refreshApp()">Actualizar</button>
+      <button class="user-menu-btn" onclick="logoutUser()">🚪 Cerrar sesión</button>
     </div>
     <div class="tito-panel-layout" id="titoPanel">
       <div class="tito-panel-main">
@@ -3151,8 +3204,11 @@
     }
 
     function updateUserUI() {
+      const em = currentUserData.email || "Sin usuario";
       const emailEl = document.getElementById("user-email");
-      if (emailEl) emailEl.textContent = currentUserData.email || "Sin usuario";
+      const emailTito = document.getElementById("user-email-tito");
+      if (emailEl) emailEl.textContent = em;
+      if (emailTito) emailTito.textContent = em;
     }
 
     function startLiveClock() {
@@ -3181,11 +3237,17 @@
 
         const dateLbl = document.getElementById("date-lbl");
         const timeLbl = document.getElementById("time-lbl");
+        const titoDateLbl = document.getElementById("tito-date-lbl");
+        const titoTimeLbl = document.getElementById("tito-time-lbl");
         const dlbl    = document.getElementById("dlbl");
         const od      = document.getElementById("od");
 
-        if (dateLbl) dateLbl.textContent = `${dn[now.getDay()]}, ${now.getDate()} ${mn[now.getMonth()]}`;
-        if (timeLbl) timeLbl.textContent = `${hh}:${mm}:${ss} ${ampm}`;
+        const dateLine = `${dn[now.getDay()]}, ${now.getDate()} ${mn[now.getMonth()]}`;
+        const timeLine = `${hh}:${mm}:${ss} ${ampm}`;
+        if (dateLbl) dateLbl.textContent = dateLine;
+        if (timeLbl) timeLbl.textContent = timeLine;
+        if (titoDateLbl) titoDateLbl.textContent = dateLine;
+        if (titoTimeLbl) titoTimeLbl.textContent = timeLine;
         if (dlbl)    dlbl.textContent    = `${dn[now.getDay()]}, ${now.getDate()} DE ${mn2[now.getMonth()]} DE ${now.getFullYear()}`;
         if (od && !od.value) od.value = fmtDateYMD(now);
       };
@@ -3202,14 +3264,20 @@
     }
 
     function toggleUserMenu() {
-      const menu = document.getElementById("user-menu");
+      const active = document.querySelector("#app .screen.active");
+      const menu =
+        active && active.id === "s-tito"
+          ? document.getElementById("user-menu-tito")
+          : document.getElementById("user-menu");
       if (!menu) return;
       menu.classList.toggle("open");
     }
 
     function closeUserMenu() {
-      const menu = document.getElementById("user-menu");
-      if (menu) menu.classList.remove("open");
+      const m1 = document.getElementById("user-menu");
+      const m2 = document.getElementById("user-menu-tito");
+      if (m1) m1.classList.remove("open");
+      if (m2) m2.classList.remove("open");
     }
 
     function refreshApp() {
@@ -3275,10 +3343,10 @@
     }
 
     document.addEventListener("click", (event) => {
-      const menu = document.getElementById("user-menu");
-      if (!menu) return;
+      if (event.target.closest(".user-menu")) return;
       const topRight = event.target.closest(".top-right");
-      if (!topRight) closeUserMenu();
+      const titoHdr = event.target.closest(".tito-panel-header--minimal");
+      if (!topRight && !titoHdr) closeUserMenu();
     });
 
     async function bootstrap() {
