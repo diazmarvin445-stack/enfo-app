@@ -109,6 +109,46 @@
     .nb-icon { font-size: 22px; line-height: 1; }
     .nb-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
 
+    /* Navbar: mismo globo Tito que en Diario/FAB, escala compacta (sin texto en pestaña) */
+    #nb-tito .nb-tito-icon {
+      font-size: 0;
+      line-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      width: 26px;
+      height: 26px;
+      filter: drop-shadow(0 1px 6px rgba(0, 200, 255, 0.28));
+    }
+    #nb-tito .nb-tito-icon .diario-tito-head {
+      width: 20px;
+      height: 20px;
+      border-width: 1.6px;
+    }
+    #nb-tito .nb-tito-icon .diario-tito-head::before,
+    #nb-tito .nb-tito-icon .diario-tito-head::after {
+      width: 3px;
+      height: 3px;
+      top: 7px;
+    }
+    #nb-tito .nb-tito-icon .diario-tito-head::before { left: 5px; }
+    #nb-tito .nb-tito-icon .diario-tito-head::after { right: 5px; }
+    #nb-tito .nb-tito-icon .diario-tito-body {
+      width: 3.5px;
+      height: 9px;
+      margin-top: -1px;
+    }
+    #nb-tito .nb-lbl--tito-spacer {
+      opacity: 0;
+      height: 10px;
+      line-height: 10px;
+      font-size: 10px;
+      overflow: hidden;
+      pointer-events: none;
+      user-select: none;
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
@@ -2383,7 +2423,7 @@
   <button class="nb on" id="nb-inicio" onclick="nav('inicio')"><span class="nb-icon">🏠</span><span class="nb-lbl">INICIO</span></button>
   <button class="nb" id="nb-estrategias" onclick="nav('estrategias')"><span class="nb-icon">⊞</span><span class="nb-lbl">ESTRATEGIAS</span></button>
   <button class="nb" id="nb-diario" onclick="nav('diario')"><span class="nb-icon">☰</span><span class="nb-lbl">DIARIO</span></button>
-  <button class="nb" id="nb-tito" onclick="nav('tito')"><span class="nb-icon">🧠</span><span class="nb-lbl">TITO</span></button>
+  <button type="button" class="nb" id="nb-tito" onclick="nav('tito')" aria-label="Tito" title="Tito"><span class="nb-icon nb-tito-icon"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></span><span class="nb-lbl nb-lbl--tito-spacer" aria-hidden="true">TITO</span></button>
 </nav>
 
 <div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
