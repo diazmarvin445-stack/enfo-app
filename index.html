@@ -224,6 +224,21 @@
       font-family: inherit;
       transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
+    #s-tito .tito-sb-est-toggle-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+    }
+    #s-tito .tito-sb-chevron {
+      font-size: 10px;
+      opacity: 0.75;
+      transition: transform 0.2s ease;
+    }
+    #s-tito .tito-sb-root--sub-open .tito-sb-chevron {
+      transform: rotate(180deg);
+    }
     #s-tito .tito-sb-sub {
       display: none;
       flex-direction: column;
@@ -285,6 +300,12 @@
       color: var(--text3);
       margin-top: 4px;
     }
+    #s-tito .tito-card--compose.tito-card--chat {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding-top: 12px;
+    }
     #s-tito .tito-card--compose .tito-panel-ta {
       width: 100%;
       box-sizing: border-box;
@@ -296,10 +317,16 @@
       background: rgba(6, 10, 18, 0.65);
       border: 1px solid var(--border2);
       border-radius: 12px;
-      resize: vertical;
-      min-height: 72px;
+      resize: none;
+      min-height: 56px;
+      max-height: 160px;
       outline: none;
-      margin-bottom: 10px;
+      margin-bottom: 0;
+    }
+    #s-tito .tito-chat-composer {
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      margin-top: 4px;
     }
     #s-tito .tito-panel-compose-row {
       display: flex;
@@ -307,10 +334,10 @@
       align-items: center;
       justify-content: flex-end;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-top: 10px;
     }
     #s-tito .tito-chat-send {
-      min-width: 120px;
+      min-width: 112px;
       border-radius: 12px;
       font-weight: 700;
     }
@@ -321,10 +348,12 @@
       transition: opacity 0.2s;
     }
     #s-tito .tito-panel-thread {
-      max-height: min(340px, 42vh);
+      flex: 1;
+      min-height: 120px;
+      max-height: min(380px, 46vh);
       overflow-y: auto;
-      border-top: 1px solid var(--border);
-      padding-top: 10px;
+      padding-right: 2px;
+      margin-bottom: 4px;
     }
     #s-tito .tito-notas-ta {
       width: 100%;
@@ -416,10 +445,24 @@
         flex-wrap: wrap;
         justify-content: center;
       }
+      #s-tito .tito-sb-est-block {
+        flex: 1 1 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
       #s-tito .tito-sb-btn,
       #s-tito .tito-sb-root { width: auto; flex: 1 1 40%; min-width: 72px; }
-      #s-tito .tito-sb-sub { width: 100%; margin-left: 0; border-left: none; padding-left: 0; }
-      #s-tito .tito-sb-subbtn { flex: 1 1 45%; }
+      #s-tito .tito-sb-sub {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        margin-left: 0;
+        border-left: none;
+        padding-left: 0;
+        justify-content: center;
+      }
+      #s-tito .tito-sb-subbtn { flex: 1 1 45%; max-width: 48%; }
     }
 
     @keyframes fadeUp {
@@ -2461,7 +2504,7 @@
       </div>
     </div>
     <div class="page-header-estrat-actions diario-header-tools estrat-header-tools">
-      <button type="button" onclick="openEstrategiasNotasPanel()" title="Notas globales" aria-label="Notas globales" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
+      <button type="button" onclick="openEstrategiasNotasInTito()" title="Notas de estrategias" aria-label="Notas de estrategias" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
       <button type="button" onclick="openEstrategiasCalculator()" title="Calculadora" aria-label="Calculadora" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">🧮</button>
       <button type="button" onclick="openRegistroGlobal()" title="Registro global" aria-label="Registro global" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">📊</button>
     </div>
@@ -2485,20 +2528,6 @@
     <div class="page-title">REGISTRO GLOBAL</div>
   </div>
   <div id="registro-global-content" style="padding-bottom:30px;"></div>
-</div>
-
-<div id="estrategias-notas-panel" style="position:fixed;inset:0;background:var(--bg);z-index:401;overflow-y:auto;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);">
-  <div style="display:flex;align-items:center;gap:14px;padding:20px 16px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);z-index:10;">
-    <button type="button" class="back-btn" onclick="closeEstrategiasNotasPanel()">‹</button>
-    <div class="page-title" style="flex:1;font-size:15px;">Notas globales de estrategias</div>
-  </div>
-  <div style="padding:16px 16px 28px;max-width:720px;margin:0 auto;">
-    <textarea id="estrategias-notas-ta" rows="16" placeholder="Escribe aquí tus observaciones del mercado, ideas, errores, patrones..." oninput="estrategiasNotasOnInput(this)" style="width:100%;min-height:320px;box-sizing:border-box;padding:14px 16px;font-size:14px;line-height:1.55;font-family:inherit;color:var(--text);background:var(--card);border:1px solid var(--border2);border-radius:14px;resize:vertical;outline:none;box-shadow:0 0 0 1px rgba(29,106,255,0.08);"></textarea>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center;">
-      <button type="button" class="btn btn-g btn-sm" onclick="closeEstrategiasNotasPanel()">Cerrar</button>
-      <button type="button" onclick="clearEstrategiasNotasAll()" style="margin-left:auto;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,69,96,0.35);background:rgba(255,69,96,0.08);color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Borrar todo</button>
-    </div>
-  </div>
 </div>
 
 <div id="strat-detail">
@@ -2694,14 +2723,15 @@
     <div class="tito-panel-layout" id="titoPanel">
       <div class="tito-panel-main">
         <div id="tito-view-estrategias" class="tito-view">
-          <div class="tito-card tito-card--compose">
-            <div class="tito-card-h">Conversación</div>
-            <textarea id="tito-panel-input" class="tito-panel-ta" rows="4" placeholder="Escribe como en un chat: preguntas, pide que guarde una nota, un recordatorio o que revise tu operativa… (Enter envía · Shift+Enter nueva línea)" onkeydown="titoPanelInputKeydown(event)"></textarea>
-            <div class="tito-panel-compose-row">
-              <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
-              <button type="button" class="btn btn-p tito-chat-send" onclick="sendTitoPanelMessage()">Enviar</button>
-            </div>
+          <div class="tito-card tito-card--compose tito-card--chat">
             <div id="tito-panel-thread" class="tito-panel-thread" aria-live="polite"></div>
+            <div class="tito-chat-composer">
+              <textarea id="tito-panel-input" class="tito-panel-ta" rows="3" placeholder="Escribe a Tito… notas, recordatorios, dudas de operativa (Enter envía · Shift+Enter nueva línea)" aria-label="Mensaje para Tito" onkeydown="titoPanelInputKeydown(event)"></textarea>
+              <div class="tito-panel-compose-row">
+                <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
+                <button type="button" class="btn btn-p tito-chat-send" onclick="sendTitoPanelMessage()">Enviar</button>
+              </div>
+            </div>
           </div>
         </div>
         <div id="tito-view-resumen" class="tito-view" style="display:none;">
@@ -2724,8 +2754,12 @@
         <div id="tito-view-notas" class="tito-view" style="display:none;">
           <div class="tito-card">
             <div class="tito-card-h">Notas de operativa</div>
-            <p class="tito-card-body" style="color:var(--text3);font-size:13px;margin:0 0 12px;">Ideas, seguimiento y lo mismo que en Estrategias → notas globales.</p>
+            <p class="tito-card-body" style="color:var(--text3);font-size:13px;margin:0 0 12px;">Bloc compartido con el módulo Estrategias: ideas, seguimiento y revisión.</p>
             <textarea id="tito-estrategias-notas-ta" class="tito-notas-ta" rows="14" placeholder="Observaciones del mercado, ideas, errores, patrones…" oninput="estrategiasNotasOnInput(this)"></textarea>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center;">
+              <button type="button" class="btn btn-g btn-sm" onclick="flushEstrategiasNotasPendingSave();showCelebration('💾');">Guardar ahora</button>
+              <button type="button" onclick="clearEstrategiasNotasAll()" style="margin-left:auto;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,69,96,0.35);background:rgba(255,69,96,0.08);color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Borrar todo</button>
+            </div>
           </div>
         </div>
         <div id="tito-view-placeholder" class="tito-view tito-placeholder" style="display:none;">
@@ -2738,8 +2772,10 @@
       <aside class="tito-panel-sidebar" role="navigation" aria-label="Áreas Tito">
         <button type="button" class="tito-sb-root" data-tito-root="mente" onclick="setTitoPanelRoot('mente')">Mente</button>
         <div class="tito-sb-est-block">
-          <button type="button" class="tito-sb-root tito-sb-root--on" id="tito-sb-est-toggle" data-tito-root="estrategias" aria-expanded="true" aria-controls="tito-sb-est-sub" onclick="onTitoEstrategiasRootClick(event)">Estrategias</button>
-          <div id="tito-sb-est-sub" class="tito-sb-sub tito-sb-sub--open" role="group" aria-label="Estrategias">
+          <button type="button" class="tito-sb-root tito-sb-root--on" id="tito-sb-est-toggle" data-tito-root="estrategias" aria-expanded="false" aria-controls="tito-sb-est-sub" onclick="onTitoEstrategiasRootClick(event)">
+            <span class="tito-sb-est-toggle-inner"><span class="tito-sb-est-lbl">Estrategias</span><span class="tito-sb-chevron" aria-hidden="true">▾</span></span>
+          </button>
+          <div id="tito-sb-est-sub" class="tito-sb-sub" role="group" aria-label="Estrategias">
             <button type="button" class="tito-sb-subbtn tito-sb-subbtn--on" data-tito-sub="chat" onclick="setTitoEstrategiasSub('chat')">Chat</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="resumen" onclick="setTitoEstrategiasSub('resumen')">Resumen</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="historial" onclick="setTitoEstrategiasSub('historial')">Historial</button>
@@ -4772,6 +4808,7 @@ function titoPanelUpdateRootButtons() {
   if (toggle && subEl) {
     var open = root === "estrategias" && subEl.classList.contains("tito-sb-sub--open");
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.classList.toggle("tito-sb-root--sub-open", !!open);
   }
 }
 
@@ -4805,8 +4842,6 @@ function setTitoPanelRoot(root) {
   if (!valid[root]) root = "estrategias";
   titoPanelUi.root = root;
   if (root === "estrategias") {
-    var subEl = document.getElementById("tito-sb-est-sub");
-    if (subEl) subEl.classList.add("tito-sb-sub--open");
     setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
   } else {
     var subEl2 = document.getElementById("tito-sb-est-sub");
@@ -4840,8 +4875,6 @@ function setTitoEstrategiasSub(sub, skipRootEnsure) {
 function applyTitoPanelUiFromState() {
   var r = titoPanelUi.root || "estrategias";
   if (r === "estrategias") {
-    var subEl = document.getElementById("tito-sb-est-sub");
-    if (subEl) subEl.classList.add("tito-sb-sub--open");
     setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
   } else {
     titoPanelUi.root = r;
@@ -4881,30 +4914,39 @@ function resolveTitoPanelIntent(raw) {
   var noteProbe = tail.length ? tail : text;
   if (
     /guárdame\s+esta\s+nota\s*:/i.test(text) ||
+    /guárdame\s+nota\s*:/i.test(text) ||
     /guarda\s+esta\s+nota\s*:/i.test(text) ||
+    /guarda\s+nota\s*:/i.test(text) ||
     /^nota\s*:/i.test(noteProbe) ||
     /^apunta\s*:/i.test(noteProbe) ||
     /guárdame\s+(esta\s+)?nota\b/i.test(lower) ||
-    /guarda(me)?\s+(esta\s+)?nota\b/i.test(lower)
+    /guarda(?:me)?\s+(esta\s+)?nota\b/i.test(lower)
   ) {
     var body = noteProbe.replace(/^nota\s*:\s*/i, "").replace(/^apunta\s*:\s*/i, "").trim();
-    var gm = text.match(/guárdame\s+esta\s+nota\s*:\s*(.*)$/i) || text.match(/guarda\s+esta\s+nota\s*:\s*(.*)$/i);
+    var gm =
+      text.match(/guárdame\s+esta\s+nota\s*:\s*(.*)$/i) ||
+      text.match(/guárdame\s+nota\s*:\s*(.*)$/i) ||
+      text.match(/guarda\s+esta\s+nota\s*:\s*(.*)$/i) ||
+      text.match(/guarda\s+nota\s*:\s*(.*)$/i);
     if (gm && gm[1]) body = gm[1].trim();
     else
       body = noteProbe
         .replace(/^\s*tito\s*,?\s*/i, "")
         .replace(/^guárdame\s+esta\s+nota\s*:\s*/i, "")
+        .replace(/^guárdame\s+nota\s*:\s*/i, "")
         .replace(/^guarda\s+esta\s+nota\s*:\s*/i, "")
+        .replace(/^guarda\s+nota\s*:\s*/i, "")
         .trim();
     if (!body) body = noteProbe;
     return { kind: "note", body: body.slice(0, 8000) };
   }
 
   if (
-    /recu[eé]rdame\b|recordatorio\b|alarma\b/.test(lower) &&
+    /recu[eé]rdame\b|recordatorio\b|alarma\b|avis\w*\s+me\b/.test(lower) &&
     (/\d/.test(text) ||
       /\b(mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(text) ||
-      /a\s+las\b/i.test(lower))
+      /a\s+las\b/i.test(lower) ||
+      /\b\d{1,2}\s*:\s*\d{2}\b/.test(text))
   ) {
     return { kind: "reminder", raw: text.slice(0, 4000) };
   }
@@ -4927,8 +4969,6 @@ function appendTitoNoteToEstrategiasNotas(body) {
   var stamp = new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
   var block = (D.estrategiasNotas ? D.estrategiasNotas.replace(/\s+$/, "") + "\n\n" : "") + "— " + stamp + " · Tito\n" + String(body || "").trim();
   D.estrategiasNotas = block.slice(0, 200000);
-  var ta = document.getElementById("estrategias-notas-ta");
-  if (ta) ta.value = D.estrategiasNotas;
   var titoTa = document.getElementById("tito-estrategias-notas-ta");
   if (titoTa) titoTa.value = D.estrategiasNotas;
   try {
@@ -4942,6 +4982,7 @@ function persistReminderIntent(raw) {
   D.titoReminderIntents.unshift({
     id: uid(),
     createdAt: new Date().toISOString(),
+    kind: "reminder",
     rawText: String(raw || "").slice(0, 4000),
     status: "pending_parse"
   });
@@ -4956,13 +4997,7 @@ async function sendTitoPanelMessage() {
   if (!inp) return;
   var text = (inp.value || "").trim();
   if (!text) return;
-  if (isPrivateCoachUiAllowed()) {
-    inp.value = "";
-    var coachInp = document.getElementById("enfo-coach-input");
-    if (coachInp) coachInp.value = text;
-    await sendPrivateCoachMessage();
-    return;
-  }
+
   var intent = resolveTitoPanelIntent(text);
   if (intent.kind === "empty") return;
 
@@ -4972,7 +5007,7 @@ async function sendTitoPanelMessage() {
     appendTitoNoteToEstrategiasNotas(intent.body);
     appendTitoPanelThreadMessage(
       "coach",
-      "Listo: añadí eso a tus notas de operativa (Estrategias → Notas en este panel, o el bloc de notas del módulo Estrategias)."
+      "Listo: lo guardé en tus notas de operativa (menú Estrategias → Notas)."
     );
     titoPanelFlashToast("Nota guardada");
     return;
@@ -4984,20 +5019,29 @@ async function sendTitoPanelMessage() {
     persistReminderIntent(text);
     appendTitoPanelThreadMessage(
       "coach",
-      "Entendido: dejé registrada la intención de recordatorio. Cuando haya avisos automáticos por hora, podré enlazarlo."
+      "Entendido: registré la intención de recordatorio. Cuando activemos avisos por hora, lo podré enlazar."
     );
     titoPanelFlashToast("Recordatorio registrado");
     return;
   }
 
-  inp.value = "";
-  appendTitoPanelThreadMessage("user", text);
   var coachInput = text;
   if (intent.kind === "strategy_chat") {
     coachInput =
       "[Pedido explícito sobre estrategia / comparación / revisión. Responde enfocado en reglas, operativa y seguimiento.]\n" +
       text;
   }
+
+  inp.value = "";
+
+  if (isPrivateCoachUiAllowed()) {
+    var coachInp = document.getElementById("enfo-coach-input");
+    if (coachInp) coachInp.value = text;
+    await sendPrivateCoachMessage();
+    return;
+  }
+
+  appendTitoPanelThreadMessage("user", text);
   var reply = buildPrivateCoachReply(coachInput);
   reply = privateCoachFinalizeCoachText(reply, true, text);
   appendTitoPanelThreadMessage("coach", reply);
@@ -8232,11 +8276,6 @@ function estrategiasNotasOnInput(el) {
     el.value = t;
   }
   D.estrategiasNotas = t;
-  var otherId = el.id === "estrategias-notas-ta" ? "tito-estrategias-notas-ta" : el.id === "tito-estrategias-notas-ta" ? "estrategias-notas-ta" : null;
-  if (otherId) {
-    var other = document.getElementById(otherId);
-    if (other && other !== el) other.value = t;
-  }
   clearTimeout(estrategiasNotasSvTimer);
   estrategiasNotasSvTimer = setTimeout(function() {
     estrategiasNotasSvTimer = null;
@@ -8244,30 +8283,29 @@ function estrategiasNotasOnInput(el) {
   }, 750);
 }
 
+/** Abre Tito en Estrategias → Notas (misma hoja que antes en panel a pantalla completa). */
+function openEstrategiasNotasInTito() {
+  titoPanelUi.root = "estrategias";
+  titoPanelUi.estSub = "notas";
+  var subEl = document.getElementById("tito-sb-est-sub");
+  if (subEl) subEl.classList.add("tito-sb-sub--open");
+  nav("tito");
+}
+
 function openEstrategiasNotasPanel() {
-  if (typeof D.estrategiasNotas !== "string") D.estrategiasNotas = "";
-  var ta = document.getElementById("estrategias-notas-ta");
-  if (ta) ta.value = D.estrategiasNotas || "";
-  var titoTa = document.getElementById("tito-estrategias-notas-ta");
-  if (titoTa) titoTa.value = D.estrategiasNotas || "";
-  var p = document.getElementById("estrategias-notas-panel");
-  if (p) p.style.transform = "translateY(0)";
+  openEstrategiasNotasInTito();
 }
 
 function closeEstrategiasNotasPanel() {
   flushEstrategiasNotasPendingSave();
-  var p = document.getElementById("estrategias-notas-panel");
-  if (p) p.style.transform = "translateY(100%)";
 }
 
 function saveEstrategiasNotas() {
-  var ta = document.getElementById("estrategias-notas-ta");
+  var ta = document.getElementById("tito-estrategias-notas-ta");
   if (!ta) return;
   var t = String(ta.value || "");
   if (t.length > 200000) t = t.slice(0, 200000);
   D.estrategiasNotas = t;
-  var titoTa = document.getElementById("tito-estrategias-notas-ta");
-  if (titoTa) titoTa.value = t;
   sv();
   showCelebration("💾");
 }
@@ -8278,8 +8316,6 @@ function clearEstrategiasNotasAll() {
     clearTimeout(estrategiasNotasSvTimer);
     estrategiasNotasSvTimer = null;
   }
-  var ta = document.getElementById("estrategias-notas-ta");
-  if (ta) ta.value = "";
   var titoTa = document.getElementById("tito-estrategias-notas-ta");
   if (titoTa) titoTa.value = "";
   D.estrategiasNotas = "";
@@ -11205,7 +11241,7 @@ firebase.auth().onAuthStateChanged(function(user) {
 });
 
 Object.assign(window, {
-  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
+  loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, openEstrategiasNotasInTito, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, flushEstrategiasNotasPendingSave, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
   toggleAddBlockForm, saveBlock, toggleBlockDone, deleteBlock, editBlock, toggleHorarioBanner, toggleDay, toggleVerTodos, openStats, closeStats,
   startRename, saveRename, askDelStrat, stab, setF, clrDates, renderOps,
   openModal, bgc, crStrat, openAddOp, setR, addOp, saveDiary, openMetasLargoPanel, closeMetasLargoPanel, setMetasTab, addLongTermGoalSlot, saveLongTermGoal, askDelLongTermGoal, addShortTermGoalSlot, saveShortTermGoal, askDelShortTermGoal,
