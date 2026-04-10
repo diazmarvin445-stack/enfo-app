@@ -219,8 +219,8 @@
       right: 10px;
       z-index: 600;
     }
-    /* Chips de contexto (solo mobile; ver @media max-width 540px) */
-    #s-tito .tito-context-chips {
+    /* Barras de contexto (solo mobile; ver @media max-width 540px) */
+    #s-tito .tito-context-bars {
       display: none;
     }
     #s-tito .tito-panel-layout {
@@ -593,47 +593,108 @@
         top: 42px;
         right: 8px;
       }
-      #s-tito .tito-context-chips {
-        display: block;
+      #s-tito .tito-context-bars {
+        display: flex;
+        flex-direction: column;
         flex-shrink: 0;
-        padding: 0 2px 2px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        width: 100%;
+        box-sizing: border-box;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
         background: var(--surface);
+      }
+      #s-tito .tito-context-chips {
+        width: 100%;
+        min-width: 0;
       }
       #s-tito .tito-context-chips-track {
         display: flex;
         flex-wrap: nowrap;
-        gap: 6px;
+        align-items: center;
+        gap: 8px;
         overflow-x: auto;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: thin;
-        padding: 4px 6px 8px;
+        padding: 8px max(10px, env(safe-area-inset-left)) 6px max(10px, env(safe-area-inset-right));
         margin: 0;
+        box-sizing: border-box;
+      }
+      #s-tito .tito-context-chips-track::-webkit-scrollbar {
+        height: 3px;
+      }
+      #s-tito .tito-context-chips-track::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 3px;
+      }
+      #s-tito .tito-context-est-sub {
+        display: none;
+        width: 100%;
+        min-width: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(8, 12, 22, 0.45);
+      }
+      #s-tito .tito-context-bars--est-open .tito-context-est-sub {
+        display: block;
+      }
+      #s-tito .tito-context-est-sub .tito-context-chips-track {
+        gap: 6px;
+        padding: 6px max(10px, env(safe-area-inset-left)) 8px max(10px, env(safe-area-inset-right));
       }
       #s-tito .tito-context-chip {
         flex: 0 0 auto;
         appearance: none;
-        border: 1px solid rgba(255, 200, 80, 0.28);
-        background: rgba(10, 16, 28, 0.55);
+        -webkit-appearance: none;
+        border: 1px solid rgba(255, 200, 80, 0.3);
+        background: rgba(10, 16, 28, 0.72);
         color: var(--text2);
         font-size: 11px;
         font-weight: 600;
-        letter-spacing: 0.03em;
-        padding: 7px 11px;
+        letter-spacing: 0.02em;
+        padding: 8px 12px;
         border-radius: 999px;
         cursor: pointer;
         font-family: inherit;
         white-space: nowrap;
-        min-height: 32px;
-        line-height: 1.15;
+        min-height: 34px;
+        line-height: 1.2;
+        box-sizing: border-box;
       }
       #s-tito .tito-context-chip:active {
         opacity: 0.92;
       }
       #s-tito .tito-context-chip--active {
-        background: rgba(255, 200, 80, 0.14);
-        border-color: rgba(255, 200, 80, 0.5);
+        background: rgba(255, 200, 80, 0.16);
+        border-color: rgba(255, 200, 80, 0.52);
         color: #fff;
+        box-shadow: 0 0 0 1px rgba(255, 200, 80, 0.12);
+      }
+      #s-tito .tito-context-subchip {
+        flex: 0 0 auto;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 1px solid rgba(80, 150, 255, 0.28);
+        background: rgba(12, 24, 48, 0.55);
+        color: var(--text3);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        min-height: 30px;
+        line-height: 1.2;
+        box-sizing: border-box;
+      }
+      #s-tito .tito-context-subchip:active {
+        opacity: 0.9;
+      }
+      #s-tito .tito-context-subchip--active {
+        border-color: rgba(100, 180, 255, 0.55);
+        background: rgba(29, 106, 255, 0.18);
+        color: #dbeaff;
       }
       #s-tito .tito-panel-layout {
         flex-direction: column;
@@ -2998,16 +3059,26 @@
       <button type="button" class="user-menu-btn user-menu-btn--refresh" onclick="refreshApp()">Actualizar</button>
       <button class="user-menu-btn" onclick="logoutUser()">🚪 Cerrar sesión</button>
     </div>
-    <nav class="tito-context-chips" id="tito-context-chips" aria-label="Contexto de Tito">
-      <div class="tito-context-chips-track" role="tablist">
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="global" aria-selected="false" onclick="setTitoContextChip('global')">Global</button>
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="productividad" aria-selected="false" onclick="setTitoContextChip('productividad')">Productividad</button>
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="mente_diario" aria-selected="false" onclick="setTitoContextChip('mente_diario')">Mente / Diario</button>
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="estrategias" aria-selected="false" onclick="setTitoContextChip('estrategias')">Estrategias</button>
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="finanzas" aria-selected="false" onclick="setTitoContextChip('finanzas')">Finanzas</button>
-        <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="biblioteca" aria-selected="false" onclick="setTitoContextChip('biblioteca')">Biblioteca</button>
+    <div class="tito-context-bars tito-context-bars--est-open" id="tito-context-bars">
+      <nav class="tito-context-chips" id="tito-context-chips" aria-label="Contexto de Tito">
+        <div class="tito-context-chips-track" role="tablist">
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="global" aria-selected="false" onclick="setTitoContextChip('global')">Global</button>
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="productividad" aria-selected="false" onclick="setTitoContextChip('productividad')">Productividad</button>
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="mente_diario" aria-selected="false" onclick="setTitoContextChip('mente_diario')">Mente · Diario</button>
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="estrategias" aria-selected="false" onclick="setTitoContextChip('estrategias')">Estrategias</button>
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="finanzas" aria-selected="false" onclick="setTitoContextChip('finanzas')">Finanzas</button>
+          <button type="button" role="tab" class="tito-context-chip" data-tito-ctx="biblioteca" aria-selected="false" onclick="setTitoContextChip('biblioteca')">Biblioteca</button>
+        </div>
+      </nav>
+      <div class="tito-context-est-sub" id="tito-context-est-sub" aria-label="Estrategias">
+        <div class="tito-context-chips-track" role="tablist">
+          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="chat" aria-selected="false" onclick="setTitoMobileEstrategiasSub('chat')">Chat</button>
+          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="resumen" aria-selected="false" onclick="setTitoMobileEstrategiasSub('resumen')">Resumen</button>
+          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="historial" aria-selected="false" onclick="setTitoMobileEstrategiasSub('historial')">Historial</button>
+          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="notas" aria-selected="false" onclick="setTitoMobileEstrategiasSub('notas')">Notas</button>
+        </div>
       </div>
-    </nav>
+    </div>
     <div class="tito-panel-layout" id="titoPanel">
       <div class="tito-panel-main">
         <div id="tito-view-estrategias" class="tito-view">
@@ -4921,26 +4992,54 @@ function updateTitoContextChipsActive() {
   });
 }
 
-/** Barra compacta mobile: contexto del coach (sesión) sin cambiar de pantalla; mantiene el chat visible. */
+/** Segunda fila mobile (Chat / Resumen / Historial / Notas) + clase en el contenedor. */
+function syncTitoMobileContextBars() {
+  var bars = document.getElementById("tito-context-bars");
+  if (bars) {
+    bars.classList.toggle("tito-context-bars--est-open", (titoPanelUi.contextChip || "estrategias") === "estrategias");
+  }
+  document.querySelectorAll("#tito-context-est-sub [data-tito-est-sub]").forEach(function (btn) {
+    var sub = titoPanelUi.estSub || "chat";
+    var on = btn.getAttribute("data-tito-est-sub") === sub;
+    btn.classList.toggle("tito-context-subchip--active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+}
+
+/** Submenú Estrategias en mobile: misma lógica que la barra lateral en desktop. */
+function setTitoMobileEstrategiasSub(sub) {
+  titoPanelUi.contextChip = "estrategias";
+  privateCoachSessionOverride = "trading";
+  setTitoEstrategiasSub(sub, true);
+  try {
+    refreshTitoContext();
+  } catch (eMob) {}
+  updateTitoContextChipsActive();
+}
+
+/** Barra compacta mobile: contexto del coach; fuera de Estrategias la vista principal es Chat. */
 function setTitoContextChip(chipId) {
   var valid = { global: 1, productividad: 1, mente_diario: 1, estrategias: 1, finanzas: 1, biblioteca: 1 };
   if (!valid[chipId]) chipId = "estrategias";
-  setTitoEstrategiasSub("chat", true);
   titoPanelUi.contextChip = chipId;
-  if (chipId === "global") {
-    privateCoachSessionOverride = "global";
-  } else if (chipId === "mente_diario") {
-    privateCoachSessionOverride = "diario";
-  } else if (chipId === "estrategias") {
+  if (chipId === "estrategias") {
     privateCoachSessionOverride = "trading";
-  } else if (chipId === "productividad") {
-    privateCoachSessionOverride = "global";
-    openStats();
-  } else if (chipId === "finanzas") {
-    privateCoachSessionOverride = "global";
-    openFinanzas("personal");
-  } else if (chipId === "biblioteca") {
-    privateCoachSessionOverride = "global";
+    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+  } else {
+    if (chipId === "global") {
+      privateCoachSessionOverride = "global";
+    } else if (chipId === "mente_diario") {
+      privateCoachSessionOverride = "diario";
+    } else if (chipId === "productividad") {
+      privateCoachSessionOverride = "global";
+      openStats();
+    } else if (chipId === "finanzas") {
+      privateCoachSessionOverride = "global";
+      openFinanzas("personal");
+    } else if (chipId === "biblioteca") {
+      privateCoachSessionOverride = "global";
+    }
+    setTitoEstrategiasSub("chat", true);
   }
   try {
     refreshTitoContext();
@@ -5208,14 +5307,24 @@ function setTitoPanelRoot(root) {
   if (!valid[root]) root = "estrategias";
   titoPanelUi.root = root;
   if (root === "estrategias") {
+    titoPanelUi.contextChip = "estrategias";
     setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
   } else {
     var subEl2 = document.getElementById("tito-sb-est-sub");
     if (subEl2) subEl2.classList.remove("tito-sb-sub--open");
     titoPanelApplyMainViews("placeholder");
     syncTitoPanelHeaderFromState();
+    if (root === "mente" || root === "diario") {
+      titoPanelUi.contextChip = "mente_diario";
+    } else if (root === "biblioteca") {
+      titoPanelUi.contextChip = "biblioteca";
+    }
   }
   titoPanelUpdateRootButtons();
+  try {
+    updateTitoContextChipsActive();
+    syncTitoMobileContextBars();
+  } catch (eRoot) {}
 }
 
 function setTitoEstrategiasSub(sub, skipRootEnsure) {
@@ -5235,6 +5344,9 @@ function setTitoEstrategiasSub(sub, skipRootEnsure) {
   if (sub === "resumen") renderTitoPanel();
   if (sub === "historial") renderTitoHistorialPanel();
   if (sub === "notas") syncTitoEstrategiasNotasTextareaFromData();
+  try {
+    syncTitoMobileContextBars();
+  } catch (eSync) {}
 }
 
 /** Restaura barra lateral y vistas al volver a la pantalla Tito. */
@@ -5250,8 +5362,14 @@ function applyTitoPanelUiFromState() {
     titoPanelUpdateRootButtons();
     titoPanelUpdateEstrategiasSubButtons();
     syncTitoPanelHeaderFromState();
+    if (r === "mente" || r === "diario") {
+      titoPanelUi.contextChip = "mente_diario";
+    } else if (r === "biblioteca") {
+      titoPanelUi.contextChip = "biblioteca";
+    }
   }
   updateTitoContextChipsActive();
+  syncTitoMobileContextBars();
 }
 
 
