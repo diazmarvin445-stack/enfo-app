@@ -15,6 +15,7 @@ Eres Tito (ENFO). Español. Coach directo, humano, sin agresividad ni insultos.
 Responde en 1–2 párrafos cortos. Sin títulos, viñetas ni etiquetas tipo "Detecto la raíz" / "Corrijo…". No expliques tu proceso.
 Ve al punto: problema real, desafía excusas si aplica, perspectiva fuerte, y si hay problema cierra con acción o decisión concreta.
 Saludos casuales: respuesta breve sin mandar órdenes.
+Nunca digas que no tienes acceso al diario ni a datos internos de ENFO: cuando el cliente envía bloque DIARIO RECIENTE o contexto de diario, son datos reales de la app; si indica vacío o sin entradas, trabaja con el mensaje del usuario sin negar acceso.
 `.trim();
 
 /** Bloque Deseo (parte de coachMemory fijo en servidor; ver COACH_MEMORY_FIXED_BLOCKS). */
@@ -207,6 +208,14 @@ const TITO_MOD_FORBIDDEN_SRV = {
   general: []
 };
 
+function stripTitoDenialDiario(text) {
+  if (!text || typeof text !== "string") return text;
+  let t = text.replace(/\bno\s+tengo\s+acceso\s+a\s+(tu\s+)?diario\b[^.!?\n]*/gi, "").trim();
+  t = t.replace(/\bno\s+puedo\s+ver\s+(tu\s+)?diario\b[^.!?\n]*/gi, "").trim();
+  t = t.replace(/\s{3,}/g, " ").trim();
+  return t;
+}
+
 function sanitizeTitoReplyByModule(text, contextoModulo) {
   if (text == null || typeof text !== "string") return "";
   let t = text.replace(/\r\n/g, "\n").trim();
@@ -216,7 +225,10 @@ function sanitizeTitoReplyByModule(text, contextoModulo) {
     ? rawMod
     : "general";
   const list = TITO_MOD_FORBIDDEN_SRV[mod] || [];
-  if (!list.length) return t;
+  if (!list.length) {
+    const plain = stripTitoDenialDiario(t);
+    return plain || t;
+  }
 
   function cleanBlock(block) {
     const sentences = block.split(/(?<=[.!?])\s+/);
@@ -243,6 +255,8 @@ function sanitizeTitoReplyByModule(text, contextoModulo) {
     .filter(Boolean)
     .join("\n\n")
     .trim();
+  const out = stripTitoDenialDiario(paras);
+  if (out.length >= 12) return out;
   if (paras.length >= 12) return paras;
   return TITO_MOD_FALLBACK_SRV[mod] || TITO_MOD_FALLBACK_SRV.general;
 }
@@ -290,9 +304,9 @@ function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario) {
   const anchor = TITO_MOD_ANCHORS[mod];
   const diaryMode = diaryCoachModeActive(contextoModulo, contextoDiario);
   const opsDefault =
-    "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. No repitas texto largo del usuario ni cites párrafos enteros; resume en una frase si hace falta. Acción clara si aplica problema. Respeta el módulo activo ENFO.";
+    "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. No repitas texto largo del usuario ni cites párrafos enteros; resume en una frase si hace falta. Acción clara si aplica problema. Nunca afirmes falta de acceso a datos internos. Respeta el módulo activo ENFO.";
   const opsDiario =
-    "Reglas finales: español. Cuando apliquen el módulo Diario y/o el bloque DIARIO RECIENTE: con tacto, detecta si encajan emociones (frustración, miedo, impulsividad) y patrones de error (sobreoperar, entrar sin plan, reaccionar emocionalmente); no inventes lo que no esté implícito. Sin listas ni titulares. Ordena la respuesta en tres partes seguidas, sin etiquetas: qué está pasando; por qué ocurre; qué debes hacer (corrección directa y acción concreta). 1–2 párrafos breves en total. No repitas el diario literalmente ni cites párrafos enteros. Sin narrar tu proceso. Respeta el módulo activo ENFO.";
+    "Reglas finales: español. Modo Mente/Diario o bloque DIARIO RECIENTE: con tacto, detecta si encajan emociones (frustración, miedo, impulsividad) y patrones de error (sobreoperar, entrar sin plan, reaccionar emocionalmente); no inventes lo que no esté implícito. Sin listas ni titulares. Ordena la respuesta en tres partes seguidas, sin etiquetas: qué está pasando; por qué ocurre; qué debes hacer (corrección directa y acción concreta). 1–2 párrafos breves en total. No repitas el diario literalmente ni cites párrafos enteros. Nunca digas que no ves el diario. Respeta el módulo activo ENFO.";
   const ops = diaryMode ? opsDiario : opsDefault;
   if (base === SYSTEM_PROMPT) {
     return (base + "\n\n---\n\n" + anchor + "\n\n" + ops).trim();
@@ -378,10 +392,15 @@ function buildOpenAIInput(
   if (contextoModulo && typeof contextoModulo === "object" && contextoModulo.moduloActivo) {
     const ma = String(contextoModulo.moduloActivo).slice(0, 32);
     const pa = contextoModulo.pantallaActiva ? String(contextoModulo.pantallaActiva).slice(0, 64) : "";
+    const modoUi =
+      contextoModulo.titoModoActual != null && String(contextoModulo.titoModoActual).trim()
+        ? String(contextoModulo.titoModoActual).trim().slice(0, 32)
+        : "";
     parts.push(
       "Contexto de pantalla ENFO: módulo activo = " +
         ma +
-        (pa ? ". Pantalla: " + pa + "." : ".") +
+        (modoUi ? ". Modo UI Tito: " + modoUi + "." : "") +
+        (pa ? " Pantalla: " + pa + "." : "") +
         " Mantén el vocabulario y los ejemplos acordes a ese módulo únicamente."
     );
   }
