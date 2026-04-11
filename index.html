@@ -159,7 +159,7 @@
       -webkit-overflow-scrolling: touch;
     }
     #s-tito .tito-panel-wrap {
-      flex: 0 0 auto;
+      flex: 1 1 auto;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -534,6 +534,148 @@
       font-size: 13px;
       color: var(--text3);
       margin: 0;
+    }
+    #s-tito .tito-access-layer {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    #s-tito .tito-screen-placeholder-mode {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px 36px;
+      min-height: 280px;
+    }
+    #s-tito .tito-screen-placeholder-mode[hidden] {
+      display: none !important;
+    }
+    #s-tito .tito-access-layer[hidden] {
+      display: none !important;
+    }
+    #s-tito .tito-coach-soon-card {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 16px;
+      border: 1px solid var(--border2);
+      background: linear-gradient(165deg, rgba(12, 22, 40, 0.95), rgba(6, 12, 22, 0.88));
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      padding: 28px 22px 24px;
+      text-align: center;
+    }
+    #s-tito .tito-coach-soon-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--accent2);
+      margin-bottom: 10px;
+    }
+    #s-tito .tito-coach-soon-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    #s-tito .tito-coach-soon-lead {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text2);
+      margin: 0 0 20px;
+    }
+    #s-tito .tito-coach-soon-sub {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text3);
+      margin: 0 0 18px;
+    }
+    #s-tito .tito-coach-soon-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    #s-tito .tito-coach-soon-chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 212, 138, 0.22);
+      background: rgba(0, 212, 138, 0.06);
+      color: var(--text2);
+    }
+    .enfo-coach-placeholder-ui {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      padding: 0 0 20px;
+      min-height: 220px;
+    }
+    .enfo-coach-placeholder-head {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 8px 0;
+      flex-shrink: 0;
+    }
+    .enfo-coach-placeholder-ui[hidden] {
+      display: none !important;
+    }
+    .enfo-coach-full-ui[hidden] {
+      display: none !important;
+    }
+    .enfo-coach-soon-card--sheet {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border2);
+      background: linear-gradient(165deg, rgba(12, 22, 40, 0.92), rgba(6, 12, 22, 0.85));
+      padding: 22px 18px 20px;
+      text-align: center;
+    }
+    .enfo-coach-soon-kicker {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      color: var(--accent2);
+      margin-bottom: 8px;
+    }
+    .enfo-coach-soon-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 8px;
+    }
+    .enfo-coach-soon-lead {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text2);
+      margin: 0 0 16px;
+    }
+    .enfo-coach-soon-sub {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text3);
+      margin: 0 0 14px;
+    }
+    .enfo-coach-soon-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+    .enfo-coach-soon-chip {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 212, 138, 0.2);
+      background: rgba(0, 212, 138, 0.06);
+      color: var(--text2);
     }
     #s-tito .tito-historial-list {
       display: flex;
@@ -3059,6 +3201,7 @@
       <button type="button" class="user-menu-btn user-menu-btn--refresh" onclick="refreshApp()">Actualizar</button>
       <button class="user-menu-btn" onclick="logoutUser()">🚪 Cerrar sesión</button>
     </div>
+    <div id="tito-access-layer" class="tito-access-layer">
     <div class="tito-context-bars tito-context-bars--est-open" id="tito-context-bars">
       <nav class="tito-context-chips" id="tito-context-chips" aria-label="Contexto de Tito">
         <div class="tito-context-chips-track" role="tablist">
@@ -3148,6 +3291,21 @@
         <button type="button" class="tito-sb-root" data-tito-root="diario" onclick="setTitoPanelRoot('diario')">Diario</button>
         <button type="button" class="tito-sb-root" data-tito-root="biblioteca" onclick="setTitoPanelRoot('biblioteca')">Biblioteca</button>
       </aside>
+    </div>
+    </div>
+    <div id="tito-screen-placeholder-mode" class="tito-screen-placeholder-mode" hidden>
+      <div class="tito-coach-soon-card">
+        <div class="tito-coach-soon-kicker">COACH IA</div>
+        <h2 class="tito-coach-soon-title">Próximamente disponible</h2>
+        <p class="tito-coach-soon-lead">Estamos preparando esta función para ayudarte con enfoque, análisis y ejecución dentro de ENFO.</p>
+        <p class="tito-coach-soon-sub">Lo que podrás hacer más adelante:</p>
+        <div class="tito-coach-soon-chips" aria-label="Funciones futuras">
+          <span class="tito-coach-soon-chip">Análisis de estrategias</span>
+          <span class="tito-coach-soon-chip">Lectura de diario</span>
+          <span class="tito-coach-soon-chip">Apoyo en productividad</span>
+          <span class="tito-coach-soon-chip">Visión global</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -3333,6 +3491,7 @@
     <div id="private-coach-panel" class="private-coach-panel" role="dialog" aria-modal="true" aria-labelledby="enfo-coach-title-el">
       <div class="enfo-coach-backdrop" onclick="togglePrivateCoach(false)"></div>
       <div class="enfo-coach-sheet">
+        <div id="enfo-coach-full-ui" class="enfo-coach-full-ui">
         <div class="enfo-coach-header">
           <div class="enfo-coach-header-top">
             <div>
@@ -3354,6 +3513,24 @@
         <div class="enfo-coach-footer">
           <textarea id="enfo-coach-input" rows="1" placeholder="Escribe un mensaje…" autocomplete="off"></textarea>
           <button type="button" class="enfo-coach-send" onclick="sendPrivateCoachMessage()">Enviar</button>
+        </div>
+        </div>
+        <div id="enfo-coach-placeholder-ui" class="enfo-coach-placeholder-ui" hidden>
+          <div class="enfo-coach-placeholder-head">
+            <button type="button" class="enfo-coach-close" onclick="togglePrivateCoach(false)" aria-label="Cerrar">×</button>
+          </div>
+          <div class="enfo-coach-soon-card--sheet">
+            <div class="enfo-coach-soon-kicker">COACH IA</div>
+            <div class="enfo-coach-soon-title">Próximamente disponible</div>
+            <p class="enfo-coach-soon-lead">Estamos preparando esta función para ayudarte con enfoque, análisis y ejecución dentro de ENFO.</p>
+            <p class="enfo-coach-soon-sub">Incluirá, entre otras cosas:</p>
+            <div class="enfo-coach-soon-chips" aria-label="Funciones futuras">
+              <span class="enfo-coach-soon-chip">Análisis de estrategias</span>
+              <span class="enfo-coach-soon-chip">Lectura de diario</span>
+              <span class="enfo-coach-soon-chip">Apoyo en productividad</span>
+              <span class="enfo-coach-soon-chip">Visión global</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -4279,6 +4456,9 @@
           applyTitoPanelUiFromState();
         } catch (errTitoUi) {}
         renderTitoPanel();
+        try {
+          syncTitoScreenPlaceholderUi();
+        } catch (eTitoPh) {}
       }
       if (id === "horario")     { renderBlocks(); requestNotifPermission(); }
       updatePrivateCoachVisibility();
@@ -5545,6 +5725,7 @@ function persistReminderIntent(raw) {
 }
 
 async function sendTitoPanelMessage() {
+  if (!isPrivateCoachEnabled()) return;
   var inp = document.getElementById("tito-panel-input");
   if (!inp) return;
   var text = (inp.value || "").trim();
@@ -5586,20 +5767,9 @@ async function sendTitoPanelMessage() {
 
   inp.value = "";
 
-  if (isPrivateCoachUiAllowed()) {
-    var coachInp = document.getElementById("enfo-coach-input");
-    if (coachInp) coachInp.value = text;
-    await sendPrivateCoachMessage();
-    return;
-  }
-
-  appendTitoPanelThreadMessage("user", text);
-  var reply = buildPrivateCoachReply(coachInput);
-  reply = privateCoachFinalizeCoachText(reply, true, text);
-  appendTitoPanelThreadMessage("coach", reply);
-  try {
-    privateCoachPersistTurn(text, reply);
-  } catch (errTitoSend) {}
+  var coachInp = document.getElementById("enfo-coach-input");
+  if (coachInp) coachInp.value = text;
+  await sendPrivateCoachMessage();
 }
 
 /** Contexto serializable del módulo Estrategias para Tito (chat cloud). */
@@ -10618,7 +10788,12 @@ function isPrivateCoachTitoSectionActive() {
   return !!(el && (el.id === "s-inicio" || el.id === "s-diario" || el.id === "s-estrategias" || el.id === "s-tito"));
 }
 
-/** FAB y panel si UID permitido y pantalla Tito activa. */
+/** FAB y overlay: cualquier usuario logueado en pantallas Tito. */
+function isPrivateCoachShellAllowed() {
+  return !!(auth && auth.currentUser) && isPrivateCoachTitoSectionActive();
+}
+
+/** Chat real, persistencia de turnos y llamada a la nube: solo ENFO_PRIVATE_COACH_UID + pantalla Tito. */
 function isPrivateCoachUiAllowed() {
   return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
 }
@@ -10628,6 +10803,38 @@ function isPrivateCoachEnabled() {
   if (!allow) return false;
   const u = auth && auth.currentUser;
   return !!(u && u.uid === allow);
+}
+
+function syncPrivateCoachPlaceholderUi() {
+  const full = document.getElementById("enfo-coach-full-ui");
+  const ph = document.getElementById("enfo-coach-placeholder-ui");
+  if (!full || !ph) return;
+  const on = isPrivateCoachEnabled();
+  full.hidden = !on;
+  ph.hidden = on;
+  const ta = document.getElementById("enfo-coach-input");
+  const sendBtn = document.querySelector("#enfo-coach-full-ui .enfo-coach-send");
+  if (ta) {
+    ta.disabled = !on;
+  }
+  if (sendBtn) sendBtn.disabled = !on;
+}
+
+function syncTitoScreenPlaceholderUi() {
+  var layer = document.getElementById("tito-access-layer");
+  var ph = document.getElementById("tito-screen-placeholder-mode");
+  if (!layer || !ph) return;
+  var u = auth && auth.currentUser;
+  var showPh = !!(u && !isPrivateCoachEnabled());
+  layer.hidden = showPh;
+  ph.hidden = !showPh;
+  var inp = document.getElementById("tito-panel-input");
+  var sendIco = document.querySelector("#s-tito .tito-chat-send-icon");
+  if (inp) {
+    inp.disabled = showPh;
+    if (showPh) inp.value = "";
+  }
+  if (sendIco) sendIco.disabled = showPh;
 }
 
 function renderPrivateCoach() {
@@ -10657,6 +10864,7 @@ function renderPrivateCoach() {
     badge.classList.remove("mod-global", "mod-diario", "mod-estrategias");
     badge.classList.add(cls);
   }
+  syncPrivateCoachPlaceholderUi();
 }
 
 function syncPrivateCoachPanelDom() {
@@ -10667,7 +10875,7 @@ function syncPrivateCoachPanelDom() {
 }
 
 function togglePrivateCoach(force) {
-  if (!isPrivateCoachEnabled()) return;
+  if (!isPrivateCoachShellAllowed()) return;
   if (typeof force === "boolean") {
     privateCoachOpen = force;
     if (privateCoachOpen && !isPrivateCoachTitoSectionActive()) privateCoachOpen = false;
@@ -10676,6 +10884,7 @@ function togglePrivateCoach(force) {
       privateCoachResetOpenGreeting();
     }
     syncPrivateCoachPanelDom();
+    syncPrivateCoachPlaceholderUi();
     if (privateCoachOpen) {
       const actScr = document.querySelector("#app .screen.active");
       if (actScr) {
@@ -10684,11 +10893,13 @@ function togglePrivateCoach(force) {
       }
       renderPrivateCoach();
       refreshTitoContext();
-      renderPrivateCoachSessionHistory();
-      privateCoachAppendOpenGreetingOnce();
-      preloadPrivateCoachMemoria();
-      const input = document.getElementById("enfo-coach-input");
-      if (input) setTimeout(() => { input.focus(); }, 220);
+      if (isPrivateCoachEnabled()) {
+        renderPrivateCoachSessionHistory();
+        privateCoachAppendOpenGreetingOnce();
+        preloadPrivateCoachMemoria();
+        const input = document.getElementById("enfo-coach-input");
+        if (input) setTimeout(() => { input.focus(); }, 220);
+      }
     }
     return;
   }
@@ -10709,23 +10920,24 @@ function togglePrivateCoach(force) {
   renderPrivateCoach();
   refreshTitoContext();
   syncPrivateCoachPanelDom();
-  renderPrivateCoachSessionHistory();
-  privateCoachAppendOpenGreetingOnce();
-  preloadPrivateCoachMemoria();
-  const input = document.getElementById("enfo-coach-input");
-  if (input) setTimeout(() => { input.focus(); }, 220);
+  syncPrivateCoachPlaceholderUi();
+  if (isPrivateCoachEnabled()) {
+    renderPrivateCoachSessionHistory();
+    privateCoachAppendOpenGreetingOnce();
+    preloadPrivateCoachMemoria();
+    const input = document.getElementById("enfo-coach-input");
+    if (input) setTimeout(() => { input.focus(); }, 220);
+  }
 }
 
 function openTitoFromDiario(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-  if (!isPrivateCoachEnabled()) return;
   privateCoachSessionOverride = "diario";
   togglePrivateCoach(true);
 }
 
 function openTitoFromEstrategias(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-  if (!isPrivateCoachEnabled()) return;
   privateCoachSessionOverride = "trading";
   togglePrivateCoach(true);
 }
@@ -11891,7 +12103,7 @@ function updatePrivateCoachVisibility() {
   const root = document.getElementById("private-coach-root");
   const fab = document.getElementById("private-coach-fab");
   if (!root) return;
-  if (!isPrivateCoachUiAllowed()) {
+  if (!isPrivateCoachShellAllowed()) {
     privateCoachOpen = false;
     privateCoachResetOpenGreeting();
     syncPrivateCoachPanelDom();
@@ -11902,6 +12114,9 @@ function updatePrivateCoachVisibility() {
       fab.setAttribute("hidden", "");
       fab.setAttribute("aria-hidden", "true");
     }
+    try {
+      syncTitoScreenPlaceholderUi();
+    } catch (ePh) {}
     return;
   }
   root.removeAttribute("hidden");
@@ -11912,6 +12127,9 @@ function updatePrivateCoachVisibility() {
     fab.setAttribute("aria-hidden", "false");
   }
   renderPrivateCoach();
+  try {
+    syncTitoScreenPlaceholderUi();
+  } catch (ePh2) {}
 }
 
 function initPrivateCoachUiOnce() {
