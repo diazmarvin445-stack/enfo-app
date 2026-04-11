@@ -4983,6 +4983,32 @@ function renderTitoStrategySection() {
 
 var titoPanelUi = { root: "estrategias", estSub: "chat", contextChip: "estrategias" };
 
+/** Modo Tito activo (sidebar / chips / pantalla). Fuente de verdad junto a titoPanelUi. */
+let titoModoActual = "estrategias";
+
+function syncTitoModoActual() {
+  var el = document.querySelector("#app .screen.active");
+  var id = el ? el.id : "";
+  if (id === "s-diario") {
+    titoModoActual = "mente";
+    return;
+  }
+  if (id === "s-estrategias") {
+    titoModoActual = "estrategias";
+    return;
+  }
+  if (id === "s-tito") {
+    var chip = titoPanelUi.contextChip || "estrategias";
+    if (chip === "estrategias") titoModoActual = "estrategias";
+    else if (chip === "mente_diario") titoModoActual = "mente";
+    else if (chip === "finanzas") titoModoActual = "finanzas";
+    else if (chip === "productividad") titoModoActual = "productividad";
+    else titoModoActual = "global";
+    return;
+  }
+  titoModoActual = "global";
+}
+
 function updateTitoContextChipsActive() {
   var chip = titoPanelUi.contextChip || "estrategias";
   document.querySelectorAll("#tito-context-chips [data-tito-ctx]").forEach(function (btn) {
@@ -5324,6 +5350,7 @@ function setTitoPanelRoot(root) {
   try {
     updateTitoContextChipsActive();
     syncTitoMobileContextBars();
+    refreshTitoContext();
   } catch (eRoot) {}
 }
 
@@ -5608,15 +5635,17 @@ function getDiarioEntriesForTitoContext() {
   });
 }
 
-/** Texto concatenado para el modelo: diario reciente con fecha por línea. */
+/** Texto concatenado para el modelo: diario reciente con fecha entre corchetes por línea. */
 function getDiarioContext() {
   var entries = getDiarioEntriesForTitoContext();
-  if (!entries.length) return "";
+  if (!entries.length) {
+    return "DIARIO RECIENTE:\n(sin entradas en la ventana reciente; datos internos ENFO disponibles.)";
+  }
   var lines = entries.map(function (en) {
     var d = en.date ? new Date(en.date) : null;
     var dayLabel = d && !isNaN(d.getTime()) ? fmtDateYMD(d) : "?";
     var tx = String(en.text || "").replace(/\s+/g, " ").trim().slice(0, 1200);
-    return "- " + dayLabel + ": " + tx;
+    return "- [" + dayLabel + "] " + tx;
   });
   return "DIARIO RECIENTE:\n" + lines.join("\n");
 }
@@ -5630,8 +5659,16 @@ function getContextoDiarioParaTito() {
     textoResumen: ""
   };
   var act = document.querySelector("#app .screen.active");
-  if (act && act.id === "s-diario") {
+  var sk = null;
+  try {
+    sk = getTitoSessionKey();
+  } catch (errSk) {
+    sk = null;
+  }
+  if (sk === "diario") {
     out.modulo = "diario";
+  }
+  if (act && act.id === "s-diario") {
     var dinp = document.getElementById("dinp");
     out.entradaActual = String((dinp && dinp.value) || "").trim().slice(0, 2000);
   }
@@ -9252,14 +9289,24 @@ function getTitoModuloActivo() {
   return "general";
 }
 
+/**
+ * Sesión de chat Tito: en la pantalla #s-tito el chip (Mente·Diario vs Estrategias) manda;
+ * antes #s-tito siempre forzaba "trading" y el diario no se inyectaba.
+ */
 function getTitoSessionKey() {
+  var el = document.querySelector("#app .screen.active");
+  var id = el ? el.id : "";
+  if (id === "s-tito") {
+    var chip = titoPanelUi.contextChip || "estrategias";
+    if (chip === "mente_diario") return "diario";
+    if (chip === "estrategias") return "trading";
+    return "global";
+  }
   if (privateCoachSessionOverride === "global" || privateCoachSessionOverride === "diario" || privateCoachSessionOverride === "trading") {
     return privateCoachSessionOverride;
   }
-  var el = document.querySelector("#app .screen.active");
-  var id = el ? el.id : "";
   if (id === "s-diario") return "diario";
-  if (id === "s-estrategias" || id === "s-tito") return "trading";
+  if (id === "s-estrategias") return "trading";
   return "global";
 }
 
@@ -9316,6 +9363,9 @@ function renderPrivateCoachSessionHistory() {
 function refreshTitoContext() {
   var el = document.querySelector("#app .screen.active");
   TITO_CONTEXT.pantallaActiva = el ? el.id : "";
+  try {
+    syncTitoModoActual();
+  } catch (errTm) {}
   TITO_CONTEXT.moduloActivo = getTitoModuloActivo();
 }
 
@@ -11625,6 +11675,7 @@ async function sendPrivateCoachMessage() {
       contextoModulo: {
         moduloActivo: getTitoModuloActivo(),
         sessionKey: sessionKey,
+        titoModoActual: typeof titoModoActual !== "undefined" ? titoModoActual : "global",
         pantallaActiva: TITO_CONTEXT.pantallaActiva || "",
         titoEnfoqueGlobal:
           sessionKey === "global" && typeof D !== "undefined" && D.titoGlobalState
