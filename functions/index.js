@@ -247,10 +247,25 @@ function sanitizeTitoReplyByModule(text, contextoModulo) {
   return TITO_MOD_FALLBACK_SRV[mod] || TITO_MOD_FALLBACK_SRV.general;
 }
 
+/** Módulo Diario o bloque DIARIO RECIENTE con contenido: análisis emocional y formato de tres partes. */
+function diaryCoachModeActive(contextoModulo, contextoDiario) {
+  const rawMod = contextoModulo && contextoModulo.moduloActivo;
+  const mod = ["mentalidad", "diario", "negocio", "trading", "habitos", "general"].includes(rawMod)
+    ? rawMod
+    : "general";
+  if (mod === "diario") return true;
+  const tr =
+    contextoDiario &&
+    typeof contextoDiario === "object" &&
+    typeof contextoDiario.textoResumen === "string" &&
+    contextoDiario.textoResumen.trim();
+  return !!tr;
+}
+
 /**
  * Construye instructions para OpenAI desde Firestore; si titoCore es null o vacío, usa SYSTEM_PROMPT.
  */
-function buildTitoSystemPrompt(titoCore, contextoModulo) {
+function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario) {
   let base;
   if (!titoCore || typeof titoCore !== "object") {
     base = SYSTEM_PROMPT;
@@ -273,8 +288,12 @@ function buildTitoSystemPrompt(titoCore, contextoModulo) {
     ? rawMod
     : "general";
   const anchor = TITO_MOD_ANCHORS[mod];
-  const ops =
+  const diaryMode = diaryCoachModeActive(contextoModulo, contextoDiario);
+  const opsDefault =
     "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. No repitas texto largo del usuario ni cites párrafos enteros; resume en una frase si hace falta. Acción clara si aplica problema. Respeta el módulo activo ENFO.";
+  const opsDiario =
+    "Reglas finales: español. Cuando apliquen el módulo Diario y/o el bloque DIARIO RECIENTE: con tacto, detecta si encajan emociones (frustración, miedo, impulsividad) y patrones de error (sobreoperar, entrar sin plan, reaccionar emocionalmente); no inventes lo que no esté implícito. Sin listas ni titulares. Ordena la respuesta en tres partes seguidas, sin etiquetas: qué está pasando; por qué ocurre; qué debes hacer (corrección directa y acción concreta). 1–2 párrafos breves en total. No repitas el diario literalmente ni cites párrafos enteros. Sin narrar tu proceso. Respeta el módulo activo ENFO.";
+  const ops = diaryMode ? opsDiario : opsDefault;
   if (base === SYSTEM_PROMPT) {
     return (base + "\n\n---\n\n" + anchor + "\n\n" + ops).trim();
   }
@@ -316,6 +335,7 @@ function buildOpenAIInput(
   coachMemory,
   contextoTiempo,
   contextoEstrategias,
+  contextoDiario,
   contextoModulo,
   titoExtras
 ) {
@@ -387,6 +407,15 @@ function buildOpenAIInput(
         "El usuario está en la pantalla Estrategias pero no tiene abierto el detalle de una estrategia concreta (lista o vista general).\n";
     }
     parts.push(block);
+  }
+
+  if (
+    contextoDiario &&
+    typeof contextoDiario === "object" &&
+    typeof contextoDiario.textoResumen === "string" &&
+    contextoDiario.textoResumen.trim()
+  ) {
+    parts.push(String(contextoDiario.textoResumen).trim().slice(0, 12000));
   }
 
   if (titoExtras.titoLexikon && typeof titoExtras.titoLexikon === "object") {
@@ -487,6 +516,8 @@ async function privateCoachChatCore(data) {
     data.contextoEstrategias && typeof data.contextoEstrategias === "object"
       ? data.contextoEstrategias
       : null;
+  const contextoDiario =
+    data.contextoDiario && typeof data.contextoDiario === "object" ? data.contextoDiario : null;
   const contextoModulo =
     data.contextoModulo && typeof data.contextoModulo === "object" ? data.contextoModulo : null;
 
@@ -508,7 +539,7 @@ async function privateCoachChatCore(data) {
   try {
     console.time("[tito] firestore+prompt");
     const titoCore = await getTitoCoreFromFirestore();
-    const instructions = buildTitoSystemPrompt(titoCore, contextoModulo);
+    const instructions = buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario);
     console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
 
     const input = buildOpenAIInput(
@@ -517,6 +548,7 @@ async function privateCoachChatCore(data) {
       coachMemory,
       contextoTiempo,
       contextoEstrategias,
+      contextoDiario,
       contextoModulo,
       titoExtras
     );
