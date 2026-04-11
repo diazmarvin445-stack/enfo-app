@@ -5583,24 +5583,66 @@ function getContextoEstrategiasParaTito() {
   return out;
 }
 
+/** Últimas entradas del diario (misma estructura que D.diary: date ISO + text). Ventana ~7 días o fallback a las 10 más recientes. */
+function getDiarioEntriesForTitoContext() {
+  if (typeof D === "undefined" || !D) return [];
+  var list = Array.isArray(D.diary) ? D.diary.slice() : [];
+  var cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  function entryTime(en) {
+    var pt = Date.parse(en.date || "");
+    return isNaN(pt) ? 0 : pt;
+  }
+  list.sort(function (a, b) {
+    return entryTime(b) - entryTime(a);
+  });
+  var recent = list.filter(function (en) {
+    return entryTime(en) >= cutoff;
+  });
+  if (!recent.length) {
+    recent = list.slice(0, 10);
+  } else {
+    recent = recent.slice(0, 15);
+  }
+  return recent.map(function (en) {
+    return { date: en.date || "", text: String(en.text || "").trim() };
+  });
+}
+
+/** Texto concatenado para el modelo: diario reciente con fecha por línea. */
+function getDiarioContext() {
+  var entries = getDiarioEntriesForTitoContext();
+  if (!entries.length) return "";
+  var lines = entries.map(function (en) {
+    var d = en.date ? new Date(en.date) : null;
+    var dayLabel = d && !isNaN(d.getTime()) ? fmtDateYMD(d) : "?";
+    var tx = String(en.text || "").replace(/\s+/g, " ").trim().slice(0, 1200);
+    return "- " + dayLabel + ": " + tx;
+  });
+  return "DIARIO RECIENTE:\n" + lines.join("\n");
+}
+
 function getContextoDiarioParaTito() {
   var out = {
     modulo: "ninguno",
     fecha: fmtDateYMD(new Date()),
     entradaActual: "",
-    entradasRecientes: []
+    entradasRecientes: [],
+    textoResumen: ""
   };
   var act = document.querySelector("#app .screen.active");
-  if (!act || act.id !== "s-diario") return out;
-  out.modulo = "diario";
-  var dinp = document.getElementById("dinp");
-  out.entradaActual = String((dinp && dinp.value) || "").trim().slice(0, 2000);
-  out.entradasRecientes = (Array.isArray(D.diary) ? D.diary : []).slice(0, 5).map(function (en) {
+  if (act && act.id === "s-diario") {
+    out.modulo = "diario";
+    var dinp = document.getElementById("dinp");
+    out.entradaActual = String((dinp && dinp.value) || "").trim().slice(0, 2000);
+  }
+  var entries = getDiarioEntriesForTitoContext();
+  out.entradasRecientes = entries.map(function (en) {
     return {
       date: String(en.date || "").slice(0, 30),
       text: String(en.text || "").slice(0, 1500)
     };
   });
+  out.textoResumen = getDiarioContext();
   return out;
 }
 
@@ -11577,7 +11619,8 @@ async function sendPrivateCoachMessage() {
         diaSemana: ctxCloud.diaSemana,
         diaSemanaNombre: ctxCloud.diaSemanaNombre
       },
-      contextoDiario: sessionKey === "diario" ? getContextoDiarioParaTito() : null,
+      contextoDiario:
+        sessionKey === "diario" || sessionKey === "global" ? getContextoDiarioParaTito() : null,
       contextoEstrategias: sessionKey === "trading" ? getContextoEstrategiasParaTito() : null,
       contextoModulo: {
         moduloActivo: getTitoModuloActivo(),
