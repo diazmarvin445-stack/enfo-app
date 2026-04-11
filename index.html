@@ -3441,7 +3441,15 @@
         calendario: {},
         coachHistory: [],
         coachMemory: [],
-        titoSessions: { global: [], diario: [], trading: [] },
+        titoSessions: {
+          global: [],
+          productividad: [],
+          mente: [],
+          estrategias: [],
+          finanzas: [],
+          biblioteca: []
+        },
+        titoChatLastActivity: {},
         titoGlobalState: { enfoqueActual: null, enfoqueAnterior: null, ultimoCoachReply: "" },
         titoLexikon: { terms: {} },
         estrategiasNotas: "",
@@ -3625,6 +3633,9 @@
 
     async function bootstrap() {
       await ld();
+      try {
+        initTitoChatRetentionAfterLoad();
+      } catch (eTitoInit) {}
       setDates();
       renderMindset();
       renderBlocks();
@@ -3853,10 +3864,9 @@
         x.text = String(x.text || "").slice(0, 4000);
       });
       var rawSessions = data.titoSessions && typeof data.titoSessions === "object" ? data.titoSessions : {};
-      var normalizedSessions = { global: [], diario: [], trading: [] };
-      ["global", "diario", "trading"].forEach(function (k) {
-        var arr = Array.isArray(rawSessions[k]) ? rawSessions[k] : [];
-        normalizedSessions[k] = arr.map(function (x) {
+      var TITO_CHAT_KEYS_NORM = ["global", "productividad", "mente", "estrategias", "finanzas", "biblioteca"];
+      function mapSessionMsgs(arr) {
+        return (Array.isArray(arr) ? arr : []).map(function (x) {
           var role = x && x.role === "coach" ? "coach" : "user";
           var timeNum = 0;
           if (x && typeof x.time === "number" && !isNaN(x.time)) {
@@ -3874,7 +3884,17 @@
             text: String((x && x.text) || "").slice(0, 4000)
           };
         });
+      }
+      var normalizedSessions = {};
+      TITO_CHAT_KEYS_NORM.forEach(function (k) {
+        normalizedSessions[k] = mapSessionMsgs(rawSessions[k]);
       });
+      if (!normalizedSessions.mente.length && Array.isArray(rawSessions.diario)) {
+        normalizedSessions.mente = mapSessionMsgs(rawSessions.diario);
+      }
+      if (!normalizedSessions.estrategias.length && Array.isArray(rawSessions.trading)) {
+        normalizedSessions.estrategias = mapSessionMsgs(rawSessions.trading);
+      }
       if (!normalizedSessions.global.length && data.coachHistory.length) {
         normalizedSessions.global = data.coachHistory.slice(0, 32).map(function (x) {
           var parsedAt = Date.parse(x.at || "");
@@ -3888,6 +3908,13 @@
         });
       }
       data.titoSessions = normalizedSessions;
+      var rawLa = data.titoChatLastActivity && typeof data.titoChatLastActivity === "object" ? data.titoChatLastActivity : {};
+      var nextLa = {};
+      TITO_CHAT_KEYS_NORM.forEach(function (k) {
+        var v = rawLa[k];
+        if (typeof v === "number" && !isNaN(v)) nextLa[k] = v;
+      });
+      data.titoChatLastActivity = nextLa;
       data.titoLexikon = data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : { terms: {} };
       data.titoLexikon.terms =
         data.titoLexikon.terms && typeof data.titoLexikon.terms === "object" ? data.titoLexikon.terms : {};
@@ -3905,7 +3932,9 @@
         x.id = x.id || uid();
         x.at = x.at || new Date().toISOString();
         x.text = String(x.text || "").slice(0, 8000);
-        if (x.moduloOrigen && x.moduloOrigen !== "diario" && x.moduloOrigen !== "trading" && x.moduloOrigen !== "global") {
+        var ALLOW_TITO_MOD =
+          /^(global|diario|trading|productividad|mente|estrategias|finanzas|biblioteca)$/;
+        if (x.moduloOrigen && !ALLOW_TITO_MOD.test(String(x.moduloOrigen))) {
           x.moduloOrigen = "global";
         }
         if (typeof x.time !== "number" || isNaN(x.time)) {
@@ -5033,6 +5062,14 @@ function syncTitoMobileContextBars() {
 }
 
 /** Submenú Estrategias en mobile: misma lógica que la barra lateral en desktop. */
+function refreshTitoCoachThreadIfVisible() {
+  var sTito = document.getElementById("s-tito");
+  if (!sTito || !sTito.classList.contains("active")) return;
+  try {
+    renderPrivateCoachSessionHistory();
+  } catch (eTh) {}
+}
+
 function setTitoMobileEstrategiasSub(sub) {
   titoPanelUi.contextChip = "estrategias";
   privateCoachSessionOverride = "trading";
@@ -5041,6 +5078,7 @@ function setTitoMobileEstrategiasSub(sub) {
     refreshTitoContext();
   } catch (eMob) {}
   updateTitoContextChipsActive();
+  refreshTitoCoachThreadIfVisible();
 }
 
 /** Barra compacta mobile: contexto del coach; fuera de Estrategias la vista principal es Chat. */
@@ -5071,6 +5109,8 @@ function setTitoContextChip(chipId) {
     refreshTitoContext();
   } catch (eCtx) {}
   updateTitoContextChipsActive();
+  syncTitoMobileContextBars();
+  refreshTitoCoachThreadIfVisible();
 }
 
 function getTitoPanelUiState() {
@@ -9310,51 +9350,182 @@ function getTitoSessionKey() {
   return "global";
 }
 
-function ensureTitoSessionsState() {
-  if (typeof D === "undefined" || !D || typeof D !== "object") return;
-  if (!D.titoSessions || typeof D.titoSessions !== "object") {
-    D.titoSessions = { global: [], diario: [], trading: [] };
+/** Claves de hilo de chat visibles (una por módulo/contexto UI). */
+var TITO_CHAT_CONTEXT_KEYS = ["global", "productividad", "mente", "estrategias", "finanzas", "biblioteca"];
+var TITO_CHAT_IDLE_MS = 10 * 60 * 1000;
+
+/**
+ * Contexto de almacenamiento del hilo visible (no confundir con getTitoSessionKey: API diario/trading/global).
+ */
+function getTitoChatContextKey() {
+  var el = document.querySelector("#app .screen.active");
+  var id = el ? el.id : "";
+  if (id === "s-tito") {
+    var chip = titoPanelUi.contextChip || "estrategias";
+    if (chip === "mente_diario") return "mente";
+    if (chip === "estrategias") return "estrategias";
+    if (chip === "global") return "global";
+    if (chip === "productividad") return "productividad";
+    if (chip === "finanzas") return "finanzas";
+    if (chip === "biblioteca") return "biblioteca";
+    return "global";
   }
-  if (!Array.isArray(D.titoSessions.global)) D.titoSessions.global = [];
-  if (!Array.isArray(D.titoSessions.diario)) D.titoSessions.diario = [];
-  if (!Array.isArray(D.titoSessions.trading)) D.titoSessions.trading = [];
+  if (privateCoachSessionOverride === "diario") return "mente";
+  if (privateCoachSessionOverride === "trading") return "estrategias";
+  if (privateCoachSessionOverride === "global") return "global";
+  if (id === "s-diario") return "mente";
+  if (id === "s-estrategias") return "estrategias";
+  return "global";
 }
 
-function limpiarHistorial(session) {
-  const ahora = Date.now();
-  const LIMITE = 10 * 60 * 1000;
-  const list = Array.isArray(session) ? session : [];
-  return list.filter(function (msg) {
-    var tm = 0;
-    if (msg && typeof msg.time === "number" && !isNaN(msg.time)) tm = msg.time;
-    else if (msg && msg.at) {
-      var p = Date.parse(msg.at);
-      tm = isNaN(p) ? 0 : p;
-    }
-    return tm > 0 && (ahora - tm) < LIMITE;
+function ensureTitoChatLastActivityState() {
+  if (typeof D === "undefined" || !D || typeof D !== "object") return;
+  if (!D.titoChatLastActivity || typeof D.titoChatLastActivity !== "object") {
+    D.titoChatLastActivity = {};
+  }
+}
+
+function recoverTitoChatLastActivityFromSessions() {
+  if (typeof D === "undefined" || !D) return;
+  ensureTitoSessionsState();
+  ensureTitoChatLastActivityState();
+  TITO_CHAT_CONTEXT_KEYS.forEach(function (k) {
+    if (typeof D.titoChatLastActivity[k] === "number" && !isNaN(D.titoChatLastActivity[k])) return;
+    var arr = D.titoSessions[k];
+    if (!Array.isArray(arr) || !arr.length) return;
+    var maxT = 0;
+    arr.forEach(function (m) {
+      var tm = m && typeof m.time === "number" && !isNaN(m.time) ? m.time : 0;
+      if (tm > maxT) maxT = tm;
+    });
+    if (maxT > 0) D.titoChatLastActivity[k] = maxT;
   });
 }
 
-function limpiarTodasLasSesionesTito() {
-  ensureTitoSessionsState();
-  D.titoSessions.global = limpiarHistorial(D.titoSessions.global);
-  D.titoSessions.diario = limpiarHistorial(D.titoSessions.diario);
-  D.titoSessions.trading = limpiarHistorial(D.titoSessions.trading);
+function touchTitoChatActivity(chatKey) {
+  if (!chatKey) return;
+  ensureTitoChatLastActivityState();
+  D.titoChatLastActivity[chatKey] = Date.now();
 }
 
-function getTitoSessionHistory(sessionKey) {
+function privateCoachMaybeAppendMemoryForModule(userText, moduloOrigen) {
+  if (typeof D === "undefined") return;
+  const plain = String(userText || "").trim();
+  const rawLen = plain.length;
+  const norm = privateCoachNormalizeText(plain);
+  if (!privateCoachMessageWorthMemory(norm, rawLen)) return;
+  if (!Array.isArray(D.coachMemory)) D.coachMemory = [];
+  var dup = D.coachMemory.some(function (x) {
+    return x && x.text === plain && (x.moduloOrigen || "") === (moduloOrigen || "");
+  });
+  if (dup) return;
+  D.coachMemory.unshift({
+    id: uid(),
+    at: new Date().toISOString(),
+    time: Date.now(),
+    moduloOrigen: moduloOrigen,
+    text: plain.slice(0, 8000)
+  });
+  if (D.coachMemory.length > PRIVATE_COACH_MEMORY_MAX) {
+    D.coachMemory = D.coachMemory.slice(0, PRIVATE_COACH_MEMORY_MAX);
+  }
+}
+
+function harvestCoachMemoryFromSession(chatKey) {
+  if (typeof D === "undefined" || !chatKey) return;
   ensureTitoSessionsState();
-  limpiarTodasLasSesionesTito();
-  var key = (sessionKey === "diario" || sessionKey === "trading") ? sessionKey : "global";
-  return D.titoSessions[key];
+  var hist = D.titoSessions[chatKey];
+  if (!Array.isArray(hist) || !hist.length) return;
+  var seen = {};
+  hist.slice().reverse().forEach(function (m) {
+    if (!m || m.role !== "user") return;
+    var t = String(m.text || "").trim();
+    if (!t || seen[t]) return;
+    seen[t] = true;
+    privateCoachMaybeAppendMemoryForModule(t, chatKey);
+  });
+}
+
+function maybeExpireTitoChatIdle(chatKey) {
+  if (typeof D === "undefined" || !D || !chatKey) return;
+  ensureTitoSessionsState();
+  ensureTitoChatLastActivityState();
+  if (typeof D.titoChatLastActivity[chatKey] !== "number" || isNaN(D.titoChatLastActivity[chatKey])) {
+    var arr = D.titoSessions[chatKey];
+    if (Array.isArray(arr) && arr.length) {
+      var maxT = 0;
+      arr.forEach(function (m) {
+        var tm = m && typeof m.time === "number" && !isNaN(m.time) ? m.time : 0;
+        if (tm > maxT) maxT = tm;
+      });
+      if (maxT > 0) D.titoChatLastActivity[chatKey] = maxT;
+    }
+  }
+  var last = D.titoChatLastActivity[chatKey];
+  if (typeof last !== "number" || last <= 0) return;
+  if (Date.now() - last < TITO_CHAT_IDLE_MS) return;
+  harvestCoachMemoryFromSession(chatKey);
+  D.titoSessions[chatKey] = [];
+  delete D.titoChatLastActivity[chatKey];
+  try {
+    sv();
+  } catch (eSv) {}
+  if (getTitoChatContextKey() === chatKey) {
+    var sTito = document.getElementById("s-tito");
+    if (sTito && sTito.classList.contains("active")) {
+      renderPrivateCoachSessionHistory();
+    } else if (privateCoachOpen) {
+      renderPrivateCoachSessionHistory();
+    }
+  }
+}
+
+function maybeExpireAllTitoChatsIdle() {
+  TITO_CHAT_CONTEXT_KEYS.forEach(function (k) {
+    maybeExpireTitoChatIdle(k);
+  });
+}
+
+function initTitoChatRetentionAfterLoad() {
+  if (typeof D === "undefined" || !D) return;
+  recoverTitoChatLastActivityFromSessions();
+  maybeExpireAllTitoChatsIdle();
+}
+
+function ensureTitoSessionsState() {
+  if (typeof D === "undefined" || !D || typeof D !== "object") return;
+  if (!D.titoSessions || typeof D.titoSessions !== "object") {
+    D.titoSessions = {};
+  }
+  TITO_CHAT_CONTEXT_KEYS.forEach(function (k) {
+    if (!Array.isArray(D.titoSessions[k])) D.titoSessions[k] = [];
+  });
+  if (Array.isArray(D.titoSessions.diario) && D.titoSessions.diario.length && (!D.titoSessions.mente || !D.titoSessions.mente.length)) {
+    D.titoSessions.mente = D.titoSessions.diario.slice();
+  }
+  if (Array.isArray(D.titoSessions.trading) && D.titoSessions.trading.length && (!D.titoSessions.estrategias || !D.titoSessions.estrategias.length)) {
+    D.titoSessions.estrategias = D.titoSessions.trading.slice();
+  }
+}
+
+function getTitoChatSessionHistory() {
+  ensureTitoSessionsState();
+  var ck = getTitoChatContextKey();
+  maybeExpireTitoChatIdle(ck);
+  return D.titoSessions[ck] || [];
 }
 
 function renderPrivateCoachSessionHistory() {
   const list = document.getElementById("enfo-coach-messages");
   if (!list) return;
-  limpiarTodasLasSesionesTito();
+  maybeExpireTitoChatIdle(getTitoChatContextKey());
   list.innerHTML = "";
-  const sessionHistory = getTitoSessionHistory(getTitoSessionKey());
+  var sTito = document.getElementById("s-tito");
+  var tthread = document.getElementById("tito-panel-thread");
+  if (sTito && sTito.classList.contains("active") && tthread) {
+    tthread.innerHTML = "";
+  }
+  const sessionHistory = getTitoChatSessionHistory();
   sessionHistory.slice().reverse().forEach(function (msg) {
     appendPrivateCoachMessage(msg.role === "coach" ? "coach" : "user", String(msg.text || ""));
   });
@@ -9800,9 +9971,9 @@ function getContextoTiempoGlobal() {
   };
 }
 
-/** Limpia mensajes >10 min (reutiliza la misma ventana que el historial de sesión). */
+/** Expira el hilo visual del contexto actual si lleva >10 min sin actividad (mensajes). */
 function limpiarContextoAntiguoGlobal() {
-  limpiarTodasLasSesionesTito();
+  maybeExpireTitoChatIdle(getTitoChatContextKey());
 }
 
 /**
@@ -9898,7 +10069,9 @@ function titoGlobalAplicarCambioEnfoqueYLimpiarChat() {
   st.enfoqueActual = null;
   st.ultimoCoachReply = "";
   ensureTitoSessionsState();
+  ensureTitoChatLastActivityState();
   D.titoSessions.global = [];
+  delete D.titoChatLastActivity.global;
   renderPrivateCoachSessionHistory();
 }
 
@@ -9976,10 +10149,7 @@ function privateCoachStripEchoUser(reply, userText) {
 }
 
 function getModuloOrigenDesdeSesion() {
-  var k = getTitoSessionKey();
-  if (k === "diario") return "diario";
-  if (k === "trading") return "trading";
-  return "global";
+  return getTitoChatContextKey();
 }
 
 function compromisoCoincideModulo(comp, moduloActivo) {
@@ -9987,7 +10157,10 @@ function compromisoCoincideModulo(comp, moduloActivo) {
   if (moduloActivo === "global") {
     return mo === "global" || mo == null || mo === "";
   }
-  return mo === moduloActivo;
+  if (mo === moduloActivo) return true;
+  if (moduloActivo === "mente" && mo === "diario") return true;
+  if (moduloActivo === "estrategias" && mo === "trading") return true;
+  return false;
 }
 
 function filtrarMemoriaPorModulo(memoria, moduloActivo) {
@@ -10981,7 +11154,13 @@ function privateCoachIsGreetingOrTooCasual(t, rawLen) {
   return false;
 }
 
+function privateCoachUserExplicitRemember(norm) {
+  if (!norm || typeof norm !== "string") return false;
+  return /\b(guarda|guardar|recu[eé]rda|recordatorio|apunta|anota|no\s+olvides|memoriza)\b/i.test(norm);
+}
+
 function privateCoachMessageWorthMemory(norm, rawLen) {
+  if (privateCoachUserExplicitRemember(norm) && rawLen >= 8) return true;
   if (rawLen < PRIVATE_COACH_MEMORY_MIN_LEN) return false;
   if (privateCoachIsGreetingOrTooCasual(norm, rawLen)) return false;
   return privateCoachTextIncludesAny(norm, [
@@ -11027,8 +11206,8 @@ function privateCoachMessageWorthMemory(norm, rawLen) {
 
 function privateCoachAppendHistory(userText, coachReply) {
   if (typeof D === "undefined") return;
-  limpiarTodasLasSesionesTito();
-  var hist = getTitoSessionHistory(getTitoSessionKey());
+  ensureTitoSessionsState();
+  var hist = getTitoChatSessionHistory();
   const at = new Date().toISOString();
   const nowMs = Date.now();
   const u = String(userText || "").slice(0, 4000);
@@ -11038,26 +11217,11 @@ function privateCoachAppendHistory(userText, coachReply) {
   if (hist.length > PRIVATE_COACH_HISTORY_MAX) {
     hist.splice(PRIVATE_COACH_HISTORY_MAX);
   }
+  touchTitoChatActivity(getTitoChatContextKey());
 }
 
 function privateCoachMaybeAppendMemory(userText) {
-  if (typeof D === "undefined") return;
-  const plain = String(userText || "").trim();
-  const rawLen = plain.length;
-  const norm = privateCoachNormalizeText(plain);
-  if (!privateCoachMessageWorthMemory(norm, rawLen)) return;
-  if (!Array.isArray(D.coachMemory)) D.coachMemory = [];
-  if (D.coachMemory.length && D.coachMemory[0].text === plain) return;
-  D.coachMemory.unshift({
-    id: uid(),
-    at: new Date().toISOString(),
-    time: Date.now(),
-    moduloOrigen: getModuloOrigenDesdeSesion(),
-    text: plain.slice(0, 8000)
-  });
-  if (D.coachMemory.length > PRIVATE_COACH_MEMORY_MAX) {
-    D.coachMemory = D.coachMemory.slice(0, PRIVATE_COACH_MEMORY_MAX);
-  }
+  privateCoachMaybeAppendMemoryForModule(userText, getModuloOrigenDesdeSesion());
 }
 
 function privateCoachPersistTurn(userText, coachReply) {
@@ -11071,11 +11235,14 @@ function privateCoachPersistTurn(userText, coachReply) {
 
 function getCoachMemoryForCloud() {
   if (typeof D === "undefined" || !Array.isArray(D.coachMemory)) return [];
-  var mod = getModuloOrigenDesdeSesion();
+  var ck = getTitoChatContextKey();
   return D.coachMemory.filter(function (x) {
     var mo = x && x.moduloOrigen;
-    if (mod === "global") return mo === "global" || mo == null || mo === "";
-    return mo === mod;
+    if (mo === ck) return true;
+    if (ck === "global" && (mo === "global" || mo == null || mo === "")) return true;
+    if (ck === "mente" && mo === "diario") return true;
+    if (ck === "estrategias" && mo === "trading") return true;
+    return false;
   });
 }
 
@@ -11643,7 +11810,7 @@ async function sendPrivateCoachMessage() {
     if (!u) throw new Error("Sin sesión");
     const token = await u.getIdToken();
     const sessionKey = getTitoSessionKey();
-    const history = getTitoSessionHistory(sessionKey).slice(0, 12);
+    const history = getTitoChatSessionHistory().slice(0, 12);
     var ctxCloud = construirContextoTiempo();
     const data = {
       message: text,
@@ -11751,6 +11918,14 @@ function initPrivateCoachUiOnce() {
   const root = document.getElementById("private-coach-root");
   if (!root || root._enfoCoachInit) return;
   root._enfoCoachInit = true;
+  if (!root._titoIdleSweep) {
+    root._titoIdleSweep = true;
+    setInterval(function () {
+      try {
+        maybeExpireAllTitoChatsIdle();
+      } catch (eIdle) {}
+    }, 45000);
+  }
   root.addEventListener("click", (ev) => {
     const tab = ev.target.closest(".enfo-coach-tab");
     if (!tab) return;
