@@ -109,46 +109,6 @@
     .nb-icon { font-size: 22px; line-height: 1; }
     .nb-lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
 
-    /* Navbar: mismo globo Tito que en Diario/FAB, escala compacta (sin texto en pestaña) */
-    #nb-tito .nb-tito-icon {
-      font-size: 0;
-      line-height: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      width: 26px;
-      height: 26px;
-      filter: drop-shadow(0 1px 6px rgba(0, 200, 255, 0.28));
-    }
-    #nb-tito .nb-tito-icon .diario-tito-head {
-      width: 20px;
-      height: 20px;
-      border-width: 1.6px;
-    }
-    #nb-tito .nb-tito-icon .diario-tito-head::before,
-    #nb-tito .nb-tito-icon .diario-tito-head::after {
-      width: 3px;
-      height: 3px;
-      top: 7px;
-    }
-    #nb-tito .nb-tito-icon .diario-tito-head::before { left: 5px; }
-    #nb-tito .nb-tito-icon .diario-tito-head::after { right: 5px; }
-    #nb-tito .nb-tito-icon .diario-tito-body {
-      width: 3.5px;
-      height: 9px;
-      margin-top: -1px;
-    }
-    #nb-tito .nb-lbl--tito-spacer {
-      opacity: 0;
-      height: 10px;
-      line-height: 10px;
-      font-size: 10px;
-      overflow: hidden;
-      pointer-events: none;
-      user-select: none;
-    }
-
     /* Panel Tito — chat como sección compacta: lista con tope + input, sin “ventana” a pantalla completa */
     #s-tito.screen {
       display: flex;
@@ -1524,6 +1484,59 @@
       padding-bottom: 4px;
     }
 
+    #s-flow .flow-screen-inner {
+      padding: 8px 16px 24px;
+    }
+    #s-flow .flow-placeholder-card {
+      background: linear-gradient(135deg, rgba(10, 21, 37, 0.95), rgba(13, 30, 56, 0.92));
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 22px 18px;
+      margin-top: 8px;
+    }
+    #s-flow .flow-placeholder-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent2);
+      margin-bottom: 10px;
+    }
+    #s-flow .flow-placeholder-title {
+      font-family: "Orbitron", monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 14px;
+    }
+    #s-flow .flow-placeholder-list {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--text2);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    #s-flow .flow-placeholder-list li {
+      margin-bottom: 8px;
+    }
+    #s-flow .flow-soon-lead {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.6;
+      margin: 0;
+    }
+    #s-flow .flow-author-card {
+      border-color: rgba(0, 212, 138, 0.35);
+      box-shadow: 0 0 0 1px rgba(0, 212, 138, 0.12);
+    }
+    #s-flow .flow-author-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
     .estrategia-hoy-tile {
       flex: 0 0 auto;
       box-sizing: border-box;
@@ -2226,7 +2239,17 @@
       font-family: "DM Sans", sans-serif;
     }
     .private-coach-root * { pointer-events: auto; }
-    /* Dentro de .mind-toolbar (Mentalidad): mismo riel que Historial */
+    /* FAB global: único acceso al chat Tito (encima de la barra inferior) */
+    .private-coach-fab-host {
+      position: fixed;
+      right: max(12px, env(safe-area-inset-right));
+      bottom: calc(72px + 10px + env(safe-area-inset-bottom));
+      z-index: 150;
+      pointer-events: none;
+    }
+    .private-coach-fab-host .private-coach-fab {
+      pointer-events: auto;
+    }
     .private-coach-fab {
       position: relative;
       z-index: 2;
@@ -2862,7 +2885,6 @@
     <span class="status-pill" id="mind-status-pill">EMPTY</span>
     <div class="mind-toolbar-actions">
       <button class="tiny-btn" onclick="toggleMindHistory()">Historial</button>
-      <button type="button" id="private-coach-fab" class="private-coach-fab tito-mascot-btn" hidden aria-label="Abrir Tito global" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
     </div>
   </div>
 
@@ -2965,12 +2987,6 @@
     <button class="back-btn" onclick="nav('inicio')">‹</button>
     <div class="page-header-estrat-left">
       <div class="page-title">ESTRATEGIAS</div>
-      <div id="estrat-tito-float" class="estrat-tito-inline diario-tito-float" style="display:none;" aria-hidden="true">
-        <button type="button" id="estrat-tito-mascot" class="diario-tito-mascot tito-mascot-btn" onclick="openTitoFromEstrategias()" aria-label="Abrir Tito">
-          <span class="diario-tito-head"></span>
-          <span class="diario-tito-body"></span>
-        </button>
-      </div>
     </div>
     <div class="page-header-estrat-actions diario-header-tools estrat-header-tools">
       <button type="button" onclick="openEstrategiasNotasInTito()" title="Notas de estrategias" aria-label="Notas de estrategias" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;box-sizing:border-box;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:0;color:var(--accent2);font-size:18px;line-height:1;cursor:pointer;">✏️</button>
@@ -3096,13 +3112,6 @@
     <button class="back-btn" onclick="nav('inicio')">‹</button>
     <div class="page-title" style="flex:1;min-width:0;">DIARIO</div>
     <div class="diario-header-tools">
-      <div id="diario-tito-float" class="diario-tito-float" style="display:none;" aria-hidden="true">
-        <div id="diario-tito-tip" class="diario-tito-tip" style="display:none;"></div>
-        <button type="button" id="diario-tito-mascot" class="diario-tito-mascot tito-mascot-btn" onclick="openTitoFromDiario()" aria-label="Abrir Tito">
-          <span class="diario-tito-head"></span>
-          <span class="diario-tito-body"></span>
-        </button>
-      </div>
       <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
     </div>
   </div>
@@ -3177,6 +3186,14 @@
   </div>
   <div id="quotes-list"></div>
   <div style="height:16px;"></div>
+</div>
+
+<div id="s-flow" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="nav('inicio')">‹</button>
+    <div class="page-title">Flow</div>
+  </div>
+  <div id="flow-screen-inner" class="flow-screen-inner"></div>
 </div>
 
 <div id="s-tito" class="screen">
@@ -3296,25 +3313,22 @@
     <div id="tito-screen-placeholder-mode" class="tito-screen-placeholder-mode" hidden>
       <div class="tito-coach-soon-card">
         <div class="tito-coach-soon-kicker">COACH IA</div>
-        <h2 class="tito-coach-soon-title">Próximamente disponible</h2>
+        <h2 class="tito-coach-soon-title">Coach IA próximamente</h2>
         <p class="tito-coach-soon-lead">Estamos preparando esta función para ayudarte con enfoque, análisis y ejecución dentro de ENFO.</p>
-        <p class="tito-coach-soon-sub">Lo que podrás hacer más adelante:</p>
-        <div class="tito-coach-soon-chips" aria-label="Funciones futuras">
-          <span class="tito-coach-soon-chip">Análisis de estrategias</span>
-          <span class="tito-coach-soon-chip">Lectura de diario</span>
-          <span class="tito-coach-soon-chip">Apoyo en productividad</span>
-          <span class="tito-coach-soon-chip">Visión global</span>
-        </div>
       </div>
     </div>
   </div>
+</div>
+
+<div id="private-coach-fab-host" class="private-coach-fab-host" aria-hidden="true">
+  <button type="button" id="private-coach-fab" class="private-coach-fab tito-mascot-btn" hidden aria-label="Abrir Tito (chat)" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
 </div>
 
 <nav id="nav">
   <button class="nb on" id="nb-inicio" onclick="nav('inicio')"><span class="nb-icon">🏠</span><span class="nb-lbl">INICIO</span></button>
   <button class="nb" id="nb-estrategias" onclick="nav('estrategias')"><span class="nb-icon">⊞</span><span class="nb-lbl">ESTRATEGIAS</span></button>
   <button class="nb" id="nb-diario" onclick="nav('diario')"><span class="nb-icon">☰</span><span class="nb-lbl">DIARIO</span></button>
-  <button type="button" class="nb" id="nb-tito" onclick="nav('tito')" aria-label="Tito" title="Tito"><span class="nb-icon nb-tito-icon"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></span><span class="nb-lbl nb-lbl--tito-spacer" aria-hidden="true">TITO</span></button>
+  <button type="button" class="nb" id="nb-flow" onclick="nav('flow')"><span class="nb-icon">〰</span><span class="nb-lbl">Flow</span></button>
 </nav>
 
 <div class="modal" id="m-ns" onclick="bgc(event, 'm-ns')">
@@ -3521,15 +3535,8 @@
           </div>
           <div class="enfo-coach-soon-card--sheet">
             <div class="enfo-coach-soon-kicker">COACH IA</div>
-            <div class="enfo-coach-soon-title">Próximamente disponible</div>
+            <div class="enfo-coach-soon-title">Coach IA próximamente</div>
             <p class="enfo-coach-soon-lead">Estamos preparando esta función para ayudarte con enfoque, análisis y ejecución dentro de ENFO.</p>
-            <p class="enfo-coach-soon-sub">Incluirá, entre otras cosas:</p>
-            <div class="enfo-coach-soon-chips" aria-label="Funciones futuras">
-              <span class="enfo-coach-soon-chip">Análisis de estrategias</span>
-              <span class="enfo-coach-soon-chip">Lectura de diario</span>
-              <span class="enfo-coach-soon-chip">Apoyo en productividad</span>
-              <span class="enfo-coach-soon-chip">Visión global</span>
-            </div>
           </div>
         </div>
       </div>
@@ -4484,14 +4491,17 @@
       ensureWeeklyArchives();
       document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
       document.querySelectorAll(".nb").forEach((b) => b.classList.remove("on"));
-      document.getElementById("s-" + id).classList.add("active");
-      document.getElementById("nb-" + id).classList.add("on");
+      const targetScreen = document.getElementById("s-" + id);
+      if (targetScreen) targetScreen.classList.add("active");
+      const nbBtn = document.getElementById("nb-" + id);
+      if (nbBtn) nbBtn.classList.add("on");
       document.getElementById("strat-detail").classList.remove("open");
 
       if (id === "inicio")      renderMindset();
       if (id === "estrategias") rstrat();
       if (id === "diario")      rdiary();
       if (id === "biblioteca")  rquotes();
+      if (id === "flow")        renderFlowScreen();
       if (id === "tito") {
         try {
           applyTitoPanelUiFromState();
@@ -4503,20 +4513,6 @@
       }
       if (id === "horario")     { renderBlocks(); requestNotifPermission(); }
       updatePrivateCoachVisibility();
-      if (id !== "diario") {
-        var df = document.getElementById("diario-tito-float");
-        if (df) {
-          df.style.display = "none";
-          df.setAttribute("aria-hidden", "true");
-        }
-      }
-      if (id !== "estrategias") {
-        var ef = document.getElementById("estrat-tito-float");
-        if (ef) {
-          ef.style.display = "none";
-          ef.setAttribute("aria-hidden", "true");
-        }
-      }
       try {
         refreshTitoContext();
       } catch (errNavTito) {}
@@ -5941,16 +5937,33 @@ function getContextoDiarioParaTito() {
 }
 
 function renderEstrategiasTitoFloat() {
-  var wrap = document.getElementById("estrat-tito-float");
-  if (!wrap) return;
-  var active = document.querySelector("#app .screen.active");
-  if (!active || active.id !== "s-estrategias" || !isPrivateCoachEnabled()) {
-    wrap.style.display = "none";
-    wrap.setAttribute("aria-hidden", "true");
-    return;
+  return;
+}
+
+function renderFlowScreen() {
+  var host = document.getElementById("flow-screen-inner");
+  if (!host) return;
+  var authorized = typeof isPrivateCoachEnabled === "function" && isPrivateCoachEnabled();
+  if (!authorized) {
+    host.innerHTML =
+      '<div class="flow-placeholder-card">' +
+      '<div class="flow-placeholder-kicker">FLOW</div>' +
+      '<h2 class="flow-placeholder-title">Flow próximamente</h2>' +
+      '<ul class="flow-placeholder-list">' +
+      "<li>Comparte progreso</li>" +
+      "<li>Aprende de otros</li>" +
+      "<li>Observa ejecución real</li>" +
+      "<li>Conecta con personas enfocadas</li>" +
+      "</ul></div>";
+  } else {
+    host.innerHTML =
+      '<div class="flow-placeholder-card flow-author-card">' +
+      '<span class="flow-author-badge">CUENTA AUTORIZADA</span>' +
+      '<div class="flow-placeholder-kicker">FLOW</div>' +
+      '<h2 class="flow-placeholder-title">Modo desarrollo</h2>' +
+      '<p class="flow-soon-lead">Tienes acceso completo a Flow en esta cuenta. Puedes probar e iterar aquí; los demás usuarios solo ven «Flow próximamente».</p>' +
+      "</div>";
   }
-  wrap.style.display = "flex";
-  wrap.removeAttribute("aria-hidden");
 }
 
 function rstrat() {
@@ -6714,7 +6727,6 @@ function resetDiaryMode() {
 
 function rdiary() {
   resetDiaryMode();
-  void renderDiarioTitoFloat();
   const l = document.getElementById("diary-list");
   if (!D.diary.length) { l.innerHTML = ""; return; }
 
@@ -9541,8 +9553,9 @@ function renderRegistroGlobal() {
 
 
 
-// ─── Private Coach (solo UI local; sin Firestore / sin Storage) ────────────
-// Sustituye por tu UID de Firebase Auth para ver el botón y el panel.
+// ─── UID autorizado (desarrollo ENFO) ───────────────────────────────────────
+// Debe coincidir con auth.currentUser.uid. Desbloquea Tito completo + Flow completo;
+// el resto de usuarios logueados ven solo placeholders («Coach IA próximamente» / «Flow próximamente»).
 const ENFO_PRIVATE_COACH_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
 
 let privateCoachOpen = false;
@@ -10842,14 +10855,13 @@ function isPrivateCoachMentalidadSectionActive() {
   return !!(el && el.id === "s-inicio");
 }
 
-/** Inicio, Diario o Estrategias: pantallas donde puede mostrarse Tito. */
+/** Pantalla principal activa: FAB Tito disponible en cualquier sección de la app. */
 function isPrivateCoachTitoSectionActive() {
   const app = document.getElementById("app");
   if (!app) return false;
   const cs = getComputedStyle(app);
   if (cs.display === "none" || cs.visibility === "hidden") return false;
-  const el = app.querySelector(".screen.active");
-  return !!(el && (el.id === "s-inicio" || el.id === "s-diario" || el.id === "s-estrategias" || el.id === "s-tito"));
+  return !!app.querySelector(".screen.active");
 }
 
 /** FAB y overlay: cualquier usuario logueado en pantallas Tito. */
@@ -10862,6 +10874,7 @@ function isPrivateCoachUiAllowed() {
   return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
 }
 
+/** true solo si el UID coincide con ENFO_PRIVATE_COACH_UID (acceso total Tito + Flow). */
 function isPrivateCoachEnabled() {
   const allow = String(ENFO_PRIVATE_COACH_UID || "").trim();
   if (!allow) return false;
@@ -11017,37 +11030,7 @@ function obtenerEnfoquePendienteMasReciente() {
 }
 
 async function renderDiarioTitoFloat() {
-  var wrap = document.getElementById("diario-tito-float");
-  var tip = document.getElementById("diario-tito-tip");
-  if (!wrap) return;
-  var active = document.querySelector("#app .screen.active");
-  if (!active || active.id !== "s-diario" || !isPrivateCoachEnabled()) {
-    wrap.style.display = "none";
-    wrap.setAttribute("aria-hidden", "true");
-    return;
-  }
-  wrap.style.display = "flex";
-  wrap.removeAttribute("aria-hidden");
-  if (tip) tip.style.display = "none";
-  var u = auth && auth.currentUser;
-  if (!u || typeof db === "undefined" || !db) {
-    return;
-  }
-  try {
-    await cargarMemoria(u.uid);
-  } catch (err) {
-    console.error("diario tito float:", err);
-  }
-  if (!tip) return;
-  var enfo = obtenerEnfoquePendienteMasReciente();
-  if (enfo && String(enfo.accion || "").trim()) {
-    var tips = ["Enfócate.", "Tienes un pendiente.", "Abre Tito."];
-    tip.textContent = tips[Math.abs(titoCoachControlVariant) % 3];
-    titoCoachControlVariant += 1;
-    tip.style.display = "block";
-  } else {
-    tip.style.display = "none";
-  }
+  return;
 }
 
 function appendPrivateCoachMessage(role, text) {
@@ -12166,6 +12149,7 @@ async function sendPrivateCoachMessage() {
 function updatePrivateCoachVisibility() {
   const root = document.getElementById("private-coach-root");
   const fab = document.getElementById("private-coach-fab");
+  const fabHost = document.getElementById("private-coach-fab-host");
   if (!root) return;
   if (!isPrivateCoachShellAllowed()) {
     privateCoachOpen = false;
@@ -12178,6 +12162,7 @@ function updatePrivateCoachVisibility() {
       fab.setAttribute("hidden", "");
       fab.setAttribute("aria-hidden", "true");
     }
+    if (fabHost) fabHost.setAttribute("aria-hidden", "true");
     try {
       syncTitoScreenPlaceholderUi();
     } catch (ePh) {}
@@ -12190,10 +12175,15 @@ function updatePrivateCoachVisibility() {
     fab.removeAttribute("hidden");
     fab.setAttribute("aria-hidden", "false");
   }
+  if (fabHost) fabHost.setAttribute("aria-hidden", "false");
   renderPrivateCoach();
   try {
     syncTitoScreenPlaceholderUi();
   } catch (ePh2) {}
+  try {
+    var actFlow = document.querySelector("#app .screen.active");
+    if (actFlow && actFlow.id === "s-flow") renderFlowScreen();
+  } catch (eFlow) {}
 }
 
 function initPrivateCoachUiOnce() {
