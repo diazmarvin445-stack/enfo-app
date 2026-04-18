@@ -1632,7 +1632,7 @@
       padding: 2px 0;
     }
 
-    .srow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 14px 16px 10px; }
+    .srow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 16px 10px; }
     .sbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; }
     .sval { font-family: "Orbitron", monospace; font-size: 22px; font-weight: 700; line-height: 1; }
     .slbl { font-size: 10px; color: var(--text3); margin-top: 4px; letter-spacing: 0.5px; }
@@ -1808,7 +1808,7 @@
       font-weight: 700;
     }
 
-    .wk-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .wk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; margin-top: 10px; }
 
     .wk-box {
       background: rgba(10, 16, 32, 0.8);
@@ -3035,7 +3035,7 @@
     </div>
 
     <div class="wk-card">
-      <div class="wk-title">Semana actual</div>
+      <div class="wk-title">Operaciones abiertas</div>
       <div id="current-week-label" style="font-size:13px;color:var(--text2);line-height:1.5;">—</div>
     </div>
 
@@ -4357,6 +4357,34 @@
       return op;
     }
 
+    function opIsWin(o) {
+      return !!o && (o.result === "win" || o.seDio === true);
+    }
+
+    function opIsLoss(o) {
+      return !!o && (o.result === "lose" || o.noSeDio === true);
+    }
+
+    /** Cerrada = resultado explícito (u flags). Lo demás sigue pendiente hasta cerrar manualmente. */
+    function isOpClosed(op) {
+      return opIsWin(op) || opIsLoss(op);
+    }
+
+    function isOpPending(op) {
+      return !!op && !isOpClosed(op);
+    }
+
+    /**
+     * Vista activa del listado «Operaciones»: solo abiertas (pendientes), de cualquier semana.
+     * Las cerradas no se muestran aquí; quedan en Análisis e historial semanal.
+     */
+    function getStrategyActiveOps(strategy) {
+      return (strategy.ops || []).filter((op) => {
+        normalizeOperationWeek(op);
+        return isOpPending(op);
+      });
+    }
+
     function summarizeOps(ops, weekInfo = null) {
       const total   = ops.length;
       const wins    = ops.filter((o) => o.result === "win").length;
@@ -4371,6 +4399,27 @@
       };
     }
 
+    /** Resumen semanal solo para Estrategias: métricas de acierto sobre operaciones cerradas; pendientes aparte. */
+    function summarizeStrategyWeekOps(ops, weekInfo = null) {
+      const wins    = ops.filter((o) => opIsWin(o)).length;
+      const losses  = ops.filter((o) => opIsLoss(o)).length;
+      const pending = ops.filter((o) => isOpPending(o)).length;
+      const closedTotal = wins + losses;
+      const winRate = closedTotal ? Math.round((wins / closedTotal) * 100) : 0;
+      const lossRate = closedTotal ? 100 - winRate : 0;
+      return {
+        key:       weekInfo ? weekInfo.key      : "",
+        weekStart: weekInfo ? weekInfo.startISO : "",
+        weekEnd:   weekInfo ? weekInfo.endISO   : "",
+        total:     closedTotal,
+        wins,
+        losses,
+        pending,
+        winRate,
+        lossRate
+      };
+    }
+
     function getStrategyWeeks(strategy) {
       const map = {};
       (strategy.ops || []).forEach((op) => {
@@ -4379,14 +4428,6 @@
         map[op.weekKey].push(op);
       });
       return map;
-    }
-
-    function getCurrentWeekOps(strategy) {
-      const current = getCurrentWeekInfo();
-      return (strategy.ops || []).filter((op) => {
-        normalizeOperationWeek(op);
-        return op.weekKey === current.key;
-      });
     }
 
     function sortArchivesDesc(list) {
@@ -4415,7 +4456,7 @@
           const canCloseCurrent = now >= currentWeek.fridayCutoff;
 
           if (!isCurrentWeek || canCloseCurrent) {
-            const summary = summarizeOps(weekMap[weekKey], info);
+            const summary = summarizeStrategyWeekOps(weekMap[weekKey], info);
             if (!archivedKeys.has(weekKey)) {
               s.weeklyArchives.push({ ...summary, weekKey, closedAt: new Date().toISOString() });
             } else {
@@ -4895,7 +4936,6 @@ function getTitoStrategyDataForWeekKey(weekKey) {
       id: s.id,
       name: String(s.name || "").slice(0, 200),
       side: (s.side || "Call") === "Put" ? "Put" : "Call",
-      rulesSnippet: String(s.rules || "").replace(/\s+/g, " ").trim().slice(0, 220),
       totalOps: weekOps.length,
       wins: wins,
       losses: losses,
@@ -5799,20 +5839,27 @@ function getContextoEstrategiasParaTito() {
   out.viendoDetalle = !!(det && det.classList.contains("open") && cur);
   var s = out.viendoDetalle ? gS() : null;
   if (!s) return out;
-  var ops = getCurrentWeekOps(s);
-  var w = ops.filter(function (o) { return o.result === "win"; }).length;
-  var lb = ops.filter(function (o) { return o.result === "lose"; }).length;
-  var t = ops.length;
-  var estadoEtiqueta;
-  if (t === 0) {
-    estadoEtiqueta = "Semana limpia (0 operaciones esta semana)";
-  } else {
-    estadoEtiqueta = w + "W " + lb + "L · " + t + " operación" + (t !== 1 ? "es" : "") + " esta semana";
-  }
+  var cw = getCurrentWeekInfo();
+  var weekOps = getOpsByWeek(s, cw.key);
+  var w = weekOps.filter(function (o) { return opIsWin(o); }).length;
+  var lb = weekOps.filter(function (o) { return opIsLoss(o); }).length;
+  var pend = (s.ops || []).filter(function (o) {
+    normalizeOperationWeek(o);
+    return isOpPending(o);
+  }).length;
+  var estadoEtiqueta =
+    pend +
+    " abierta" +
+    (pend !== 1 ? "s" : "") +
+    " · " +
+    w +
+    "W " +
+    lb +
+    "L semana";
   out.estrategia = {
     nombre: String(s.name || "").slice(0, 200),
     tipo: (s.side || "Call") === "Put" ? "Put" : "Call",
-    operacionesSemanaActual: t,
+    operacionesSemanaActual: pend,
     ganadasSemana: w,
     perdidasSemana: lb,
     estadoSemanal: estadoEtiqueta
@@ -5927,20 +5974,24 @@ function renderStrategySection(title, list, sideClass) {
   }
 
   return `<div class="section-group"><div class="slabel">${title}</div>${list.map((s, i) => {
-    const currentOps = getCurrentWeekOps(s);
-    const w = currentOps.filter((o) => o.result === "win").length;
-    const lb = currentOps.filter((o) => o.result === "lose").length;
-    const t = currentOps.length;
+    const cw = getCurrentWeekInfo();
+    const weekOps = getOpsByWeek(s, cw.key);
+    const w = weekOps.filter((o) => opIsWin(o)).length;
+    const lb = weekOps.filter((o) => opIsLoss(o)).length;
+    const pend = (s.ops || []).filter((o) => {
+      normalizeOperationWeek(o);
+      return isOpPending(o);
+    }).length;
     return `<div class="si" style="animation-delay:${i * 0.05}s" onclick="openS('${s.id}')">
       <div style="flex:1;min-width:0">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <div style="font-weight:600;font-size:15px">${e(s.name)}</div>
           <span class="side-pill ${sideClass}">${e(s.side || "Call")}</span>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:3px">${t} operación${t !== 1 ? "es" : ""} esta semana</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${pend} abierta${pend !== 1 ? "s" : ""} · ${w}W ${lb}L esta semana</div>
       </div>
       <div style="display:flex;gap:7px;align-items:center;flex-shrink:0">
-        ${t ? `<span class="pw">${w}W</span><span class="pl">${lb}L</span>` : `<span class="week-badge">SEMANA LIMPIA</span>`}
+        ${pend || w || lb ? `<span class="pw">${w}W</span><span class="pl">${lb}L</span>${pend ? `<span style="font-size:11px;color:var(--gold);margin-left:2px">${pend}⏳</span>` : ""}` : `<span class="week-badge">SIN ABIERTAS</span>`}
         <button class="btn btn-g btn-sm" onclick="event.stopPropagation(); editStrategyById('${s.id}')">✏️</button>
         <button class="btn btn-d btn-sm" onclick="event.stopPropagation(); askDelStratById('${s.id}')">🗑</button>
         <span style="color:var(--text3);font-size:22px">›</span>
@@ -6031,7 +6082,8 @@ function openS(id) {
   document.getElementById("dt").value             = "";
 
   const cw = getCurrentWeekInfo();
-  document.getElementById("current-week-label").textContent = getWeekLabel(cw);
+  document.getElementById("current-week-label").textContent =
+    getWeekLabel(cw) + " — Aquí solo ves operaciones sin resultado; las cerradas están en Análisis o en semanas archivadas.";
   document.querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("on", i === 0));
 
   stab("ops");
@@ -6208,19 +6260,25 @@ function rStats() {
   const s = gS();
   if (!s) return;
 
-  const ops = getCurrentWeekOps(s);
-  const t   = ops.length;
-  const w   = ops.filter((o) => o.result === "win").length;
-  const l   = ops.filter((o) => o.result === "lose").length;
-  const pct = t ? Math.round((w / t) * 100) : 0;
+  const cw = getCurrentWeekInfo();
+  const weekOps = getOpsByWeek(s, cw.key);
+  const w = weekOps.filter((o) => opIsWin(o)).length;
+  const l = weekOps.filter((o) => opIsLoss(o)).length;
+  const pend = (s.ops || []).filter((o) => {
+    normalizeOperationWeek(o);
+    return isOpPending(o);
+  }).length;
+  const closedWeek = w + l;
+  const pct = closedWeek ? Math.round((w / closedWeek) * 100) : 0;
 
   document.getElementById("srow").innerHTML = `
-    <div class="sbox"><div class="sval" style="color:var(--accent2)">${t}</div><div class="slbl">TOTAL SEM.</div></div>
-    <div class="sbox"><div class="sval" style="color:var(--green)">${w}</div><div class="slbl">GANADAS</div></div>
-    <div class="sbox"><div class="sval" style="color:var(--red)">${l}</div><div class="slbl">PERDIDAS</div></div>`;
+    <div class="sbox"><div class="sval" style="color:var(--text3)">${pend}</div><div class="slbl">ABIERTAS</div></div>
+    <div class="sbox"><div class="sval" style="color:var(--green)">${w}</div><div class="slbl">G (SEMANA)</div></div>
+    <div class="sbox"><div class="sval" style="color:var(--red)">${l}</div><div class="slbl">P (SEMANA)</div></div>
+    <div class="sbox"><div class="sval" style="color:var(--gold)">${pct}%</div><div class="slbl">ACIERTO</div></div>`;
 
-  document.getElementById("ww").textContent = "Ganadas: " + w;
-  document.getElementById("wl").textContent = "Perdidas: " + l;
+  document.getElementById("ww").textContent = "Ganadas (semana): " + w;
+  document.getElementById("wl").textContent = "Perdidas (semana): " + l + " · Abiertas: " + pend;
   document.getElementById("wp").textContent = pct + "%";
 
   setTimeout(() => {
@@ -6255,7 +6313,7 @@ function renderOps() {
   const s = gS();
   if (!s) return;
 
-  let ops = getCurrentWeekOps(s);
+  let ops = getStrategyActiveOps(s);
   if      (cf === "win")  ops = ops.filter((o) => o.result === "win");
   else if (cf === "lose") ops = ops.filter((o) => o.result === "lose");
   else if (cf === "call") ops = ops.filter((o) => o.type === "Call");
@@ -6268,12 +6326,12 @@ function renderOps() {
 
   const l = document.getElementById("ops-list");
   if (!ops.length) {
-    l.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Sin operaciones esta semana</div><div style="font-size:13px">La semana actual está limpia o filtraste demasiado.</div></div>`;
+    l.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px">Sin operaciones abiertas</div><div style="font-size:13px">Todas están cerradas o el filtro no deja ninguna. Las ganadas/perdidas ya cerradas están en Análisis e historial semanal.</div></div>`;
     return;
   }
 
   l.innerHTML = ops.sort((a, b) => (a.date < b.date ? 1 : -1)).map((op, i) => {
-    const pend = op.result !== "win" && op.result !== "lose";
+    const pend = isOpPending(op);
     const resultColor = pend ? "var(--text3)" : (op.result === "win" ? "var(--green)" : "var(--red)");
     const resultText  = pend ? "⏳ Pendiente" : (op.result === "win" ? "✅ Se dio" : "❌ No se dio");
     const typeClass   = op.type   === "Call" ? "call" : "put";
@@ -6306,8 +6364,12 @@ function renderWeeklyAnalysis() {
   if (!s) return;
 
   const currentWeek = getCurrentWeekInfo();
-  const currentOps  = getCurrentWeekOps(s);
-  const summary     = summarizeOps(currentOps, currentWeek);
+  const weekScopedOps = getOpsByWeek(s, currentWeek.key);
+  const summary       = summarizeStrategyWeekOps(weekScopedOps, currentWeek);
+  const pendingOpen   = (s.ops || []).filter((o) => {
+    normalizeOperationWeek(o);
+    return isOpPending(o);
+  }).length;
   const now         = new Date();
   const alreadyClosed  = (s.weeklyArchives || []).some((x) => x.weekKey === currentWeek.key);
   const beforeCutoff   = now < currentWeek.fridayCutoff;
@@ -6317,12 +6379,13 @@ function renderWeeklyAnalysis() {
     <div>${alreadyClosed ? "✅ Esta semana ya fue cerrada y guardada automáticamente." : beforeCutoff ? "⏳ El cierre automático se guardará al detectar que ya pasó el viernes a las 4:15 PM." : "✅ El sistema ya puede cerrar y guardar esta semana."}</div>`;
 
   document.getElementById("analysis-current").innerHTML = `
-    <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">${getWeekLabel(currentWeek)}</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6;">${getWeekLabel(currentWeek)} — resultados cerrados de la semana (fecha de la operación). Pendientes abiertos en la estrategia: <strong>${pendingOpen}</strong>.</div>
     <div class="wk-grid">
-      <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${summary.total}</div><div class="wk-lbl">Total</div></div>
+      <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${summary.total}</div><div class="wk-lbl">Cerradas</div></div>
       <div class="wk-box"><div class="wk-num" style="color:var(--green)">${summary.wins}</div><div class="wk-lbl">Se dieron</div></div>
       <div class="wk-box"><div class="wk-num" style="color:var(--red)">${summary.losses}</div><div class="wk-lbl">No se dieron</div></div>
       <div class="wk-box"><div class="wk-num" style="color:var(--gold)">${summary.winRate}%</div><div class="wk-lbl">Acierto</div></div>
+      <div class="wk-box"><div class="wk-num" style="color:var(--text3)">${summary.pending}</div><div class="wk-lbl">Pendientes (esta sem.)</div></div>
     </div>`;
 
   const max       = Math.max(summary.wins, summary.losses, 1);
@@ -6362,7 +6425,7 @@ function renderArchivedWeekOps(weekKey) {
   }
 
   return `<div class="archive-ops-wrap">${ops.map((op) => {
-    const pendA = op.result !== "win" && op.result !== "lose";
+    const pendA = isOpPending(op);
     const resultColor = pendA ? "var(--text3)" : (op.result === "win" ? "var(--green)" : "var(--red)");
     const resultText  = pendA ? "⏳ Pendiente" : (op.result === "win" ? "✅ Se dio" : "❌ No se dio");
     const typeClass   = op.type   === "Call" ? "call" : "put";
@@ -6411,10 +6474,11 @@ function renderWeeklyHistory() {
         <span class="week-badge">ARCHIVADA</span>
       </div>
       <div class="wk-grid">
-        <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${w.total}</div><div class="wk-lbl">Total</div></div>
+        <div class="wk-box"><div class="wk-num" style="color:var(--accent2)">${w.total}</div><div class="wk-lbl">Cerradas</div></div>
         <div class="wk-box"><div class="wk-num" style="color:var(--green)">${w.wins}</div><div class="wk-lbl">Se dieron</div></div>
         <div class="wk-box"><div class="wk-num" style="color:var(--red)">${w.losses}</div><div class="wk-lbl">No se dieron</div></div>
         <div class="wk-box"><div class="wk-num" style="color:var(--gold)">${w.winRate}%</div><div class="wk-lbl">Acierto</div></div>
+        <div class="wk-box"><div class="wk-num" style="color:var(--text3)">${typeof w.pending === "number" ? w.pending : 0}</div><div class="wk-lbl">Pendientes</div></div>
       </div>
       ${isOpen ? renderArchivedWeekOps(w.weekKey) : ""}
     </div>`;
