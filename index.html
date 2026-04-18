@@ -4375,6 +4375,21 @@
     }
 
     function summarizeOps(ops, weekInfo = null) {
+      const total   = ops.length;
+      const wins    = ops.filter((o) => o.result === "win").length;
+      const losses  = ops.filter((o) => o.result === "lose").length;
+      const winRate = total ? Math.round((wins  / total) * 100) : 0;
+      const lossRate = total ? 100 - winRate : 0;
+      return {
+        key:       weekInfo ? weekInfo.key      : "",
+        weekStart: weekInfo ? weekInfo.startISO : "",
+        weekEnd:   weekInfo ? weekInfo.endISO   : "",
+        total, wins, losses, winRate, lossRate
+      };
+    }
+
+    /** Resumen semanal solo para Estrategias: métricas de acierto sobre operaciones cerradas; pendientes aparte. */
+    function summarizeStrategyWeekOps(ops, weekInfo = null) {
       const wins    = ops.filter((o) => o.result === "win").length;
       const losses  = ops.filter((o) => o.result === "lose").length;
       const pending = ops.filter((o) => isOpPending(o)).length;
@@ -4430,7 +4445,7 @@
           const canCloseCurrent = now >= currentWeek.fridayCutoff;
 
           if (!isCurrentWeek || canCloseCurrent) {
-            const summary = summarizeOps(weekMap[weekKey], info);
+            const summary = summarizeStrategyWeekOps(weekMap[weekKey], info);
             if (!archivedKeys.has(weekKey)) {
               s.weeklyArchives.push({ ...summary, weekKey, closedAt: new Date().toISOString() });
             } else {
@@ -4906,7 +4921,6 @@ function getTitoStrategyDataForWeekKey(weekKey) {
         op: op
       });
     });
-    var closedWL = wins + losses;
     perStrategy.push({
       id: s.id,
       name: String(s.name || "").slice(0, 200),
@@ -4916,7 +4930,7 @@ function getTitoStrategyDataForWeekKey(weekKey) {
       losses: losses,
       pending: pend,
       contracts: titoSumContractsInOps(weekOps),
-      winRate: closedWL ? Math.round((wins / closedWL) * 100) : 0
+      winRate: weekOps.length ? Math.round((wins / weekOps.length) * 100) : 0
     });
   });
 
@@ -4981,10 +4995,9 @@ function getTitoStrategySummaryForWeek(weekKey) {
     }
   });
   data.perStrategy.forEach(function (p) {
-    var c = (p.wins || 0) + (p.losses || 0);
-    if (c >= 2) {
+    if (p.totalOps >= 2) {
       if (!bestWinrate || p.winRate > bestWinrate.winRate) {
-        bestWinrate = { nombre: p.name, winRate: p.winRate, ops: c };
+        bestWinrate = { nombre: p.name, winRate: p.winRate, ops: p.totalOps };
       }
     }
   });
@@ -5020,7 +5033,6 @@ function getTitoStrategySummaryForWeek(weekKey) {
       total: weekSummary.total,
       wins: weekSummary.wins,
       losses: weekSummary.losses,
-      pending: weekSummary.pending,
       winRate: weekSummary.winRate
     },
     estrategiaMasUsada: mostUsed && mostUsed.ops > 0 ? mostUsed : null,
@@ -5058,15 +5070,13 @@ function getTitoStrategyAnalysis(summary) {
       (w.label || "") +
       ": " +
       w.total +
-      " operación(es) con resultado cerrado (" +
+      " operación(es) — " +
       w.wins +
       ' «se dio», ' +
       w.losses +
-      " «no se dio»" +
-      ((w.pending || 0) > 0 ? "; " + (w.pending || 0) + " pendiente(s) en fechas de esta semana" : "") +
-      "). Acierto " +
+      " «no se dio» (acierto " +
       w.winRate +
-      "% sobre cerradas."
+      "% en este bloque)."
   );
   parts.push(
     "En esta semana usaste " +
@@ -6342,7 +6352,7 @@ function renderWeeklyAnalysis() {
 
   const currentWeek = getCurrentWeekInfo();
   const weekScopedOps = getOpsByWeek(s, currentWeek.key);
-  const summary       = summarizeOps(weekScopedOps, currentWeek);
+  const summary       = summarizeStrategyWeekOps(weekScopedOps, currentWeek);
   const pendingOpen   = (s.ops || []).filter((o) => {
     normalizeOperationWeek(o);
     return isOpPending(o);
