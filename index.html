@@ -1524,6 +1524,18 @@
       line-height: 1.6;
       margin: 0;
     }
+    #s-flow .flow-author-card {
+      border-color: rgba(0, 212, 138, 0.35);
+      box-shadow: 0 0 0 1px rgba(0, 212, 138, 0.12);
+    }
+    #s-flow .flow-author-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
 
     .estrategia-hoy-tile {
       flex: 0 0 auto;
@@ -5945,10 +5957,11 @@ function renderFlowScreen() {
       "</ul></div>";
   } else {
     host.innerHTML =
-      '<div class="flow-placeholder-card">' +
+      '<div class="flow-placeholder-card flow-author-card">' +
+      '<span class="flow-author-badge">CUENTA AUTORIZADA</span>' +
       '<div class="flow-placeholder-kicker">FLOW</div>' +
-      '<h2 class="flow-placeholder-title">Flow</h2>' +
-      '<p class="flow-soon-lead">Próximamente: comunidad y seguimiento en vivo. Te avisaremos cuando esté listo.</p>' +
+      '<h2 class="flow-placeholder-title">Modo desarrollo</h2>' +
+      '<p class="flow-soon-lead">Tienes acceso completo a Flow en esta cuenta. Puedes probar e iterar aquí; los demás usuarios solo ven «Flow próximamente».</p>' +
       "</div>";
   }
 }
@@ -9540,8 +9553,9 @@ function renderRegistroGlobal() {
 
 
 
-// ─── Private Coach (solo UI local; sin Firestore / sin Storage) ────────────
-// Sustituye por tu UID de Firebase Auth para ver el botón y el panel.
+// ─── UID autorizado (desarrollo ENFO) ───────────────────────────────────────
+// Debe coincidir con auth.currentUser.uid. Desbloquea Tito completo + Flow completo;
+// el resto de usuarios logueados ven solo placeholders («Coach IA próximamente» / «Flow próximamente»).
 const ENFO_PRIVATE_COACH_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
 
 let privateCoachOpen = false;
@@ -10860,6 +10874,7 @@ function isPrivateCoachUiAllowed() {
   return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
 }
 
+/** true solo si el UID coincide con ENFO_PRIVATE_COACH_UID (acceso total Tito + Flow). */
 function isPrivateCoachEnabled() {
   const allow = String(ENFO_PRIVATE_COACH_UID || "").trim();
   if (!allow) return false;
@@ -12165,6 +12180,10 @@ function updatePrivateCoachVisibility() {
   try {
     syncTitoScreenPlaceholderUi();
   } catch (ePh2) {}
+  try {
+    var actFlow = document.querySelector("#app .screen.active");
+    if (actFlow && actFlow.id === "s-flow") renderFlowScreen();
+  } catch (eFlow) {}
 }
 
 function initPrivateCoachUiOnce() {
