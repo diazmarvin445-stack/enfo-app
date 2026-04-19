@@ -160,6 +160,16 @@ async function getTitoCoreFromFirestore() {
   }
 }
 
+/** Prompts fijos para modo analizador (sin chat libre). */
+const TITO_ANALISIS_TASK = {
+  estrategias:
+    "TAREA INTERNA (no es conversación con el usuario). Usa solo el contexto ENFO proporcionado. Escribe exactamente tres párrafos separados por una línea en blanco: (1) Resumen de rendimiento con cifras tomadas del contexto. (2) Patrones y estrategias que reflejan los datos. (3) Sugerencias de ajuste concretas y disciplina operativa. Sin viñetas, sin titulares, sin saludo.",
+  diario:
+    "TAREA INTERNA (no es conversación). Usa el bloque DIARIO RECIENTE del contexto. Escribe exactamente dos párrafos separados por una línea en blanco: (1) Interpretación breve. (2) Recomendación práctica para hoy o mañana. No copies el diario literalmente ni párrafos enteros.",
+  global:
+    "TAREA INTERNA (no es conversación). Con el contexto disponible (tiempo, datos), escribe dos párrafos separados por una línea en blanco: (1) Prioridad recomendada para hoy. (2) Una línea de seguimiento o revisión semanal. Sin preguntas al usuario."
+};
+
 const TITO_MOD_ANCHORS = {
   mentalidad:
     "MÓDULO ACTIVO ENFO: Mentalidad. Habla SOLO de claridad, disciplina, enfoque, miedo, ejecución mental, pensamiento y dirección. NO menciones clientes, ventas, prospección, CRM, setup de trading, strike/spread, ni hábitos físicos (gimnasio).",
@@ -278,8 +288,9 @@ function diaryCoachModeActive(contextoModulo, contextoDiario) {
 
 /**
  * Construye instructions para OpenAI desde Firestore; si titoCore es null o vacío, usa SYSTEM_PROMPT.
+ * @param {{ analisisAutomatico?: boolean }} [opts]
  */
-function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario) {
+function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario, opts) {
   let base;
   if (!titoCore || typeof titoCore !== "object") {
     base = SYSTEM_PROMPT;
@@ -302,6 +313,14 @@ function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario) {
     ? rawMod
     : "general";
   const anchor = TITO_MOD_ANCHORS[mod];
+  if (opts && opts.analisisAutomatico) {
+    const opsAuto =
+      "Modo analizador automático ENFO: español. No simules chat: sin saludos, sin preguntas al usuario, sin despedidas. Cumple solo la tarea del bloque de trabajo con los datos del contexto. Nunca afirmes falta de acceso a datos internos.";
+    if (base === SYSTEM_PROMPT) {
+      return (base + "\n\n---\n\n" + anchor + "\n\n" + opsAuto).trim();
+    }
+    return (base + "\n\n---\n\n" + anchor + "\n\n---\n\n" + opsAuto).trim();
+  }
   const diaryMode = diaryCoachModeActive(contextoModulo, contextoDiario);
   const opsDefault =
     "Reglas finales: español. 1–2 párrafos. Sin títulos/viñetas/etiquetas \"Detecto…\"/\"Corrijo…\". Sin narrar el proceso. No repitas texto largo del usuario ni cites párrafos enteros; resume en una frase si hace falta. Acción clara si aplica problema. Nunca afirmes falta de acceso a datos internos. Respeta el módulo activo ENFO.";
@@ -497,7 +516,8 @@ function buildOpenAIInput(
     }
   }
 
-  if (Array.isArray(coachHistory) && coachHistory.length) {
+  const skipHistory = titoExtras.analisisAutomatico === true;
+  if (!skipHistory && Array.isArray(coachHistory) && coachHistory.length) {
     const chronological = coachHistory.slice(0, 12).reverse();
     const lines = chronological
       .map((h) => {
@@ -511,7 +531,7 @@ function buildOpenAIInput(
     }
   }
 
-  parts.push("Usuario:\n" + userText);
+  parts.push((skipHistory ? "Trabajo:\n" : "Usuario:\n") + userText);
   return parts.join("\n\n---\n\n");
 }
 
@@ -520,14 +540,26 @@ function buildOpenAIInput(
  * @param {object} data - Payload (message, userText, coachHistory, coachMemory)
  */
 async function privateCoachChatCore(data) {
-  const fromMessage = typeof data.message === "string" ? data.message.trim() : "";
-  const fromUserText = typeof data.userText === "string" ? data.userText.trim() : "";
-  const userText = fromMessage || fromUserText;
-  if (!userText || userText.length > 8000) {
-    throw new HttpsError("invalid-argument", "message / userText inválido o demasiado largo.");
-  }
+  const auto = data.titoAnalisisAutomatico === true;
+  const analisisTipo =
+    data.titoAnalisisTipo && ["estrategias", "diario", "global"].includes(data.titoAnalisisTipo)
+      ? data.titoAnalisisTipo
+      : "estrategias";
 
-  const coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
+  let userText;
+  let coachHistory = Array.isArray(data.coachHistory) ? data.coachHistory : [];
+
+  if (auto) {
+    userText = TITO_ANALISIS_TASK[analisisTipo] || TITO_ANALISIS_TASK.estrategias;
+    coachHistory = [];
+  } else {
+    const fromMessage = typeof data.message === "string" ? data.message.trim() : "";
+    const fromUserText = typeof data.userText === "string" ? data.userText.trim() : "";
+    userText = fromMessage || fromUserText;
+    if (!userText || userText.length > 8000) {
+      throw new HttpsError("invalid-argument", "message / userText inválido o demasiado largo.");
+    }
+  }
   const coachMemory = COACH_MEMORY_INPUT_BLOCKS;
   const contextoTiempo =
     data.contextoTiempo && typeof data.contextoTiempo === "object" ? data.contextoTiempo : null;
@@ -546,7 +578,8 @@ async function privateCoachChatCore(data) {
     titoLexikon: data.titoLexikon && typeof data.titoLexikon === "object" ? data.titoLexikon : null,
     titoMarcoTemporal: typeof data.titoMarcoTemporal === "string" ? data.titoMarcoTemporal.trim() : "",
     contextoBloques:
-      data.contextoBloques && typeof data.contextoBloques === "object" ? data.contextoBloques : null
+      data.contextoBloques && typeof data.contextoBloques === "object" ? data.contextoBloques : null,
+    analisisAutomatico: auto
   };
 
   const key = openaiApiKey.value();
@@ -558,8 +591,10 @@ async function privateCoachChatCore(data) {
   try {
     console.time("[tito] firestore+prompt");
     const titoCore = await getTitoCoreFromFirestore();
-    const instructions = buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario);
-    console.log("[tito] instructions:", titoCore ? "firestore" : "fallback");
+    const instructions = buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario, {
+      analisisAutomatico: auto
+    });
+    console.log("[tito] instructions:", titoCore ? "firestore" : "fallback", auto ? "analisis" : "chat");
 
     const input = buildOpenAIInput(
       userText,
@@ -584,7 +619,7 @@ async function privateCoachChatCore(data) {
         model: "gpt-4o-mini",
         instructions: instructions,
         input: input,
-        max_output_tokens: 450
+        max_output_tokens: auto ? 520 : 450
       })
     });
 

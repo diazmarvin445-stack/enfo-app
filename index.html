@@ -309,6 +309,26 @@
       color: var(--text2);
     }
     #s-tito .tito-card-body--prose { white-space: pre-wrap; }
+    #s-tito .tito-analisis-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    #s-tito .tito-analisis-meta {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text3);
+      font-weight: 600;
+    }
+    #s-tito .tito-analisis-status {
+      font-size: 12px;
+      color: var(--text3);
+      min-height: 18px;
+      margin-bottom: 8px;
+    }
     #s-tito .tito-stat--win { color: var(--green); font-weight: 600; }
     #s-tito .tito-stat--lose { color: var(--red); font-weight: 600; }
     #s-tito .tito-reciente-wrap {
@@ -3232,7 +3252,7 @@
       </nav>
       <div class="tito-context-est-sub" id="tito-context-est-sub" aria-label="Estrategias">
         <div class="tito-context-chips-track" role="tablist">
-          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="chat" aria-selected="false" onclick="setTitoMobileEstrategiasSub('chat')">Chat</button>
+          <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="analisis" aria-selected="false" onclick="setTitoMobileEstrategiasSub('analisis')">Análisis</button>
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="resumen" aria-selected="false" onclick="setTitoMobileEstrategiasSub('resumen')">Resumen</button>
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="historial" aria-selected="false" onclick="setTitoMobileEstrategiasSub('historial')">Historial</button>
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="notas" aria-selected="false" onclick="setTitoMobileEstrategiasSub('notas')">Notas</button>
@@ -3242,19 +3262,22 @@
     <div class="tito-panel-layout" id="titoPanel">
       <div class="tito-panel-main">
         <div id="tito-view-estrategias" class="tito-view">
-          <div class="tito-card tito-card--compose tito-card--chat">
-            <div id="tito-panel-thread" class="tito-panel-thread" aria-live="polite"></div>
-            <div class="tito-chat-composer">
-              <div class="tito-chat-input-row">
-                <textarea id="tito-panel-input" class="tito-panel-ta" rows="2" placeholder="Escríbele a Tito..." aria-label="Mensaje para Tito" onkeydown="titoPanelInputKeydown(event)"></textarea>
-                <button type="button" class="tito-chat-send-icon" onclick="sendTitoPanelMessage()" title="Enviar" aria-label="Enviar">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-                </button>
-              </div>
-              <div class="tito-panel-compose-row">
-                <span id="tito-panel-save-toast" class="tito-panel-toast" style="opacity:0;"> </span>
-              </div>
-            </div>
+          <div class="tito-analisis-toolbar">
+            <p class="tito-analisis-meta" id="tito-analisis-est-meta">Análisis automático · Estrategias</p>
+            <button type="button" class="btn btn-g btn-sm" id="tito-analisis-est-refresh" onclick="runTitoAnalisisEstrategiasFromUi('refresh')">Actualizar</button>
+          </div>
+          <div id="tito-analisis-est-status" class="tito-analisis-status" aria-live="polite"></div>
+          <div class="tito-card">
+            <div class="tito-card-h">Rendimiento</div>
+            <div class="tito-card-body tito-card-body--prose" id="tito-anal-est-p1"></div>
+          </div>
+          <div class="tito-card">
+            <div class="tito-card-h">Estrategias y patrones</div>
+            <div class="tito-card-body tito-card-body--prose" id="tito-anal-est-p2"></div>
+          </div>
+          <div class="tito-card">
+            <div class="tito-card-h">Ajustes sugeridos</div>
+            <div class="tito-card-body tito-card-body--prose" id="tito-anal-est-p3"></div>
           </div>
         </div>
         <div id="tito-view-resumen" class="tito-view" style="display:none;">
@@ -3285,6 +3308,21 @@
             </div>
           </div>
         </div>
+        <div id="tito-view-mente-diario" class="tito-view" style="display:none;">
+          <div class="tito-analisis-toolbar">
+            <p class="tito-analisis-meta" id="tito-analisis-md-meta">Análisis automático · Diario</p>
+            <button type="button" class="btn btn-g btn-sm" id="tito-analisis-md-refresh" onclick="runTitoAnalisisDiarioFromUi('refresh')">Actualizar</button>
+          </div>
+          <div id="tito-analisis-md-status" class="tito-analisis-status" aria-live="polite"></div>
+          <div class="tito-card">
+            <div class="tito-card-h">Interpretación</div>
+            <div class="tito-card-body tito-card-body--prose" id="tito-anal-dia-p1"></div>
+          </div>
+          <div class="tito-card">
+            <div class="tito-card-h">Recomendación</div>
+            <div class="tito-card-body tito-card-body--prose" id="tito-anal-dia-p2"></div>
+          </div>
+        </div>
         <div id="tito-view-placeholder" class="tito-view tito-placeholder" style="display:none;">
           <div class="tito-placeholder-inner">
             <div class="tito-placeholder-title" id="tito-placeholder-label">Mente</div>
@@ -3299,7 +3337,7 @@
             <span class="tito-sb-est-toggle-inner"><span class="tito-sb-est-lbl">Estrategias</span><span class="tito-sb-chevron" aria-hidden="true">▾</span></span>
           </button>
           <div id="tito-sb-est-sub" class="tito-sb-sub" role="group" aria-label="Estrategias">
-            <button type="button" class="tito-sb-subbtn tito-sb-subbtn--on" data-tito-sub="chat" onclick="setTitoEstrategiasSub('chat')">Chat</button>
+            <button type="button" class="tito-sb-subbtn tito-sb-subbtn--on" data-tito-sub="analisis" onclick="setTitoEstrategiasSub('analisis')">Análisis</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="resumen" onclick="setTitoEstrategiasSub('resumen')">Resumen</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="historial" onclick="setTitoEstrategiasSub('historial')">Historial</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="notas" onclick="setTitoEstrategiasSub('notas')">Notas</button>
@@ -3321,7 +3359,7 @@
 </div>
 
 <div id="private-coach-fab-host" class="private-coach-fab-host" aria-hidden="true">
-  <button type="button" id="private-coach-fab" class="private-coach-fab tito-mascot-btn" hidden aria-label="Abrir Tito (chat)" aria-expanded="false" onclick="togglePrivateCoach()"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
+  <button type="button" id="private-coach-fab" class="private-coach-fab tito-mascot-btn" hidden aria-label="Abrir Tito" aria-expanded="false" onclick="nav('tito')"><span class="diario-tito-head"></span><span class="diario-tito-body"></span></button>
 </div>
 
 <nav id="nav">
@@ -5209,24 +5247,11 @@ function ensureTitoSemanalCierre() {
   }
 }
 
-function appendTitoPanelThreadMessage(role, text) {
-  var thread = document.getElementById("tito-panel-thread");
-  if (!thread) return;
-  var wrap = document.createElement("div");
-  wrap.className = "tito-panel-msg tito-panel-msg--" + role;
-  var inner = document.createElement("div");
-  inner.className = "tito-panel-msg-inner";
-  inner.innerHTML = e(text).replace(/\n/g, "<br>");
-  wrap.appendChild(inner);
-  thread.appendChild(wrap);
-  thread.scrollTop = thread.scrollHeight;
-}
-
 function renderTitoStrategySection() {
   renderTitoPanel();
 }
 
-var titoPanelUi = { root: "estrategias", estSub: "chat", contextChip: "estrategias" };
+var titoPanelUi = { root: "estrategias", estSub: "analisis", contextChip: "estrategias" };
 
 /** Modo Tito activo (sidebar / chips / pantalla). Fuente de verdad junto a titoPanelUi. */
 let titoModoActual = "estrategias";
@@ -5270,7 +5295,7 @@ function syncTitoMobileContextBars() {
     bars.classList.toggle("tito-context-bars--est-open", (titoPanelUi.contextChip || "estrategias") === "estrategias");
   }
   document.querySelectorAll("#tito-context-est-sub [data-tito-est-sub]").forEach(function (btn) {
-    var sub = titoPanelUi.estSub || "chat";
+    var sub = titoPanelUi.estSub || "analisis";
     var on = btn.getAttribute("data-tito-est-sub") === sub;
     btn.classList.toggle("tito-context-subchip--active", on);
     btn.setAttribute("aria-selected", on ? "true" : "false");
@@ -5304,7 +5329,7 @@ function setTitoContextChip(chipId) {
   titoPanelUi.contextChip = chipId;
   if (chipId === "estrategias") {
     privateCoachSessionOverride = "trading";
-    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+    setTitoEstrategiasSub(titoPanelUi.estSub || "analisis", true);
   } else {
     if (chipId === "global") {
       privateCoachSessionOverride = "global";
@@ -5319,7 +5344,7 @@ function setTitoContextChip(chipId) {
     } else if (chipId === "biblioteca") {
       privateCoachSessionOverride = "global";
     }
-    setTitoEstrategiasSub("chat", true);
+    setTitoEstrategiasSub("analisis", true);
   }
   try {
     refreshTitoContext();
@@ -5330,7 +5355,7 @@ function setTitoContextChip(chipId) {
 }
 
 function getTitoPanelUiState() {
-  return { root: titoPanelUi.root || "estrategias", estSub: titoPanelUi.estSub || "chat" };
+  return { root: titoPanelUi.root || "estrategias", estSub: titoPanelUi.estSub || "analisis" };
 }
 
 function syncTitoEstrategiasNotasTextareaFromData() {
@@ -5345,9 +5370,9 @@ function syncTitoPanelHeaderFromState() {
   if (!sub) return;
   var st = getTitoPanelUiState();
   if (st.root === "estrategias") {
-    if (st.estSub === "chat") {
+    if (st.estSub === "analisis") {
       sub.textContent =
-        "Un solo mensaje: Tito entiende si quieres charlar, guardar nota, recordatorio o revisar estrategias.";
+        "Análisis automático a partir de tus datos. Se actualiza al abrir esta vista y al guardar operaciones o estrategias.";
     } else if (st.estSub === "resumen") {
       sub.textContent =
         "Semana activa (lun–vie): métricas solo de este bloque. Cierre automático viernes 4:20 p.m.";
@@ -5359,7 +5384,10 @@ function syncTitoPanelHeaderFromState() {
     } else {
       sub.textContent = "";
     }
-  } else if (st.root === "mente" || st.root === "diario" || st.root === "biblioteca") {
+  } else if (st.root === "mente" || st.root === "diario") {
+    sub.textContent =
+      "Interpretación y recomendación automáticas desde tu diario. Se actualiza al abrir y al guardar una entrada.";
+  } else if (st.root === "biblioteca") {
     sub.textContent = "Contenido en preparación.";
   } else {
     sub.textContent = "";
@@ -5521,12 +5549,15 @@ function titoPanelApplyMainViews(mode) {
   var vr = document.getElementById("tito-view-resumen");
   var vh = document.getElementById("tito-view-historial");
   var vn = document.getElementById("tito-view-notas");
+  var vm = document.getElementById("tito-view-mente-diario");
   var ph = document.getElementById("tito-view-placeholder");
   var showPh = mode === "placeholder";
-  if (ve) ve.style.display = mode === "chat" ? "" : "none";
+  var showMd = mode === "mente_diario";
+  if (ve) ve.style.display = mode === "analisis" ? "" : "none";
   if (vr) vr.style.display = mode === "resumen" ? "" : "none";
   if (vh) vh.style.display = mode === "historial" ? "" : "none";
   if (vn) vn.style.display = mode === "notas" ? "" : "none";
+  if (vm) vm.style.display = showMd ? "" : "none";
   if (ph) {
     ph.style.display = showPh ? "flex" : "none";
     if (showPh) {
@@ -5590,16 +5621,22 @@ function setTitoPanelRoot(root) {
   titoPanelUi.root = root;
   if (root === "estrategias") {
     titoPanelUi.contextChip = "estrategias";
-    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+    setTitoEstrategiasSub(titoPanelUi.estSub || "analisis", true);
   } else {
     var subEl2 = document.getElementById("tito-sb-est-sub");
     if (subEl2) subEl2.classList.remove("tito-sb-sub--open");
-    titoPanelApplyMainViews("placeholder");
-    syncTitoPanelHeaderFromState();
     if (root === "mente" || root === "diario") {
       titoPanelUi.contextChip = "mente_diario";
+      titoPanelApplyMainViews("mente_diario");
+      syncTitoPanelHeaderFromState();
+      maybeRunTitoAnalisisOnTitoScreenOpen();
     } else if (root === "biblioteca") {
       titoPanelUi.contextChip = "biblioteca";
+      titoPanelApplyMainViews("placeholder");
+      syncTitoPanelHeaderFromState();
+    } else {
+      titoPanelApplyMainViews("placeholder");
+      syncTitoPanelHeaderFromState();
     }
   }
   titoPanelUpdateRootButtons();
@@ -5611,19 +5648,21 @@ function setTitoPanelRoot(root) {
 }
 
 function setTitoEstrategiasSub(sub, skipRootEnsure) {
-  var valid = { chat: 1, resumen: 1, historial: 1, notas: 1 };
-  if (!valid[sub]) sub = "chat";
+  var valid = { analisis: 1, resumen: 1, historial: 1, notas: 1 };
+  if (!valid[sub]) sub = "analisis";
   titoPanelUi.root = "estrategias";
   titoPanelUi.estSub = sub;
   if (!skipRootEnsure) {
     var subEl = document.getElementById("tito-sb-est-sub");
     if (subEl) subEl.classList.add("tito-sb-sub--open");
   }
-  var mode = sub === "chat" ? "chat" : sub === "resumen" ? "resumen" : sub === "historial" ? "historial" : "notas";
+  var mode =
+    sub === "analisis" ? "analisis" : sub === "resumen" ? "resumen" : sub === "historial" ? "historial" : "notas";
   titoPanelApplyMainViews(mode);
   titoPanelUpdateRootButtons();
   titoPanelUpdateEstrategiasSubButtons();
   syncTitoPanelHeaderFromState();
+  if (sub === "analisis") maybeRunTitoAnalisisOnTitoScreenOpen();
   if (sub === "resumen") renderTitoPanel();
   if (sub === "historial") renderTitoHistorialPanel();
   if (sub === "notas") syncTitoEstrategiasNotasTextareaFromData();
@@ -5636,19 +5675,25 @@ function setTitoEstrategiasSub(sub, skipRootEnsure) {
 function applyTitoPanelUiFromState() {
   var r = titoPanelUi.root || "estrategias";
   if (r === "estrategias") {
-    setTitoEstrategiasSub(titoPanelUi.estSub || "chat", true);
+    setTitoEstrategiasSub(titoPanelUi.estSub || "analisis", true);
   } else {
     titoPanelUi.root = r;
     var subEl2 = document.getElementById("tito-sb-est-sub");
     if (subEl2) subEl2.classList.remove("tito-sb-sub--open");
-    titoPanelApplyMainViews("placeholder");
+    if (r === "mente" || r === "diario") {
+      titoPanelUi.contextChip = "mente_diario";
+      titoPanelApplyMainViews("mente_diario");
+    } else {
+      titoPanelApplyMainViews("placeholder");
+    }
     titoPanelUpdateRootButtons();
     titoPanelUpdateEstrategiasSubButtons();
     syncTitoPanelHeaderFromState();
-    if (r === "mente" || r === "diario") {
-      titoPanelUi.contextChip = "mente_diario";
-    } else if (r === "biblioteca") {
+    if (r === "biblioteca") {
       titoPanelUi.contextChip = "biblioteca";
+    }
+    if (r === "mente" || r === "diario") {
+      maybeRunTitoAnalisisOnTitoScreenOpen();
     }
   }
   updateTitoContextChipsActive();
@@ -5656,159 +5701,7 @@ function applyTitoPanelUiFromState() {
 }
 
 
-function titoPanelInputKeydown(ev) {
-  if (!ev || ev.key !== "Enter" || ev.shiftKey) return;
-  if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
-  ev.preventDefault();
-  sendTitoPanelMessage();
-}
-
-function titoPanelFlashToast(msg) {
-  var ok = document.getElementById("tito-panel-save-toast");
-  if (!ok) return;
-  ok.textContent = msg || "";
-  ok.style.opacity = "1";
-  setTimeout(function () {
-    ok.style.opacity = "0";
-  }, 2200);
-}
-
-function resolveTitoPanelIntent(raw) {
-  var text = String(raw || "").trim();
-  if (!text) return { kind: "empty" };
-  var lower = text.toLowerCase();
-  var tail = text.replace(/^\s*tito\s*,?\s*/i, "").trim();
-
-  var noteProbe = tail.length ? tail : text;
-  if (
-    /guárdame\s+esta\s+nota\s*:/i.test(text) ||
-    /guárdame\s+nota\s*:/i.test(text) ||
-    /guarda\s+esta\s+nota\s*:/i.test(text) ||
-    /guarda\s+nota\s*:/i.test(text) ||
-    /^nota\s*:/i.test(noteProbe) ||
-    /^apunta\s*:/i.test(noteProbe) ||
-    /guárdame\s+(esta\s+)?nota\b/i.test(lower) ||
-    /guarda(?:me)?\s+(esta\s+)?nota\b/i.test(lower)
-  ) {
-    var body = noteProbe.replace(/^nota\s*:\s*/i, "").replace(/^apunta\s*:\s*/i, "").trim();
-    var gm =
-      text.match(/guárdame\s+esta\s+nota\s*:\s*(.*)$/i) ||
-      text.match(/guárdame\s+nota\s*:\s*(.*)$/i) ||
-      text.match(/guarda\s+esta\s+nota\s*:\s*(.*)$/i) ||
-      text.match(/guarda\s+nota\s*:\s*(.*)$/i);
-    if (gm && gm[1]) body = gm[1].trim();
-    else
-      body = noteProbe
-        .replace(/^\s*tito\s*,?\s*/i, "")
-        .replace(/^guárdame\s+esta\s+nota\s*:\s*/i, "")
-        .replace(/^guárdame\s+nota\s*:\s*/i, "")
-        .replace(/^guarda\s+esta\s+nota\s*:\s*/i, "")
-        .replace(/^guarda\s+nota\s*:\s*/i, "")
-        .trim();
-    if (!body) body = noteProbe;
-    return { kind: "note", body: body.slice(0, 8000) };
-  }
-
-  if (
-    /recu[eé]rdame\b|recordatorio\b|alarma\b|avis\w*\s+me\b/.test(lower) &&
-    (/\d/.test(text) ||
-      /\b(mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(text) ||
-      /a\s+las\b/i.test(lower) ||
-      /\b\d{1,2}\s*:\s*\d{2}\b/.test(text))
-  ) {
-    return { kind: "reminder", raw: text.slice(0, 4000) };
-  }
-
-  if (
-    /rev[ií]s(ar)?\s+(esta\s+)?estrategia/i.test(lower) ||
-    /analiz\w*\s+.*estrategia/i.test(lower) ||
-    /compar\w+\s+.*estrategia/i.test(lower) ||
-    (/estrategia/i.test(lower) && /compar|rev[ií]s|analiz/i.test(lower))
-  ) {
-    return { kind: "strategy_chat", raw: text.slice(0, 4000) };
-  }
-
-  return { kind: "chat" };
-}
-
-function appendTitoNoteToEstrategiasNotas(body) {
-  if (typeof D === "undefined") return;
-  if (typeof D.estrategiasNotas !== "string") D.estrategiasNotas = "";
-  var stamp = new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
-  var block = (D.estrategiasNotas ? D.estrategiasNotas.replace(/\s+$/, "") + "\n\n" : "") + "— " + stamp + " · Tito\n" + String(body || "").trim();
-  D.estrategiasNotas = block.slice(0, 200000);
-  var titoTa = document.getElementById("tito-estrategias-notas-ta");
-  if (titoTa) titoTa.value = D.estrategiasNotas;
-  try {
-    sv();
-  } catch (eN) {}
-}
-
-function persistReminderIntent(raw) {
-  if (typeof D === "undefined") return;
-  if (!Array.isArray(D.titoReminderIntents)) D.titoReminderIntents = [];
-  D.titoReminderIntents.unshift({
-    id: uid(),
-    createdAt: new Date().toISOString(),
-    kind: "reminder",
-    rawText: String(raw || "").slice(0, 4000),
-    status: "pending_parse"
-  });
-  if (D.titoReminderIntents.length > 200) D.titoReminderIntents = D.titoReminderIntents.slice(0, 200);
-  try {
-    sv();
-  } catch (eR) {}
-}
-
-async function sendTitoPanelMessage() {
-  if (!isPrivateCoachEnabled()) return;
-  var inp = document.getElementById("tito-panel-input");
-  if (!inp) return;
-  var text = (inp.value || "").trim();
-  if (!text) return;
-
-  var intent = resolveTitoPanelIntent(text);
-  if (intent.kind === "empty") return;
-
-  if (intent.kind === "note") {
-    inp.value = "";
-    appendTitoPanelThreadMessage("user", text);
-    appendTitoNoteToEstrategiasNotas(intent.body);
-    appendTitoPanelThreadMessage(
-      "coach",
-      "Listo: lo guardé en tus notas de operativa (menú Estrategias → Notas)."
-    );
-    titoPanelFlashToast("Nota guardada");
-    return;
-  }
-
-  if (intent.kind === "reminder") {
-    inp.value = "";
-    appendTitoPanelThreadMessage("user", text);
-    persistReminderIntent(text);
-    appendTitoPanelThreadMessage(
-      "coach",
-      "Entendido: registré la intención de recordatorio. Cuando activemos avisos por hora, lo podré enlazar."
-    );
-    titoPanelFlashToast("Recordatorio registrado");
-    return;
-  }
-
-  var coachInput = text;
-  if (intent.kind === "strategy_chat") {
-    coachInput =
-      "[Pedido explícito sobre estrategia / comparación / revisión. Responde enfocado en reglas, operativa y seguimiento.]\n" +
-      text;
-  }
-
-  inp.value = "";
-
-  var coachInp = document.getElementById("enfo-coach-input");
-  if (coachInp) coachInp.value = text;
-  await sendPrivateCoachMessage();
-}
-
-/** Contexto serializable del módulo Estrategias para Tito (chat cloud). */
+/** Contexto serializable del módulo Estrategias para Tito (IA). */
 function getContextoEstrategiasParaTito() {
   var out = {
     modulo: "ninguno",
@@ -5934,6 +5827,198 @@ function getContextoDiarioParaTito() {
   });
   out.textoResumen = getDiarioContext();
   return out;
+}
+
+function splitTitoAnalisisBloques(raw, maxParts) {
+  var t = String(raw || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+  if (!t) {
+    var empty = [];
+    for (var z = 0; z < maxParts; z++) empty.push("—");
+    return empty;
+  }
+  var blocks = t
+    .split(/\n\s*\n+/)
+    .map(function (x) {
+      return x.trim();
+    })
+    .filter(Boolean);
+  var out = [];
+  for (var i = 0; i < maxParts; i++) {
+    out.push(blocks[i] != null && String(blocks[i]).trim() ? String(blocks[i]).trim() : "—");
+  }
+  return out;
+}
+
+function titoAnalisisSetStatus(kind, msg) {
+  var id = kind === "diario" ? "tito-analisis-md-status" : "tito-analisis-est-status";
+  var el = document.getElementById(id);
+  if (el) el.textContent = msg || "";
+}
+
+function pickTitoAnalisisTipoEstrategias() {
+  try {
+    var sk = getTitoSessionKey();
+    if (sk === "global") return "global";
+    return "estrategias";
+  } catch (ePick) {
+    return "estrategias";
+  }
+}
+
+function buildTitoAnalisisPayload(tipoAnalisis) {
+  refreshTitoContext();
+  syncTitoTimeContext();
+  var ctxCloud = construirContextoTiempo();
+  var sessionKey =
+    tipoAnalisis === "diario" ? "diario" : tipoAnalisis === "global" ? "global" : "trading";
+  var moduloActivo =
+    tipoAnalisis === "diario" ? "diario" : tipoAnalisis === "estrategias" ? "trading" : "general";
+  return {
+    titoAnalisisAutomatico: true,
+    titoAnalisisTipo: tipoAnalisis,
+    coachHistory: [],
+    coachMemory: [],
+    titoTimeContext: TITO_TIME_CONTEXT,
+    titoLexikon: getTitoLexikonPayload(),
+    titoMarcoTemporal: "",
+    contextoTiempo: {
+      fechaISO: ctxCloud.fechaISO,
+      hora: ctxCloud.hora,
+      minuto: ctxCloud.minuto,
+      zonaHoraria: ctxCloud.zonaHoraria,
+      periodo: ctxCloud.periodo,
+      diaSemana: ctxCloud.diaSemana,
+      diaSemanaNombre: ctxCloud.diaSemanaNombre
+    },
+    contextoDiario:
+      tipoAnalisis === "diario" || tipoAnalisis === "global" ? getContextoDiarioParaTito() : null,
+    contextoEstrategias:
+      tipoAnalisis === "estrategias" || tipoAnalisis === "global" ? getContextoEstrategiasParaTito() : null,
+    contextoModulo: {
+      moduloActivo: moduloActivo,
+      sessionKey: sessionKey,
+      titoModoActual: typeof titoModoActual !== "undefined" ? titoModoActual : "global",
+      pantallaActiva: TITO_CONTEXT.pantallaActiva || "",
+      titoEnfoqueGlobal:
+        tipoAnalisis === "global" && typeof D !== "undefined" && D.titoGlobalState
+          ? D.titoGlobalState.enfoqueActual
+          : null
+    },
+    contextoTiempoGlobal: tipoAnalisis === "global" ? getContextoTiempoGlobal() : null,
+    contextoBloques:
+      tipoAnalisis === "global" && typeof D !== "undefined" ? getContextoBloquesParaTito() : null
+  };
+}
+
+var titoAnalisisRequestSeq = { estrategias: 0, diario: 0 };
+var titoAnalisisDebounceTimer = null;
+
+function scheduleTitoAnalisisAfterDataSave() {
+  clearTimeout(titoAnalisisDebounceTimer);
+  titoAnalisisDebounceTimer = setTimeout(function () {
+    titoAnalisisDebounceTimer = null;
+    try {
+      var st = document.getElementById("s-tito");
+      if (!st || !st.classList.contains("active")) return;
+      if (!isPrivateCoachEnabled()) return;
+      if ((titoPanelUi.root || "") === "estrategias" && (titoPanelUi.estSub || "") === "analisis") {
+        runTitoAnalisisEstrategiasFromUi("save");
+      }
+      if ((titoPanelUi.root || "") === "mente" || (titoPanelUi.root || "") === "diario") {
+        runTitoAnalisisDiarioFromUi("save");
+      }
+    } catch (eSch) {}
+  }, 450);
+}
+
+async function runTitoAnalisisEstrategiasFromUi(reason) {
+  if (!isPrivateCoachEnabled()) return;
+  var u = auth && auth.currentUser;
+  if (!u) return;
+  var tipo = pickTitoAnalisisTipoEstrategias();
+  var seq = ++titoAnalisisRequestSeq.estrategias;
+  titoAnalisisSetStatus("estrategias", "Generando análisis…");
+  try {
+    var token = await u.getIdToken();
+    var data = buildTitoAnalisisPayload(tipo);
+    var json = await getCoachReplyFromCloud(data, token);
+    if (seq !== titoAnalisisRequestSeq.estrategias) return;
+    if (json && json.error != null && json.reply == null) {
+      throw new Error(typeof json.error === "string" ? json.error : "Error del servidor");
+    }
+    var reply = typeof json.reply === "string" ? json.reply.trim() : "";
+    if (!reply) throw new Error("Respuesta vacía");
+    var parts = splitTitoAnalisisBloques(reply, 3);
+    var p1 = document.getElementById("tito-anal-est-p1");
+    var p2 = document.getElementById("tito-anal-est-p2");
+    var p3 = document.getElementById("tito-anal-est-p3");
+    if (p1) p1.textContent = parts[0] || "—";
+    if (p2) p2.textContent = parts[1] || "—";
+    if (p3) p3.textContent = parts[2] || "—";
+    var meta = document.getElementById("tito-analisis-est-meta");
+    if (meta) {
+      meta.textContent =
+        tipo === "global"
+          ? "Análisis automático · Vista general · " +
+            new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" })
+          : "Análisis automático · Estrategias · " +
+            new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+    }
+    titoAnalisisSetStatus("estrategias", "");
+  } catch (err) {
+    if (seq !== titoAnalisisRequestSeq.estrategias) return;
+    titoAnalisisSetStatus("estrategias", "No se pudo generar el análisis. Revisa la conexión.");
+    console.error("[tito_analisis]", err);
+  }
+}
+
+async function runTitoAnalisisDiarioFromUi(reason) {
+  if (!isPrivateCoachEnabled()) return;
+  var u = auth && auth.currentUser;
+  if (!u) return;
+  var seq = ++titoAnalisisRequestSeq.diario;
+  titoAnalisisSetStatus("diario", "Generando análisis…");
+  try {
+    var token = await u.getIdToken();
+    var data = buildTitoAnalisisPayload("diario");
+    var json = await getCoachReplyFromCloud(data, token);
+    if (seq !== titoAnalisisRequestSeq.diario) return;
+    if (json && json.error != null && json.reply == null) {
+      throw new Error(typeof json.error === "string" ? json.error : "Error del servidor");
+    }
+    var reply = typeof json.reply === "string" ? json.reply.trim() : "";
+    if (!reply) throw new Error("Respuesta vacía");
+    var parts = splitTitoAnalisisBloques(reply, 2);
+    var p1 = document.getElementById("tito-anal-dia-p1");
+    var p2 = document.getElementById("tito-anal-dia-p2");
+    if (p1) p1.textContent = parts[0] || "—";
+    if (p2) p2.textContent = parts[1] || "—";
+    var meta = document.getElementById("tito-analisis-md-meta");
+    if (meta) {
+      meta.textContent =
+        "Análisis automático · Diario · " +
+        new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+    }
+    titoAnalisisSetStatus("diario", "");
+  } catch (err) {
+    if (seq !== titoAnalisisRequestSeq.diario) return;
+    titoAnalisisSetStatus("diario", "No se pudo generar el análisis. Revisa la conexión.");
+    console.error("[tito_analisis_diario]", err);
+  }
+}
+
+function maybeRunTitoAnalisisOnTitoScreenOpen() {
+  if (!isPrivateCoachEnabled()) return;
+  try {
+    var root = titoPanelUi.root || "estrategias";
+    if (root === "estrategias" && (titoPanelUi.estSub || "analisis") === "analisis") {
+      runTitoAnalisisEstrategiasFromUi("open");
+    } else if (root === "mente" || root === "diario") {
+      runTitoAnalisisDiarioFromUi("open");
+    }
+  } catch (eM) {}
 }
 
 function renderEstrategiasTitoFloat() {
@@ -6067,6 +6152,9 @@ function crStrat() {
   resetStrategyModal();
   rstrat();
   if (targetId) openS(targetId);
+  try {
+    scheduleTitoAnalisisAfterDataSave();
+  } catch (eTitoStr) {}
 }
 
 function gS()       { return D.strategies.find((s) => s.id === cur); }
@@ -6648,6 +6736,9 @@ function addOp() {
 
   if (crSnapshot === "win")  showCelebration("🏆");
   else if (crSnapshot === "lose") showCelebration("💪");
+  try {
+    scheduleTitoAnalisisAfterDataSave();
+  } catch (eTitoOp) {}
 }
 
 function askDelOp(id) {
@@ -6708,6 +6799,9 @@ function saveDiary() {
   sv();
   document.getElementById("dinp").value = "";
   rdiary();
+  try {
+    scheduleTitoAnalisisAfterDataSave();
+  } catch (eTitoD) {}
 }
 
 function startEditDiary(id) {
@@ -9115,6 +9209,9 @@ function flushEstrategiasNotasPendingSave() {
     clearTimeout(estrategiasNotasSvTimer);
     estrategiasNotasSvTimer = null;
     sv();
+    try {
+      scheduleTitoAnalisisAfterDataSave();
+    } catch (eN) {}
   }
 }
 
@@ -9158,6 +9255,9 @@ function saveEstrategiasNotas() {
   D.estrategiasNotas = t;
   sv();
   showCelebration("💾");
+  try {
+    scheduleTitoAnalisisAfterDataSave();
+  } catch (eSn) {}
 }
 
 function clearEstrategiasNotasAll() {
@@ -9767,11 +9867,6 @@ function renderPrivateCoachSessionHistory() {
   if (!list) return;
   maybeExpireTitoChatIdle(getTitoChatContextKey());
   list.innerHTML = "";
-  var sTito = document.getElementById("s-tito");
-  var tthread = document.getElementById("tito-panel-thread");
-  if (sTito && sTito.classList.contains("active") && tthread) {
-    tthread.innerHTML = "";
-  }
   const sessionHistory = getTitoChatSessionHistory();
   sessionHistory.slice().reverse().forEach(function (msg) {
     appendPrivateCoachMessage(msg.role === "coach" ? "coach" : "user", String(msg.text || ""));
@@ -10905,13 +11000,6 @@ function syncTitoScreenPlaceholderUi() {
   var showPh = !!(u && !isPrivateCoachEnabled());
   layer.hidden = showPh;
   ph.hidden = !showPh;
-  var inp = document.getElementById("tito-panel-input");
-  var sendIco = document.querySelector("#s-tito .tito-chat-send-icon");
-  if (inp) {
-    inp.disabled = showPh;
-    if (showPh) inp.value = "";
-  }
-  if (sendIco) sendIco.disabled = showPh;
 }
 
 function renderPrivateCoach() {
@@ -11009,14 +11097,17 @@ function togglePrivateCoach(force) {
 
 function openTitoFromDiario(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-  privateCoachSessionOverride = "diario";
-  togglePrivateCoach(true);
+  titoPanelUi.root = "diario";
+  titoPanelUi.contextChip = "mente_diario";
+  nav("tito");
 }
 
 function openTitoFromEstrategias(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
-  privateCoachSessionOverride = "trading";
-  togglePrivateCoach(true);
+  titoPanelUi.root = "estrategias";
+  titoPanelUi.estSub = "analisis";
+  titoPanelUi.contextChip = "estrategias";
+  nav("tito");
 }
 
 /** MVP Diario: enfoque = compromiso pendiente más reciente (createdAtClient). */
@@ -11044,10 +11135,6 @@ function appendPrivateCoachMessage(role, text) {
   wrap.appendChild(inner);
   list.appendChild(wrap);
   list.scrollTop = list.scrollHeight;
-  var sTito = document.getElementById("s-tito");
-  if (sTito && sTito.classList.contains("active")) {
-    appendTitoPanelThreadMessage(role, text);
-  }
 }
 
 function appendPrivateCoachThinking() {
@@ -11066,21 +11153,6 @@ function appendPrivateCoachThinking() {
   wrap.appendChild(inner);
   list.appendChild(wrap);
   list.scrollTop = list.scrollHeight;
-  var sTito = document.getElementById("s-tito");
-  var tthread = document.getElementById("tito-panel-thread");
-  if (tthread && sTito && sTito.classList.contains("active")) {
-    var w2 = document.createElement("div");
-    w2.id = "tito-panel-thinking";
-    w2.className = "tito-panel-msg tito-panel-msg--coach tito-panel-msg--thinking";
-    w2.setAttribute("role", "status");
-    var inner2 = document.createElement("div");
-    inner2.className = "tito-panel-msg-inner";
-    inner2.innerHTML =
-      '<span class="enfo-coach-thinking-text">Tito está pensando</span><span class="enfo-coach-thinking-dots">…</span>';
-    w2.appendChild(inner2);
-    tthread.appendChild(w2);
-    tthread.scrollTop = tthread.scrollHeight;
-  }
 }
 
 function removePrivateCoachThinking() {
