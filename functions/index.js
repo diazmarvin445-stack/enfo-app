@@ -9,6 +9,20 @@ if (!admin.apps.length) {
 
 const openaiApiKey = defineSecret("OPENAI_API_KEY");
 
+/** Solo este UID puede usar chat libre (no análisis automático). Debe coincidir con ENFO_PRIVATE_COACH_UID en el cliente. */
+const ENFO_TITO_CHAT_LIBRE_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
+
+function assertTitoChatLibrePermitido(uid, data) {
+  const auto = data && data.titoAnalisisAutomatico === true;
+  if (auto) return;
+  const u = uid && String(uid).trim();
+  if (u && u === ENFO_TITO_CHAT_LIBRE_UID) return;
+  throw new HttpsError(
+    "permission-denied",
+    "El chat libre solo está disponible para la cuenta autorizada. Usa el modo análisis automático."
+  );
+}
+
 /** Prompt corto = menos tokens y menor latencia. */
 const SYSTEM_PROMPT = `
 Eres Tito (ENFO). Español. Coach directo, humano, sin agresividad ni insultos.
@@ -661,6 +675,7 @@ exports.privateCoachChat = onCall(
       throw new HttpsError("unauthenticated", "Inicia sesión para usar el coach.");
     }
     const data = request.data || {};
+    assertTitoChatLibrePermitido(request.auth.uid, data);
     return privateCoachChatCore(data);
   }
 );
@@ -696,6 +711,7 @@ exports.privateCoachChatHttp = onRequest(
         const decoded = await admin.auth().verifyIdToken(token);
 
         const data = req.body || {};
+        assertTitoChatLibrePermitido(decoded.uid, data);
 
         const result = await privateCoachChatCore(data);
 
