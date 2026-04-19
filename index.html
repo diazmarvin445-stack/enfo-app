@@ -3618,7 +3618,7 @@
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyCbkYQ5oWrpjwI82dnQ3qtxVX_mfuB1RQg",
+      apiKey: "AIzaSyChfC0q8ow-uDy34BeiKw0P8g8jEobarQc",
       authDomain: "enfo-ee211.firebaseapp.com",
       projectId: "enfo-ee211",
       storageBucket: "enfo-ee211.firebasestorage.app",
@@ -11282,11 +11282,11 @@ function appendPrivateCoachThinking() {
   if (titoInlineChatActive()) {
     var thread = document.getElementById("tito-panel-chat-thread");
     if (!thread) return;
-    var wrap = document.createElement("div");
+    let wrap = document.createElement("div");
     wrap.id = "tito-inline-thinking";
     wrap.className = "tito-panel-msg tito-panel-msg--coach tito-panel-msg--thinking";
     wrap.setAttribute("role", "status");
-    var inner = document.createElement("div");
+    let inner = document.createElement("div");
     inner.className = "tito-panel-msg-inner";
     inner.innerHTML =
       '<span class="enfo-coach-thinking-text">Tito está pensando</span><span class="enfo-coach-thinking-dots">…</span>';
