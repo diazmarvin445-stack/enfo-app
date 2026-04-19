@@ -329,6 +329,24 @@
       min-height: 18px;
       margin-bottom: 8px;
     }
+    #s-tito #tito-view-conversar.tito-view {
+      display: flex;
+      flex-direction: column;
+      min-height: min(62vh, 520px);
+      max-height: 72vh;
+    }
+    #s-tito #tito-view-conversar .tito-card--compose {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin: 0;
+    }
+    #s-tito #tito-panel-chat-thread {
+      flex: 1 1 auto;
+      max-height: min(48vh, 420px);
+      min-height: 160px;
+    }
     #s-tito .tito-stat--win { color: var(--green); font-weight: 600; }
     #s-tito .tito-stat--lose { color: var(--red); font-weight: 600; }
     #s-tito .tito-reciente-wrap {
@@ -3256,6 +3274,7 @@
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="resumen" aria-selected="false" onclick="setTitoMobileEstrategiasSub('resumen')">Resumen</button>
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="historial" aria-selected="false" onclick="setTitoMobileEstrategiasSub('historial')">Historial</button>
           <button type="button" role="tab" class="tito-context-subchip" data-tito-est-sub="notas" aria-selected="false" onclick="setTitoMobileEstrategiasSub('notas')">Notas</button>
+          <button type="button" role="tab" class="tito-context-subchip tito-sub-conversar" data-tito-est-sub="conversar" aria-selected="false" onclick="setTitoMobileEstrategiasSub('conversar')" style="display:none;">Conversar</button>
         </div>
       </div>
     </div>
@@ -3278,6 +3297,21 @@
           <div class="tito-card">
             <div class="tito-card-h">Ajustes sugeridos</div>
             <div class="tito-card-body tito-card-body--prose" id="tito-anal-est-p3"></div>
+          </div>
+        </div>
+        <div id="tito-view-conversar" class="tito-view" style="display:none;">
+          <div class="tito-card tito-card--compose tito-card--chat">
+            <div class="tito-card-h" style="margin-bottom:8px;">Conversar con Tito</div>
+            <p class="tito-card-body" style="color:var(--text3);font-size:12px;margin:0 0 10px;">Solo tu cuenta autorizada. Mismo contexto que el resto de ENFO según chip y pantalla.</p>
+            <div id="tito-panel-chat-thread" class="tito-panel-thread" aria-live="polite"></div>
+            <div class="tito-chat-composer">
+              <div class="tito-chat-input-row">
+                <textarea id="tito-chat-author-input" class="tito-panel-ta" rows="2" placeholder="Escribe un mensaje…" aria-label="Mensaje para Tito" onkeydown="titoChatAuthorInputKeydown(event)"></textarea>
+                <button type="button" class="tito-chat-send-icon" id="tito-chat-author-send" onclick="sendTitoPanelChatMessage()" title="Enviar" aria-label="Enviar">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <div id="tito-view-resumen" class="tito-view" style="display:none;">
@@ -3341,6 +3375,7 @@
             <button type="button" class="tito-sb-subbtn" data-tito-sub="resumen" onclick="setTitoEstrategiasSub('resumen')">Resumen</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="historial" onclick="setTitoEstrategiasSub('historial')">Historial</button>
             <button type="button" class="tito-sb-subbtn" data-tito-sub="notas" onclick="setTitoEstrategiasSub('notas')">Notas</button>
+            <button type="button" class="tito-sb-subbtn tito-sub-conversar" data-tito-sub="conversar" onclick="setTitoEstrategiasSub('conversar')" style="display:none;">Conversar</button>
           </div>
         </div>
         <button type="button" class="tito-sb-root" data-tito-root="diario" onclick="setTitoPanelRoot('diario')">Diario</button>
@@ -5381,6 +5416,9 @@ function syncTitoPanelHeaderFromState() {
         "Solo bloques cerrados desde la semana en curso (las anteriores no se muestran). Cierre automático viernes 4:20 p.m.";
     } else if (st.estSub === "notas") {
       sub.textContent = "Notas globales de operativa e ideas (misma hoja que en el módulo Estrategias).";
+    } else if (st.estSub === "conversar") {
+      sub.textContent =
+        "Chat privado con Tito (solo cuenta autorizada). El historial usa el mismo contexto de sesión que el coach.";
     } else {
       sub.textContent = "";
     }
@@ -5546,6 +5584,7 @@ function renderTitoHistorialPanel() {
 
 function titoPanelApplyMainViews(mode) {
   var ve = document.getElementById("tito-view-estrategias");
+  var vc = document.getElementById("tito-view-conversar");
   var vr = document.getElementById("tito-view-resumen");
   var vh = document.getElementById("tito-view-historial");
   var vn = document.getElementById("tito-view-notas");
@@ -5554,6 +5593,7 @@ function titoPanelApplyMainViews(mode) {
   var showPh = mode === "placeholder";
   var showMd = mode === "mente_diario";
   if (ve) ve.style.display = mode === "analisis" ? "" : "none";
+  if (vc) vc.style.display = mode === "conversar" ? "" : "none";
   if (vr) vr.style.display = mode === "resumen" ? "" : "none";
   if (vh) vh.style.display = mode === "historial" ? "" : "none";
   if (vn) vn.style.display = mode === "notas" ? "" : "none";
@@ -5648,7 +5688,8 @@ function setTitoPanelRoot(root) {
 }
 
 function setTitoEstrategiasSub(sub, skipRootEnsure) {
-  var valid = { analisis: 1, resumen: 1, historial: 1, notas: 1 };
+  var valid = { analisis: 1, resumen: 1, historial: 1, notas: 1, conversar: 1 };
+  if (sub === "conversar" && !isPrivateCoachEnabled()) sub = "analisis";
   if (!valid[sub]) sub = "analisis";
   titoPanelUi.root = "estrategias";
   titoPanelUi.estSub = sub;
@@ -5657,12 +5698,25 @@ function setTitoEstrategiasSub(sub, skipRootEnsure) {
     if (subEl) subEl.classList.add("tito-sb-sub--open");
   }
   var mode =
-    sub === "analisis" ? "analisis" : sub === "resumen" ? "resumen" : sub === "historial" ? "historial" : "notas";
+    sub === "analisis"
+      ? "analisis"
+      : sub === "conversar"
+        ? "conversar"
+        : sub === "resumen"
+          ? "resumen"
+          : sub === "historial"
+            ? "historial"
+            : "notas";
   titoPanelApplyMainViews(mode);
   titoPanelUpdateRootButtons();
   titoPanelUpdateEstrategiasSubButtons();
   syncTitoPanelHeaderFromState();
   if (sub === "analisis") maybeRunTitoAnalisisOnTitoScreenOpen();
+  if (sub === "conversar") {
+    try {
+      renderPrivateCoachSessionHistory();
+    } catch (eConv) {}
+  }
   if (sub === "resumen") renderTitoPanel();
   if (sub === "historial") renderTitoHistorialPanel();
   if (sub === "notas") syncTitoEstrategiasNotasTextareaFromData();
@@ -5912,6 +5966,72 @@ function buildTitoAnalisisPayload(tipoAnalisis) {
   };
 }
 
+function titoInlineChatActive() {
+  if (!isPrivateCoachEnabled()) return false;
+  var st = document.getElementById("s-tito");
+  if (!st || !st.classList.contains("active")) return false;
+  if ((titoPanelUi.root || "") !== "estrategias") return false;
+  return (titoPanelUi.estSub || "") === "conversar";
+}
+
+function syncTitoConversarNavVisibility() {
+  var show = isPrivateCoachEnabled();
+  document.querySelectorAll("#s-tito .tito-sub-conversar").forEach(function (el) {
+    if (show) {
+      el.style.display = "";
+      el.removeAttribute("hidden");
+    } else {
+      el.style.display = "none";
+      el.setAttribute("hidden", "true");
+    }
+  });
+  if (!show && (titoPanelUi.estSub || "") === "conversar") {
+    titoPanelUi.estSub = "analisis";
+    var st = document.getElementById("s-tito");
+    if (st && st.classList.contains("active")) {
+      try {
+        setTitoEstrategiasSub("analisis", true);
+      } catch (eCv) {}
+    }
+  }
+}
+
+function appendTitoPanelChatMessage(role, text) {
+  var thread = document.getElementById("tito-panel-chat-thread");
+  if (!thread) return;
+  var wrap = document.createElement("div");
+  wrap.className = "tito-panel-msg tito-panel-msg--" + role;
+  var inner = document.createElement("div");
+  inner.className = "tito-panel-msg-inner";
+  inner.innerHTML = e(text).replace(/\n/g, "<br>");
+  wrap.appendChild(inner);
+  thread.appendChild(wrap);
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function titoAppendAnalysisCoachToSession(title, bodyText) {
+  if (!isPrivateCoachEnabled() || typeof D === "undefined") return;
+  var body = String(bodyText || "").trim();
+  if (!body) return;
+  ensureTitoSessionsState();
+  var ck = getTitoChatContextKey();
+  var line = "📊 " + String(title || "Análisis") + "\n\n" + body.slice(0, 3400);
+  D.titoSessions[ck].push({
+    id: uid(),
+    role: "coach",
+    text: line,
+    time: Date.now(),
+    at: new Date().toISOString()
+  });
+  touchTitoChatActivity(ck);
+  try {
+    sv();
+  } catch (eSv) {}
+  if (titoInlineChatActive()) {
+    appendTitoPanelChatMessage("coach", line);
+  }
+}
+
 var titoAnalisisRequestSeq = { estrategias: 0, diario: 0 };
 var titoAnalisisDebounceTimer = null;
 
@@ -5922,7 +6042,7 @@ function scheduleTitoAnalisisAfterDataSave() {
     try {
       var st = document.getElementById("s-tito");
       if (!st || !st.classList.contains("active")) return;
-      if (!isPrivateCoachEnabled()) return;
+      if (!auth || !auth.currentUser) return;
       if ((titoPanelUi.root || "") === "estrategias" && (titoPanelUi.estSub || "") === "analisis") {
         runTitoAnalisisEstrategiasFromUi("save");
       }
@@ -5934,7 +6054,6 @@ function scheduleTitoAnalisisAfterDataSave() {
 }
 
 async function runTitoAnalisisEstrategiasFromUi(reason) {
-  if (!isPrivateCoachEnabled()) return;
   var u = auth && auth.currentUser;
   if (!u) return;
   var tipo = pickTitoAnalisisTipoEstrategias();
@@ -5967,6 +6086,10 @@ async function runTitoAnalisisEstrategiasFromUi(reason) {
             new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
     }
     titoAnalisisSetStatus("estrategias", "");
+    titoAppendAnalysisCoachToSession(
+      tipo === "global" ? "Análisis automático · vista general" : "Análisis automático · estrategias",
+      (parts[0] || "—") + "\n\n" + (parts[1] || "—") + "\n\n" + (parts[2] || "—")
+    );
   } catch (err) {
     if (seq !== titoAnalisisRequestSeq.estrategias) return;
     titoAnalisisSetStatus("estrategias", "No se pudo generar el análisis. Revisa la conexión.");
@@ -5975,7 +6098,6 @@ async function runTitoAnalisisEstrategiasFromUi(reason) {
 }
 
 async function runTitoAnalisisDiarioFromUi(reason) {
-  if (!isPrivateCoachEnabled()) return;
   var u = auth && auth.currentUser;
   if (!u) return;
   var seq = ++titoAnalisisRequestSeq.diario;
@@ -6002,6 +6124,10 @@ async function runTitoAnalisisDiarioFromUi(reason) {
         new Date().toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
     }
     titoAnalisisSetStatus("diario", "");
+    titoAppendAnalysisCoachToSession(
+      "Análisis automático · diario",
+      (parts[0] || "—") + "\n\n" + (parts[1] || "—")
+    );
   } catch (err) {
     if (seq !== titoAnalisisRequestSeq.diario) return;
     titoAnalisisSetStatus("diario", "No se pudo generar el análisis. Revisa la conexión.");
@@ -6010,7 +6136,6 @@ async function runTitoAnalisisDiarioFromUi(reason) {
 }
 
 function maybeRunTitoAnalisisOnTitoScreenOpen() {
-  if (!isPrivateCoachEnabled()) return;
   try {
     var root = titoPanelUi.root || "estrategias";
     if (root === "estrategias" && (titoPanelUi.estSub || "analisis") === "analisis") {
@@ -9863,11 +9988,20 @@ function getTitoChatSessionHistory() {
 }
 
 function renderPrivateCoachSessionHistory() {
+  maybeExpireTitoChatIdle(getTitoChatContextKey());
+  const sessionHistory = getTitoChatSessionHistory();
+  if (titoInlineChatActive()) {
+    const thread = document.getElementById("tito-panel-chat-thread");
+    if (!thread) return;
+    thread.innerHTML = "";
+    sessionHistory.slice().reverse().forEach(function (msg) {
+      appendTitoPanelChatMessage(msg.role === "coach" ? "coach" : "user", String(msg.text || ""));
+    });
+    return;
+  }
   const list = document.getElementById("enfo-coach-messages");
   if (!list) return;
-  maybeExpireTitoChatIdle(getTitoChatContextKey());
   list.innerHTML = "";
-  const sessionHistory = getTitoChatSessionHistory();
   sessionHistory.slice().reverse().forEach(function (msg) {
     appendPrivateCoachMessage(msg.role === "coach" ? "coach" : "user", String(msg.text || ""));
   });
@@ -10964,9 +11098,11 @@ function isPrivateCoachShellAllowed() {
   return !!(auth && auth.currentUser) && isPrivateCoachTitoSectionActive();
 }
 
-/** Chat real, persistencia de turnos y llamada a la nube: solo ENFO_PRIVATE_COACH_UID + pantalla Tito. */
+/** Chat libre (no solo FAB): solo cuenta autorizada y pantalla Tito (#s-tito), no otras secciones. */
 function isPrivateCoachUiAllowed() {
-  return isPrivateCoachEnabled() && isPrivateCoachTitoSectionActive();
+  if (!isPrivateCoachEnabled()) return false;
+  var el = document.querySelector("#app .screen.active");
+  return !!(el && el.id === "s-tito");
 }
 
 /** true solo si el UID coincide con ENFO_PRIVATE_COACH_UID (acceso total Tito + Flow). */
@@ -11125,6 +11261,10 @@ async function renderDiarioTitoFloat() {
 }
 
 function appendPrivateCoachMessage(role, text) {
+  if (titoInlineChatActive()) {
+    appendTitoPanelChatMessage(role, text);
+    return;
+  }
   const list = document.getElementById("enfo-coach-messages");
   if (!list) return;
   const wrap = document.createElement("div");
@@ -11139,6 +11279,22 @@ function appendPrivateCoachMessage(role, text) {
 
 function appendPrivateCoachThinking() {
   removePrivateCoachThinking();
+  if (titoInlineChatActive()) {
+    var thread = document.getElementById("tito-panel-chat-thread");
+    if (!thread) return;
+    var wrap = document.createElement("div");
+    wrap.id = "tito-inline-thinking";
+    wrap.className = "tito-panel-msg tito-panel-msg--coach tito-panel-msg--thinking";
+    wrap.setAttribute("role", "status");
+    var inner = document.createElement("div");
+    inner.className = "tito-panel-msg-inner";
+    inner.innerHTML =
+      '<span class="enfo-coach-thinking-text">Tito está pensando</span><span class="enfo-coach-thinking-dots">…</span>';
+    wrap.appendChild(inner);
+    thread.appendChild(wrap);
+    thread.scrollTop = thread.scrollHeight;
+    return;
+  }
   const list = document.getElementById("enfo-coach-messages");
   if (!list) return;
   const wrap = document.createElement("div");
@@ -11160,6 +11316,8 @@ function removePrivateCoachThinking() {
   if (el) el.remove();
   const el2 = document.getElementById("tito-panel-thinking");
   if (el2) el2.remove();
+  const el3 = document.getElementById("tito-inline-thinking");
+  if (el3) el3.remove();
 }
 
 function privateCoachResetOpenGreeting() {
@@ -11811,6 +11969,17 @@ function privateCoachFinalizeCoachText(raw, skipFormat, originalUserText) {
   return f;
 }
 
+function sendTitoPanelChatMessage() {
+  sendPrivateCoachMessage();
+}
+
+function titoChatAuthorInputKeydown(ev) {
+  if (!ev || ev.key !== "Enter" || ev.shiftKey) return;
+  if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  ev.preventDefault();
+  sendPrivateCoachMessage();
+}
+
 async function getCoachReplyFromCloud(data, token) {
   const res = await fetch("https://us-central1-enfo-ee211.cloudfunctions.net/privateCoachChatHttp", {
     method: "POST",
@@ -11827,12 +11996,19 @@ async function getCoachReplyFromCloud(data, token) {
 async function sendPrivateCoachMessage() {
   if (!isPrivateCoachUiAllowed()) return;
   limpiarContextoAntiguoGlobal();
-  const input = document.getElementById("enfo-coach-input");
+  var input = null;
+  var sendBtn = null;
+  if (titoInlineChatActive()) {
+    input = document.getElementById("tito-chat-author-input");
+    sendBtn = document.getElementById("tito-chat-author-send");
+  } else {
+    input = document.getElementById("enfo-coach-input");
+    sendBtn = document.querySelector("#enfo-coach-full-ui .enfo-coach-send");
+  }
   if (!input) return;
   const text = (input.value || "").trim();
   if (!text) return;
   input.value = "";
-  const sendBtn = document.getElementById("enfo-coach-send");
   if (sendBtn) sendBtn.disabled = true;
 
   refreshTitoContext();
@@ -12238,6 +12414,9 @@ function updatePrivateCoachVisibility() {
     try {
       syncTitoScreenPlaceholderUi();
     } catch (ePh) {}
+    try {
+      syncTitoConversarNavVisibility();
+    } catch (eCv0) {}
     return;
   }
   root.removeAttribute("hidden");
@@ -12252,6 +12431,9 @@ function updatePrivateCoachVisibility() {
   try {
     syncTitoScreenPlaceholderUi();
   } catch (ePh2) {}
+  try {
+    syncTitoConversarNavVisibility();
+  } catch (eCv1) {}
   try {
     var actFlow = document.querySelector("#app .screen.active");
     if (actFlow && actFlow.id === "s-flow") renderFlowScreen();
@@ -12351,7 +12533,7 @@ Object.assign(window, {
   askDelDiary, openEditQuoteModal, askDelQ, toggleUserMenu,
   closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
-  togglePrivateCoach, sendPrivateCoachMessage, openTitoFromDiario, openTitoFromEstrategias,
+  togglePrivateCoach, sendPrivateCoachMessage, sendTitoPanelChatMessage, titoChatAuthorInputKeydown, openTitoFromDiario, openTitoFromEstrategias,
   openDaySticky, closeDaySticky, dayStickyEditorInput
 });
 
