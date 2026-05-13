@@ -2847,6 +2847,299 @@
       .day-sticky-sheet-panel { max-width: 860px; }
       .enfo-coach-sheet { max-width: min(700px, 100%); }
     }
+
+    /* ENFO visual refresh: app diaria + asistente */
+    :root {
+      --bg: #05070c;
+      --surface: #0b111d;
+      --card: #101826;
+      --card2: #151f30;
+      --border: #213044;
+      --border2: #31445d;
+      --accent: #2f6fff;
+      --accent2: #21d4c8;
+      --gold: #f2b84b;
+      --green: #2ee59d;
+      --red: #ff647c;
+      --text: #eef5ff;
+      --text2: #a9bad0;
+      --text3: #64758d;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.34);
+      --shadow-tight: 0 8px 24px rgba(0, 0, 0, 0.26);
+    }
+
+    html,
+    body,
+    #app,
+    .screen {
+      background:
+        linear-gradient(180deg, #070b12 0%, #05070c 42%, #060912 100%);
+    }
+
+    #app {
+      border-left: 1px solid rgba(255, 255, 255, 0.04);
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: 0 0 70px rgba(0, 0, 0, 0.38);
+    }
+
+    #auth-wrap {
+      background:
+        linear-gradient(180deg, #070b12 0%, #05070c 100%) !important;
+    }
+
+    #auth-wrap > div {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(18, 27, 42, 0.96), rgba(10, 15, 25, 0.98)) !important;
+      border: 1px solid rgba(120, 155, 205, 0.24) !important;
+      border-radius: 22px !important;
+      padding: 26px 22px 24px !important;
+      box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    #auth-wrap > div::before {
+      content: "DAILY OS";
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      color: rgba(169, 186, 208, 0.28);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+    }
+
+    #auth-wrap input {
+      height: 46px;
+      background: rgba(7, 11, 18, 0.76) !important;
+      border-color: rgba(120, 155, 205, 0.22) !important;
+      border-radius: 12px !important;
+      color: var(--text) !important;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    #auth-wrap input:focus {
+      border-color: rgba(33, 212, 200, 0.58) !important;
+      box-shadow: 0 0 0 3px rgba(33, 212, 200, 0.1);
+      background: rgba(8, 14, 24, 0.94) !important;
+    }
+
+    #btn-login,
+    .btn-p,
+    .btn-add {
+      background: linear-gradient(135deg, #2f6fff 0%, #1f59df 48%, #21a8d4 100%) !important;
+      box-shadow: 0 10px 26px rgba(47, 111, 255, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+    }
+
+    #btn-register {
+      background: rgba(169, 186, 208, 0.09) !important;
+      border: 1px solid rgba(169, 186, 208, 0.14) !important;
+      color: var(--text2) !important;
+    }
+
+    .logo {
+      color: var(--text);
+      text-shadow: 0 0 22px rgba(47, 111, 255, 0.18);
+    }
+
+    .logo-o {
+      border-color: rgba(33, 212, 200, 0.86);
+      box-shadow: 0 0 18px rgba(33, 212, 200, 0.14);
+    }
+
+    .logo-o-inner {
+      background: var(--accent2);
+    }
+
+    .date-txt,
+    .time-txt {
+      letter-spacing: 0.08em;
+    }
+
+    .card,
+    .si,
+    .opc,
+    .dentry,
+    .mind-history-card,
+    .qcard,
+    .wk-card,
+    .mind-panel,
+    .week-archive,
+    .block-card,
+    .week-summary-card,
+    .add-block-form,
+    .tabs,
+    .srow,
+    .wbar,
+    .frow,
+    #s-tito .tito-card {
+      background: linear-gradient(180deg, rgba(18, 27, 42, 0.96), rgba(12, 18, 30, 0.98));
+      border-color: rgba(120, 155, 205, 0.18);
+      box-shadow: var(--shadow-tight), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .card,
+    .si,
+    .wk-card,
+    .mind-panel,
+    .block-card,
+    .week-summary-card,
+    .add-block-form,
+    #s-tito .tito-card {
+      border-radius: 14px;
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="date"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="time"],
+    select {
+      background: rgba(7, 11, 18, 0.62);
+      border-color: rgba(120, 155, 205, 0.18);
+      border-radius: 12px;
+      color: var(--text);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    textarea:focus,
+    input:focus,
+    select:focus {
+      border-color: rgba(33, 212, 200, 0.58);
+      box-shadow: 0 0 0 3px rgba(33, 212, 200, 0.09);
+      background: rgba(8, 14, 24, 0.9);
+    }
+
+    .btn,
+    .btn-add,
+    .btn-dash-blue,
+    .btn-dash-gold,
+    .tiny-btn,
+    .back-btn,
+    .user-btn,
+    .tab,
+    .chip,
+    .day-btn,
+    .rb {
+      transition: transform 0.14s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+    }
+
+    .btn:hover,
+    .btn-add:hover,
+    .btn-dash-blue:hover,
+    .btn-dash-gold:hover,
+    .tiny-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-g,
+    .tiny-btn,
+    .back-btn,
+    .user-btn {
+      background: rgba(169, 186, 208, 0.08);
+      border: 1px solid rgba(169, 186, 208, 0.15);
+      color: var(--text2);
+    }
+
+    .btn-dash-blue {
+      color: var(--accent2);
+      border-color: rgba(33, 212, 200, 0.36);
+      background: rgba(33, 212, 200, 0.035);
+    }
+
+    .btn-dash-gold {
+      color: var(--gold);
+      border-color: rgba(242, 184, 75, 0.4);
+      background: rgba(242, 184, 75, 0.035);
+    }
+
+    .page-header,
+    #s-tito .tito-panel-header--minimal {
+      background: rgba(5, 7, 12, 0.82);
+      border-bottom: 1px solid rgba(120, 155, 205, 0.12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .page-title,
+    #s-tito .tito-panel-title-mobile,
+    #s-tito .tito-card-h {
+      letter-spacing: 0.12em;
+    }
+
+    .clabel,
+    .slabel,
+    .estrategias-hoy-title,
+    #s-tito .tito-card-h {
+      color: var(--accent2);
+    }
+
+    #nav {
+      height: 76px;
+      padding: 6px 8px max(8px, env(safe-area-inset-bottom));
+      background: rgba(5, 7, 12, 0.9);
+      border-top: 1px solid rgba(120, 155, 205, 0.16);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      gap: 4px;
+    }
+
+    .nb {
+      border-radius: 14px;
+      padding: 6px 4px 7px;
+    }
+
+    .nb.on {
+      color: var(--text);
+      background: rgba(47, 111, 255, 0.14);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .nb.on::after {
+      left: 32%;
+      right: 32%;
+      top: 4px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--accent2);
+    }
+
+    .nb-icon {
+      font-size: 21px;
+    }
+
+    .nb-lbl {
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+
+    .user-menu,
+    .msheet,
+    .cfbox,
+    .enfo-coach-sheet,
+    #stats-panel {
+      background: linear-gradient(180deg, rgba(18, 27, 42, 0.98), rgba(9, 14, 24, 0.99));
+      border-color: rgba(120, 155, 205, 0.2);
+      box-shadow: var(--shadow-soft);
+    }
+
+    #private-coach-fab,
+    .tito-mascot-btn {
+      box-shadow: 0 12px 34px rgba(33, 212, 200, 0.18), 0 10px 28px rgba(0, 0, 0, 0.34);
+    }
+
+    #s-tito .tito-context-chip--active,
+    #s-tito .tito-context-subchip--active,
+    .tab.on,
+    .chip.on,
+    .rb.on {
+      border-color: rgba(33, 212, 200, 0.48);
+      background: rgba(33, 212, 200, 0.1);
+      color: var(--text);
+      box-shadow: 0 0 0 1px rgba(33, 212, 200, 0.08);
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
