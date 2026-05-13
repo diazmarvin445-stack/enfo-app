@@ -3729,8 +3729,98 @@
     function saveLocalLegacy() {
       const uid = getUserUid();
       if (!uid) return;
+      markClientUpdated();
       try { localStorage.setItem(lsKey(uid), JSON.stringify(D)); } catch (_) {}
       localBackup();
+    }
+
+    function markClientUpdated() {
+      const now = Date.now();
+      D._clientUpdatedAtMs = now;
+      D._clientUpdatedAt = new Date(now).toISOString();
+    }
+
+    function parseLocalData(raw, label) {
+      if (!raw) return null;
+      try {
+        const data = JSON.parse(raw);
+        return data && typeof data === "object" ? { data, label } : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function getLocalDataCandidate(uid) {
+      const candidates = [];
+      try { candidates.push(parseLocalData(localStorage.getItem(lsKey(uid)), "local")); } catch (_) {}
+      try { candidates.push(parseLocalData(localStorage.getItem(lsKeyBk(uid)), "backup")); } catch (_) {}
+
+      return candidates
+        .filter(Boolean)
+        .sort((a, b) => {
+          const atDiff = getDataUpdatedAtMs(b.data) - getDataUpdatedAtMs(a.data);
+          if (atDiff) return atDiff;
+          return getDataWeight(b.data) - getDataWeight(a.data);
+        })[0] || null;
+    }
+
+    function getDataUpdatedAtMs(data) {
+      if (!data || typeof data !== "object") return 0;
+      if (typeof data._clientUpdatedAtMs === "number" && isFinite(data._clientUpdatedAtMs)) return data._clientUpdatedAtMs;
+      if (typeof data._clientUpdatedAt === "string") {
+        const parsedClient = Date.parse(data._clientUpdatedAt);
+        if (!isNaN(parsedClient)) return parsedClient;
+      }
+      if (data.updatedAt && typeof data.updatedAt.toMillis === "function") return data.updatedAt.toMillis();
+      if (data.updatedAt && typeof data.updatedAt.seconds === "number") return data.updatedAt.seconds * 1000;
+      if (typeof data.updatedAt === "string") {
+        const parsed = Date.parse(data.updatedAt);
+        if (!isNaN(parsed)) return parsed;
+      }
+      return 0;
+    }
+
+    function getDataWeight(data) {
+      if (!data || typeof data !== "object") return 0;
+      let total = 0;
+      ["mindset", "strategies", "diary", "quotes", "blocks", "coachHistory", "coachMemory", "titoPanelReflections", "titoSemanalHistorial"].forEach((key) => {
+        if (Array.isArray(data[key])) total += data[key].length * 10;
+      });
+      if (Array.isArray(data.strategies)) {
+        data.strategies.forEach((strategy) => {
+          if (strategy && Array.isArray(strategy.ops)) total += strategy.ops.length * 6;
+          if (strategy && Array.isArray(strategy.weeklyArchives)) total += strategy.weeklyArchives.length * 3;
+        });
+      }
+      if (data.blockLogs && typeof data.blockLogs === "object") total += Object.keys(data.blockLogs).length * 3;
+      if (data.dayStickyNotes && typeof data.dayStickyNotes === "object") total += Object.keys(data.dayStickyNotes).length * 3;
+      if (data.finanzas && typeof data.finanzas === "object") total += Object.keys(data.finanzas).length;
+      if (data.portafolio && typeof data.portafolio === "object") total += Object.keys(data.portafolio).length;
+      return total;
+    }
+
+    function pickBestDataSource(cloudData, localCandidate) {
+      if (!localCandidate || !localCandidate.data) return { data: cloudData || emptyAppData(), source: "cloud" };
+      if (!cloudData) return { data: localCandidate.data, source: localCandidate.label };
+
+      const cloudMs = getDataUpdatedAtMs(cloudData);
+      const localMs = getDataUpdatedAtMs(localCandidate.data);
+      const cloudWeight = getDataWeight(cloudData);
+      const localWeight = getDataWeight(localCandidate.data);
+
+      if (localMs && (!cloudMs || localMs > cloudMs + 1000)) {
+        return { data: localCandidate.data, source: localCandidate.label };
+      }
+
+      if (!localMs && localWeight > cloudWeight + 25) {
+        return { data: localCandidate.data, source: `${localCandidate.label}-richer` };
+      }
+
+      if (!cloudMs && !localMs && cloudWeight === 0 && localWeight > 0) {
+        return { data: localCandidate.data, source: localCandidate.label };
+      }
+
+      return { data: cloudData, source: "cloud" };
     }
 
     // ─── Utilidades de UI ──────────────────────────────────────────────────────
@@ -4294,6 +4384,8 @@
       try {
         do {
           pendingCloudSave = false;
+          markClientUpdated();
+          saveLocalLegacy();
           await enfoRef.set({
             ...serializeForCloud(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -4307,6 +4399,20 @@
     }
 
     // ─── Storage ───────────────────────────────────────────────────────────────
+
+    function flushPendingSave() {
+      if (skipAutoSave || !enfoRef) return;
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+      }
+      saveCloudNow();
+    }
+
+    window.addEventListener("pagehide", flushPendingSave);
+    document.addEventListener("visibilitychange", function() {
+      if (document.visibilityState === "hidden") flushPendingSave();
+    });
 
     async function uploadStrategyImageFile(file, strategyId) {
       if (!file)       throw new Error("No se recibió ningún archivo.");
@@ -4343,6 +4449,7 @@
       const uid = getUserUid();
       console.log("ld() - UID:", uid);
       if (!uid) return;
+      const localCandidate = getLocalDataCandidate(uid);
 
       try {
         const ref  = getUserDocRef();
@@ -4353,18 +4460,24 @@
         if (snap.exists) {
           const cloudData = snap.data() || {};
           console.log("ld() - keys:", Object.keys(cloudData));
-          delete cloudData.updatedAt;
-          D = sanitizeData(cloudData);
+          const picked = pickBestDataSource(cloudData, localCandidate);
+          console.log("ld() - source:", picked.source);
+          if (picked.data && picked.data.updatedAt) delete picked.data.updatedAt;
+          D = sanitizeData(picked.data);
+          saveLocalLegacy();
+          if (picked.source !== "cloud") await saveCloudNow();
         } else {
           console.log("ld() - documento no existe, iniciando vacío");
-          D = sanitizeData(emptyAppData());
+          const picked = pickBestDataSource(null, localCandidate);
+          console.log("ld() - documento no existe, source:", picked.source);
+          D = sanitizeData(picked.data);
+          saveLocalLegacy();
           await saveCloudNow();
         }
       } catch (err) {
         console.error("Error cargando Firestore:", err);
         try {
-          const raw = localStorage.getItem(lsKeyBk(uid)) || localStorage.getItem(lsKey(uid));
-          D = sanitizeData(raw ? JSON.parse(raw) : emptyAppData());
+          D = sanitizeData(localCandidate ? localCandidate.data : emptyAppData());
         } catch (_) {
           D = sanitizeData(emptyAppData());
         }
