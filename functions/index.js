@@ -8,9 +8,11 @@ if (!admin.apps.length) {
 }
 
 const openaiApiKey = defineSecret("OPENAI_API_KEY");
+const telegramBridgeSecret = defineSecret("ENFO_TELEGRAM_BRIDGE_SECRET");
 
 /** Solo este UID puede usar chat libre (no análisis automático). Debe coincidir con ENFO_PRIVATE_COACH_UID en el cliente. */
 const ENFO_TITO_CHAT_LIBRE_UID = "JYrkTqn63HcHj5k0PfFhyHDexSo1";
+const ENFO_PRIVATE_TELEGRAM_UID = ENFO_TITO_CHAT_LIBRE_UID;
 
 function assertTitoChatLibrePermitido(uid, data) {
   const auto = data && data.titoAnalisisAutomatico === true;
@@ -719,6 +721,302 @@ exports.privateCoachChatHttp = onRequest(
       } catch (e) {
         console.error(e);
         return res.status(500).json({ error: e.message || "Server error" });
+      }
+    });
+  }
+);
+
+function makeBridgeId(prefix) {
+  return (
+    prefix +
+    "_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 8)
+  );
+}
+
+function cleanBridgeText(value, maxLen) {
+  return String(value == null ? "" : value).trim().slice(0, maxLen || 4000);
+}
+
+function getBridgeAuthToken(req) {
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.split("Bearer ")[1].trim();
+  }
+  return String(req.headers["x-enfo-bridge-secret"] || "").trim();
+}
+
+function assertTelegramBridgeAllowed(req) {
+  const expected = String(telegramBridgeSecret.value() || "").trim();
+  if (!expected) {
+    throw new HttpsError("failed-precondition", "ENFO_TELEGRAM_BRIDGE_SECRET no configurado.");
+  }
+  const received = getBridgeAuthToken(req);
+  if (!received || received !== expected) {
+    throw new HttpsError("permission-denied", "Bridge no autorizado.");
+  }
+}
+
+function getPrivateAppRef() {
+  return admin
+    .firestore()
+    .collection("users")
+    .doc(ENFO_PRIVATE_TELEGRAM_UID)
+    .collection("app")
+    .doc("main");
+}
+
+function getPrivateRootRef() {
+  return admin.firestore().collection("users").doc(ENFO_PRIVATE_TELEGRAM_UID);
+}
+
+function normalizeBridgeDays(days) {
+  if (!Array.isArray(days) || !days.length) return [1, 2, 3, 4, 5];
+  const out = [];
+  days.forEach((day) => {
+    const n = Number(day);
+    if (Number.isInteger(n) && n >= 0 && n <= 6 && !out.includes(n)) out.push(n);
+  });
+  return out.length ? out : [1, 2, 3, 4, 5];
+}
+
+function bridgeTodayYmd() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const map = {};
+  parts.forEach((p) => {
+    map[p.type] = p.value;
+  });
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+function bridgeTodayDow() {
+  const raw = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short"
+  }).format(new Date());
+  const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[raw] == null ? new Date().getDay() : map[raw];
+}
+
+async function bridgeCreateDiaryEntry(payload) {
+  const text = cleanBridgeText(payload.text || payload.message, 12000);
+  if (!text) throw new HttpsError("invalid-argument", "Falta payload.text.");
+  const entry = {
+    id: makeBridgeId("diary"),
+    date: payload.dateISO ? cleanBridgeText(payload.dateISO, 40) : new Date().toISOString(),
+    text,
+    source: "telegram",
+    createdAtClient: Date.now()
+  };
+  await getPrivateAppRef().set(
+    {
+      diary: admin.firestore.FieldValue.arrayUnion(entry),
+      _serverUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
+  return { ok: true, action: "create_diary_entry", entry };
+}
+
+async function bridgeCreateBlock(payload) {
+  const name = cleanBridgeText(payload.name || payload.title, 120);
+  const start = cleanBridgeText(payload.start || payload.horaInicio, 12);
+  const end = cleanBridgeText(payload.end || payload.horaFin, 12);
+  if (!name || !start || !end) {
+    throw new HttpsError("invalid-argument", "Faltan name/start/end.");
+  }
+  const block = {
+    id: makeBridgeId("block"),
+    name,
+    start,
+    end,
+    emoji: cleanBridgeText(payload.emoji, 8) || "🟢",
+    days: normalizeBridgeDays(payload.days),
+    source: "telegram",
+    createdAtClient: Date.now()
+  };
+  await getPrivateAppRef().set(
+    {
+      blocks: admin.firestore.FieldValue.arrayUnion(block),
+      _serverUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
+  return { ok: true, action: "create_block", block };
+}
+
+async function bridgeAppendStrategyNote(payload) {
+  const text = cleanBridgeText(payload.text || payload.note, 12000);
+  if (!text) throw new HttpsError("invalid-argument", "Falta payload.text.");
+  const ref = getPrivateAppRef();
+  const marker = `\n\n[Telegram ${new Date().toISOString()}]\n${text}`;
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() || {} : {};
+    const current = cleanBridgeText(data.estrategiasNotas, 190000);
+    tx.set(
+      ref,
+      {
+        estrategiasNotas: (current + marker).trim().slice(0, 200000),
+        _serverUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+  });
+  return { ok: true, action: "append_strategy_note" };
+}
+
+async function bridgeCreateCoachMemory(payload) {
+  const text = cleanBridgeText(payload.text || payload.memory, 8000);
+  if (!text) throw new HttpsError("invalid-argument", "Falta payload.text.");
+  const allowed = new Set(["global", "diario", "trading", "mente", "estrategias", "finanzas", "biblioteca"]);
+  const moduloOrigen = allowed.has(payload.moduloOrigen) ? payload.moduloOrigen : "global";
+  const memory = {
+    id: makeBridgeId("memory"),
+    at: new Date().toISOString(),
+    time: Date.now(),
+    text,
+    moduloOrigen,
+    source: "telegram"
+  };
+  await getPrivateAppRef().set(
+    {
+      coachMemory: admin.firestore.FieldValue.arrayUnion(memory),
+      _serverUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
+  return { ok: true, action: "create_coach_memory", memory };
+}
+
+async function bridgeDailyReport() {
+  const snap = await getPrivateAppRef().get();
+  const data = snap.exists ? snap.data() || {} : {};
+  const today = bridgeTodayYmd();
+  const dow = bridgeTodayDow();
+  const diary = Array.isArray(data.diary) ? data.diary : [];
+  const mindset = Array.isArray(data.mindset) ? data.mindset : [];
+  const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+  const strategies = Array.isArray(data.strategies) ? data.strategies : [];
+  const todayDiary = diary.filter((x) => String(x.date || "").slice(0, 10) === today);
+  const todayMindset = mindset.find((x) => x && x.dayKey === today) || null;
+  const todayBlocks = blocks.filter((b) => Array.isArray(b.days) && b.days.includes(dow));
+  const openOps = [];
+  strategies.forEach((s) => {
+    (Array.isArray(s.ops) ? s.ops : []).forEach((op) => {
+      const result = String(op.result || "");
+      if (result !== "win" && result !== "lose") {
+        openOps.push({ strategy: s.name || "", asset: op.asset || "", date: op.date || "" });
+      }
+    });
+  });
+  return {
+    ok: true,
+    action: "daily_report",
+    date: today,
+    report: {
+      diaryEntriesToday: todayDiary.length,
+      latestDiary: todayDiary[0] ? cleanBridgeText(todayDiary[0].text, 800) : "",
+      mindsetToday: todayMindset
+        ? {
+            thought: cleanBridgeText(todayMindset.thought, 500),
+            notes: cleanBridgeText(todayMindset.notes, 500),
+            learn: cleanBridgeText(todayMindset.learn, 500)
+          }
+        : null,
+      blocksToday: todayBlocks.map((b) => ({
+        id: b.id || "",
+        name: b.name || "",
+        start: b.start || "",
+        end: b.end || ""
+      })),
+      strategiesCount: strategies.length,
+      openOperations: openOps.slice(0, 20)
+    }
+  };
+}
+
+async function bridgeEnqueueTask(payload) {
+  const text = cleanBridgeText(payload.text || payload.task || payload.message, 8000);
+  if (!text) throw new HttpsError("invalid-argument", "Falta payload.text.");
+  const task = {
+    text,
+    source: "telegram",
+    status: "pending",
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+  const ref = await getPrivateRootRef().collection("telegram_tasks").add(task);
+  return { ok: true, action: "enqueue_task", taskId: ref.id };
+}
+
+async function runTelegramBridgeAction(action, payload) {
+  const normalized = cleanBridgeText(action, 80);
+  if (normalized === "create_diary_entry") return bridgeCreateDiaryEntry(payload);
+  if (normalized === "create_block") return bridgeCreateBlock(payload);
+  if (normalized === "append_strategy_note") return bridgeAppendStrategyNote(payload);
+  if (normalized === "create_coach_memory") return bridgeCreateCoachMemory(payload);
+  if (normalized === "daily_report") return bridgeDailyReport();
+  if (normalized === "enqueue_task") return bridgeEnqueueTask(payload);
+  if (normalized === "coach_message") {
+    const message = cleanBridgeText(payload.message || payload.text, 8000);
+    if (!message) throw new HttpsError("invalid-argument", "Falta payload.message.");
+    const result = await privateCoachChatCore({
+      message,
+      coachHistory: [],
+      coachMemory: [],
+      contextoModulo: payload.contextoModulo || { moduloActivo: "general", pantallaActiva: "telegram" },
+      contextoDiario: payload.contextoDiario || null,
+      contextoEstrategias: payload.contextoEstrategias || null,
+      titoTimeContext: payload.titoTimeContext || null
+    });
+    return { ok: true, action: "coach_message", ...result };
+  }
+  throw new HttpsError("invalid-argument", "Accion no soportada: " + normalized);
+}
+
+exports.telegramEnfoBridge = onRequest(
+  {
+    region: "us-central1",
+    secrets: [telegramBridgeSecret, openaiApiKey],
+    maxInstances: 5,
+    timeoutSeconds: 60,
+    invoker: "public"
+  },
+  (req, res) => {
+    cors(req, res, async () => {
+      try {
+        if (req.method === "OPTIONS") {
+          res.set("Access-Control-Allow-Origin", "*");
+          res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+          res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Enfo-Bridge-Secret");
+          res.status(204).send("");
+          return;
+        }
+        if (req.method !== "POST") {
+          res.status(405).json({ ok: false, error: "Method not allowed" });
+          return;
+        }
+        assertTelegramBridgeAllowed(req);
+        const body = req.body && typeof req.body === "object" ? req.body : {};
+        const action = body.action;
+        const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
+        const result = await runTelegramBridgeAction(action, payload);
+        res.status(200).json(result);
+      } catch (e) {
+        console.error("[telegramEnfoBridge]", e);
+        const code = e && e.code === "permission-denied" ? 403 : e && e.code === "invalid-argument" ? 400 : 500;
+        res.status(code).json({ ok: false, error: e.message || "Server error" });
       }
     });
   }
