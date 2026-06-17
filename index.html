@@ -2,6 +2,24 @@
 
 <html lang="es">
 <head>
+  <script>
+    window.addEventListener('error', function(e) {
+      showGlobalError(e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      showGlobalError(e.reason ? (e.reason.message || String(e.reason)) : 'Promise Rejection');
+    });
+    function showGlobalError(msg, file, line) {
+      var div = document.getElementById('global-error-banner');
+      if (!div) {
+        div = document.createElement('div');
+        div.id = 'global-error-banner';
+        div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4560;color:#fff;padding:15px;z-index:100000;font-family:monospace;font-size:13px;word-break:break-all;border-bottom:3px solid #b30022;box-shadow:0 5px 15px rgba(0,0,0,0.5);';
+        document.body.appendChild(div);
+      }
+      div.innerHTML = '<strong>⚠️ Error detectado:</strong><br>' + msg + (file ? '<br><small>Archivo: ' + file + ' | Línea: ' + line + '</small>' : '');
+    }
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
@@ -12,24 +30,24 @@
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     :root {
-      --bg: #060a12;
-      --surface: #0a1020;
-      --card: #0d1628;
-      --card2: #111e35;
-      --border: #1a2d50;
-      --border2: #243d6a;
-      --accent: #1d6aff;
-      --accent2: #00c8ff;
-      --gold: #f0a500;
-      --green: #00d48a;
-      --red: #ff4560;
-      --text: #e8f0ff;
-      --text2: #7a9acc;
-      --text3: #3d5a8a;
+      --bg: #090a0f;
+      --surface: #12141c;
+      --card: #161824;
+      --card2: #202434;
+      --border: #1e2230;
+      --border2: #2d3348;
+      --accent: #6366f1;
+      --accent2: #06b6d4;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #f43f5e;
+      --text: #f3f4f6;
+      --text2: #9ca3af;
+      --text3: #6b7280;
     }
 
     html, body {
-      background: var(--bg);
+      background: radial-gradient(circle at center, #111422 0%, #050609 100%);
       color: var(--text);
       font-family: "DM Sans", sans-serif;
       height: 100%;
@@ -2710,7 +2728,6 @@
       #app { max-width: 760px; }
 
       .screen { bottom: 76px; }
-      #nav { height: 76px; }
       .nb { gap: 6px; padding-bottom: 8px; }
       .nb-icon { font-size: 24px; }
       .nb-lbl { font-size: 11px; }
@@ -2850,36 +2867,36 @@
 
     /* ENFO visual refresh: app diaria + asistente */
     :root {
-      --bg: #05070c;
-      --surface: #0b111d;
-      --card: #101826;
-      --card2: #151f30;
-      --border: #213044;
-      --border2: #31445d;
-      --accent: #2f6fff;
-      --accent2: #21d4c8;
-      --gold: #f2b84b;
-      --green: #2ee59d;
-      --red: #ff647c;
-      --text: #eef5ff;
-      --text2: #a9bad0;
-      --text3: #64758d;
-      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.34);
-      --shadow-tight: 0 8px 24px rgba(0, 0, 0, 0.26);
+      --bg: #090a0f;
+      --surface: #12141c;
+      --card: #161824;
+      --card2: #202434;
+      --border: #1e2230;
+      --border2: #2d3348;
+      --accent: #6366f1;
+      --accent2: #06b6d4;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #f43f5e;
+      --text: #f3f4f6;
+      --text2: #9ca3af;
+      --text3: #6b7280;
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.45);
+      --shadow-tight: 0 8px 24px rgba(0, 0, 0, 0.35);
     }
 
     html,
     body,
     #app,
     .screen {
-      background:
-        linear-gradient(180deg, #070b12 0%, #05070c 42%, #060912 100%);
+      background: #090a0f;
     }
 
     #app {
-      border-left: 1px solid rgba(255, 255, 255, 0.04);
-      border-right: 1px solid rgba(255, 255, 255, 0.04);
-      box-shadow: 0 0 70px rgba(0, 0, 0, 0.38);
+      border-left: 1px solid rgba(255, 255, 255, 0.06);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 80px rgba(99, 102, 241, 0.08);
+      transition: box-shadow 0.3s ease;
     }
 
     #auth-wrap {
@@ -2972,8 +2989,8 @@
     .wbar,
     .frow,
     #s-tito .tito-card {
-      background: linear-gradient(180deg, rgba(18, 27, 42, 0.96), rgba(12, 18, 30, 0.98));
-      border-color: rgba(120, 155, 205, 0.18);
+      background: linear-gradient(180deg, rgba(22, 24, 36, 0.95), rgba(16, 18, 27, 0.97));
+      border-color: rgba(255, 255, 255, 0.08);
       box-shadow: var(--shadow-tight), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
@@ -3079,8 +3096,8 @@
     #nav {
       height: 76px;
       padding: 6px 8px max(8px, env(safe-area-inset-bottom));
-      background: rgba(5, 7, 12, 0.9);
-      border-top: 1px solid rgba(120, 155, 205, 0.16);
+      background: rgba(18, 20, 28, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       gap: 4px;
@@ -3093,7 +3110,7 @@
 
     .nb.on {
       color: var(--text);
-      background: rgba(47, 111, 255, 0.14);
+      background: rgba(99, 102, 241, 0.14);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
@@ -3140,6 +3157,48 @@
       color: var(--text);
       box-shadow: 0 0 0 1px rgba(33, 212, 200, 0.08);
     }
+
+    /* Quick Actions Grid & Buttons styles */
+    .quick-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 4px 16px 16px;
+    }
+    .qa-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(22, 24, 36, 0.95), rgba(16, 18, 27, 0.97));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 10px 4px;
+      cursor: pointer;
+      color: var(--text);
+      transition: transform 0.12s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: var(--shadow-tight);
+    }
+    .qa-btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(99, 102, 241, 0.4);
+      box-shadow: 0 6px 15px rgba(99, 102, 241, 0.08);
+    }
+    .qa-btn:active {
+      transform: scale(0.96);
+    }
+    .qa-icon {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .qa-lbl {
+      font-size: 8px;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -3172,6 +3231,8 @@
     <button id="btn-login" onclick="loginUser()" style="padding:12px;border:none;border-radius:10px;background:#1d6aff;color:#fff;font-weight:700;cursor:pointer;">Entrar</button>
     <button id="btn-register" onclick="registerUser()" style="padding:12px;border:none;border-radius:10px;background:#111e35;color:#fff;cursor:pointer;">Crear</button>
   </div>
+
+  <button id="btn-bypass" onclick="bypassLoginDev()" style="width:100%;margin-top:10px;padding:12px;border:1px dashed #243d6a;border-radius:10px;background:#0d1628;color:#7a9acc;cursor:pointer;font-size:12px;">💻 Entrar en Modo Desarrollador (Sin Contraseña)</button>
 
   <div id="auth-msg" style="margin-top:10px;font-size:12px;color:#7a9acc;text-align:center;"></div>
   <div style="text-align:center;margin-top:10px;">
@@ -3240,6 +3301,7 @@
     </div>
   </div>
 
+  <!-- Cuadrícula de Acciones Rápidas -->
   <div id="mindset-root"></div>
 
   <div id="day-sticky-root"></div>
@@ -3446,7 +3508,7 @@
       <button type="button" onclick="openMetasLargoPanel()" style="flex-shrink:0;background:rgba(29,106,255,0.15);border:1px solid rgba(29,106,255,0.3);border-radius:8px;padding:6px 12px;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🎯 Metas</button>
     </div>
   </div>
-  <div class="card" style="background: linear-gradient(135deg, #0a1525, #0d1e38); margin-top:4px;">
+  <div class="card" style="margin-top:4px;">
     <div class="clabel cl-cyan" id="dlbl"></div>
     <textarea id="dinp" rows="6" placeholder="Este es tu espacio personal. Escribe libremente..."></textarea>
     <div style="height:12px;"></div>
@@ -3921,13 +3983,47 @@
 
     firebase.initializeApp(firebaseConfig);
 
-    const auth = firebase.auth();
+    let auth = firebase.auth();
+
+    // Check if we are in local development / offline testing mode
+    const isLocalDev = window.location.hostname === "localhost" || 
+                       window.location.hostname === "127.0.0.1" || 
+                       window.location.protocol === "file:";
+
+    if (isLocalDev) {
+      console.log("Local development/offline testing mode active: proxying auth");
+      auth = new Proxy(firebase.auth(), {
+        get: function(target, prop, receiver) {
+          if (prop === 'currentUser') {
+            if (realFirebaseUser) return realFirebaseUser;
+            if (window.isLocalDevBypassActive) {
+              return {
+                uid: "JYrkTqn63HcHj5k0PfFhyHDexSo1", // Admin developer account
+                email: "marvin@enfoapp.io",
+                getIdToken: function() { return Promise.resolve("mock-token"); }
+              };
+            }
+            return target.currentUser;
+          }
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value === 'function') {
+            return value.bind(target);
+          }
+          return value;
+        },
+        set: function(target, prop, value, receiver) {
+          return Reflect.set(target, prop, value, receiver);
+        }
+      });
+    }
+
     const db = firebase.firestore();
     const storage = firebase.storage();
 
     let enfoRef = null;
     let currentUserData = { uid: "", email: "" };
     let liveClockTimer = null;
+    var realFirebaseUser = null;
 
     // ─── Helpers de UID ────────────────────────────────────────────────────────
 
@@ -5692,7 +5788,7 @@ function renderTitoStrategySection() {
   renderTitoPanel();
 }
 
-var titoPanelUi = { root: "estrategias", estSub: "analisis", contextChip: "estrategias" };
+var titoPanelUi = { root: "estrategias", estSub: "conversar", contextChip: "estrategias" };
 
 /** Modo Tito activo (sidebar / chips / pantalla). Fuente de verdad junto a titoPanelUi. */
 let titoModoActual = "estrategias";
@@ -11647,7 +11743,7 @@ function openTitoFromDiario(ev) {
 function openTitoFromEstrategias(ev) {
   if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
   titoPanelUi.root = "estrategias";
-  titoPanelUi.estSub = "analisis";
+  titoPanelUi.estSub = "conversar";
   titoPanelUi.contextChip = "estrategias";
   nav("tito");
 }
@@ -12399,6 +12495,211 @@ async function getCoachReplyFromCloud(data, token) {
   return await res.json();
 }
 
+function titoProcessClientActions(replyText) {
+  if (typeof replyText !== "string") return replyText;
+  const actionRegex = /\[ACTION:\s*({[\s\S]*?})\s*\]/gi;
+  let match;
+  let cleanedReply = replyText;
+  let actionsFound = [];
+
+  const rx = new RegExp(actionRegex);
+  while ((match = rx.exec(replyText)) !== null) {
+    try {
+      const actionJson = JSON.parse(match[1]);
+      actionsFound.push(actionJson);
+    } catch (e) {
+      console.error("[Tito Action Parse Error]", e);
+    }
+  }
+
+  cleanedReply = replyText.replace(actionRegex, "").trim();
+
+  if (actionsFound.length > 0) {
+    console.log("[Tito Client Actions]", actionsFound);
+    actionsFound.forEach(function(action) {
+      try {
+        executeTitoAction(action);
+      } catch (err) {
+        console.error("[Tito Action Execution Error]", err);
+      }
+    });
+  }
+
+  return cleanedReply;
+}
+
+function executeTitoAction(action) {
+  if (!action || typeof action !== "object") return;
+  const type = action.type;
+  const payload = action.payload || {};
+
+  if (type === "ADD_BLOCK") {
+    const name = payload.name;
+    const start = payload.start;
+    const end = payload.end;
+    const emoji = payload.emoji || "🟢";
+    let days = payload.days;
+
+    if (days === "today" || days === "hoy" || !days) {
+      const jsDay = new Date().getDay();
+      days = [jsDay === 0 ? 7 : jsDay];
+    } else if (typeof days === "number") {
+      days = [days];
+    } else if (typeof days === "string") {
+      const dayMap = {
+        "lunes": 1, "martes": 2, "miercoles": 3, "miércoles": 3, "jueves": 4, "viernes": 5, "sabado": 6, "sábado": 6, "domingo": 7,
+        "monday": 1, "tuesday": 2, "wednesday": 3, "thursday": 4, "friday": 5, "saturday": 6, "sunday": 7
+      };
+      const mapped = dayMap[days.toLowerCase().trim()];
+      days = mapped ? [mapped] : [1];
+    }
+
+    if (!D.blocks) D.blocks = [];
+    const newBlock = {
+      id: uid(),
+      name: name || "Bloque sin nombre",
+      start: start || "09:00",
+      end: end || "10:00",
+      emoji: emoji,
+      days: Array.isArray(days) ? days : [1]
+    };
+    D.blocks.push(newBlock);
+    D.blocks.sort((a, b) => a.start.localeCompare(b.start));
+    sv();
+    
+    if (typeof renderBlocks === "function") renderBlocks();
+    if (typeof scheduleBlockNotifs === "function") scheduleBlockNotifs();
+    
+    if (typeof showCelebration === "function") showCelebration("⏰");
+    console.log("Tito added block:", newBlock);
+  } 
+  else if (type === "DELETE_BLOCK") {
+    if (!D.blocks) return;
+    const nameToDel = (payload.name || "").toLowerCase().trim();
+    D.blocks = D.blocks.filter(x => (x.name || "").toLowerCase().trim() !== nameToDel);
+    sv();
+    if (typeof renderBlocks === "function") renderBlocks();
+  }
+  else if (type === "ADD_OP") {
+    const stratName = payload.stratName || "General";
+    const asset = payload.asset || "BTC";
+    const result = payload.result === "win" || payload.result === "gain" ? "win" : 
+                   payload.result === "loss" || payload.result === "lose" ? "lose" : null;
+    const pnl = parseFloat(payload.pnl) || 0;
+    const learn = payload.learn || "";
+    
+    let strategy = D.strategies.find(s => (s.name || "").toLowerCase().trim() === stratName.toLowerCase().trim());
+    if (!strategy) {
+      strategy = {
+        id: uid(),
+        name: stratName,
+        ops: [],
+        rules: "",
+        mesa: "",
+        weeklyArchives: [],
+        side: "Call",
+        image: "",
+        imageUrl: "",
+        imagePath: ""
+      };
+      if (!D.strategies) D.strategies = [];
+      D.strategies.push(strategy);
+    }
+    
+    let info = { key: "unknown", startISO: "", endISO: "" };
+    if (typeof getWeekInfo === "function") {
+      info = getWeekInfo(new Date());
+    }
+    
+    const opData = {
+      id: uid(),
+      asset: asset,
+      type: payload.type || "Call",
+      entry: payload.entry || "",
+      exit: payload.exit || "",
+      contracts: payload.contracts || "1",
+      date: new Date().toISOString().split('T')[0],
+      result: result,
+      opMonto: Math.abs(pnl).toString(),
+      opPct: "100",
+      learn: learn,
+      weekKey: info.key,
+      weekStart: info.startISO,
+      weekEnd: info.endISO
+    };
+    
+    strategy.ops = strategy.ops || [];
+    strategy.ops.unshift(opData);
+    
+    if (typeof ensureWeeklyArchives === "function") ensureWeeklyArchives();
+    sv();
+    
+    if (typeof rStats === "function") rStats();
+    if (typeof renderOps === "function") renderOps();
+    if (typeof renderWeeklyAnalysis === "function") renderWeeklyAnalysis();
+    if (typeof rstrat === "function") rstrat();
+    if (typeof syncRegistroGlobalFromStrategies === "function") syncRegistroGlobalFromStrategies();
+    sv();
+    
+    if (result === "win" && typeof showCelebration === "function") showCelebration("🏆");
+    else if (result === "lose" && typeof showCelebration === "function") showCelebration("💪");
+    
+    console.log("Tito added operation:", opData, "under strategy:", stratName);
+  }
+  else if (type === "ADD_DIARY") {
+    const diaryText = payload.text || "";
+    if (!diaryText) return;
+    
+    if (!D.diary) D.diary = [];
+    const newEntry = {
+      id: uid(),
+      date: new Date().toISOString(),
+      text: diaryText
+    };
+    D.diary.unshift(newEntry);
+    sv();
+    
+    if (typeof rdiary === "function") rdiary();
+    if (typeof showCelebration === "function") showCelebration("✍️");
+    console.log("Tito added diary entry:", newEntry);
+  }
+  else if (type === "UPDATE_MINDSET") {
+    const thought = payload.thought || "";
+    const notes = payload.notes || "";
+    const learn = payload.learn || "";
+    
+    let todayKey = "";
+    if (typeof getDayKey === "function") {
+      todayKey = getDayKey();
+    } else {
+      todayKey = new Date().toISOString().split('T')[0];
+    }
+    
+    if (!D.mindset) D.mindset = [];
+    let rec = D.mindset.find(r => r.dayKey === todayKey);
+    if (!rec) {
+      rec = {
+        id: uid(),
+        dayKey: todayKey,
+        createdAt: new Date().toISOString(),
+        thought: "",
+        notes: "",
+        learn: ""
+      };
+      D.mindset.unshift(rec);
+    }
+    
+    if (thought) rec.thought = thought;
+    if (notes) rec.notes = notes;
+    if (learn) rec.learn = learn;
+    
+    sv();
+    if (typeof renderMindset === "function") renderMindset();
+    if (typeof showCelebration === "function") showCelebration("🧠");
+    console.log("Tito updated mindset:", rec);
+  }
+}
+
 async function sendPrivateCoachMessage() {
   if (!isPrivateCoachUiAllowed()) return;
   limpiarContextoAntiguoGlobal();
@@ -12725,9 +13026,17 @@ async function sendPrivateCoachMessage() {
     const sessionKey = getTitoSessionKey();
     const history = getTitoChatSessionHistory().slice(0, 12);
     var ctxCloud = construirContextoTiempo();
+    const systemInstruction = "\n\n[INSTRUCCIÓN DEL SISTEMA: Tienes el control de la aplicación ENFO. Si el usuario te pide explícitamente registrar, guardar, agregar, borrar o actualizar algo, DEBES incluir exactamente una sola etiqueta [ACTION:...] al final de tu respuesta en una nueva línea (sin texto después). Formatos válidos:\n" +
+      "1. Agregar bloque de horario: [ACTION:{\"type\":\"ADD_BLOCK\",\"payload\":{\"name\":\"Nombre del bloque\",\"start\":\"HH:MM\",\"end\":\"HH:MM\",\"emoji\":\"🟢\",\"days\":\"today\"}}]\n" +
+      "2. Borrar bloque de horario por nombre: [ACTION:{\"type\":\"DELETE_BLOCK\",\"payload\":{\"name\":\"Nombre del bloque\"}}]\n" +
+      "3. Registrar operación de trading: [ACTION:{\"type\":\"ADD_OP\",\"payload\":{\"stratName\":\"Nombre de la Estrategia\",\"asset\":\"AAPL\",\"result\":\"win\"|\"lose\",\"pnl\":150,\"learn\":\"lección opcional\"}}]\n" +
+      "4. Agregar nota al diario: [ACTION:{\"type\":\"ADD_DIARY\",\"payload\":{\"text\":\"Contenido de la nota...\"}}]\n" +
+      "5. Actualizar mentalidad o enfoque de hoy: [ACTION:{\"type\":\"UPDATE_MINDSET\",\"payload\":{\"thought\":\"Enfoque de hoy\",\"notes\":\"Estado mental\",\"learn\":\"Lección de hoy\"}}]\n" +
+      "Genera la acción solo si te lo piden explícitamente y de acuerdo al formato. Responde en español, 1-2 párrafos.]";
+
     const data = {
-      message: text,
-      userText: text,
+      message: text + systemInstruction,
+      userText: text + systemInstruction,
       coachHistory: history.map(function (h) {
         return {
           role: h.role === "coach" ? "coach" : "user",
@@ -12785,6 +13094,7 @@ async function sendPrivateCoachMessage() {
   if (!String(reply || "").trim()) {
     reply = buildPrivateCoachReply(text);
   }
+  reply = titoProcessClientActions(reply);
   reply = privateCoachFinalizeCoachText(reply, false, text);
   if (!String(reply || "").trim()) {
     reply = privateCoachFinalizeCoachText(buildPrivateCoachReply(text), false, text);
@@ -12903,10 +13213,25 @@ document.addEventListener("DOMContentLoaded", function() {
   if (btnLogin)    btnLogin.addEventListener("click",    loginUser);
   if (btnRegister) btnRegister.addEventListener("click", registerUser);
   initPrivateCoachUiOnce();
+
+  // Check hostname and protocol to warn about Firebase auth restrictions
+  var hostname = window.location.hostname;
+  var protocol = window.location.protocol;
+  if (protocol === "file:" || hostname === "127.0.0.1" || (hostname !== "localhost" && !hostname.endsWith("enfoapp.io") && !hostname.endsWith("web.app") && !hostname.endsWith("firebaseapp.com"))) {
+    var authMsg = document.getElementById("auth-msg");
+    if (authMsg) {
+      authMsg.innerHTML = '<span style="color:#ff758f;font-weight:bold;display:block;margin-bottom:10px;">⚠️ ¡Origen no autorizado en Firebase!</span>' +
+                          'Firebase bloquea la conexión desde IPs o archivos locales.<br>' +
+                          'Para iniciar sesión, debes entrar mediante:<br>' +
+                          '<a href="http://localhost:8080" style="color:#1d6aff;font-weight:bold;text-decoration:underline;">http://localhost:8080</a><br>' +
+                          '<span style="font-size:10px;color:#7a9acc;">(No uses 127.0.0.1 ni abras el archivo directamente).</span>';
+    }
+  }
 });
 
 // Escuchar cambios de autenticación
 firebase.auth().onAuthStateChanged(function(user) {
+  realFirebaseUser = user;
   if (user) {
     currentUserData = { uid: user.uid, email: user.email };
     enfoRef = db.collection("users").doc(user.uid).collection("app").doc("main");
@@ -12916,15 +13241,26 @@ firebase.auth().onAuthStateChanged(function(user) {
       updatePrivateCoachVisibility();
     }, 500);
   } else {
-    currentUserData = { uid: "", email: "" };
-    enfoRef = null;
-    var authWrap = document.getElementById("auth-wrap");
-    var appEl    = document.getElementById("app");
-    if (authWrap) authWrap.style.display = "flex";
-    if (appEl)    appEl.style.display    = "none";
-    updatePrivateCoachVisibility();
+    if (!window.isLocalDevBypassActive) {
+      currentUserData = { uid: "", email: "" };
+      enfoRef = null;
+      var authWrap = document.getElementById("auth-wrap");
+      var appEl    = document.getElementById("app");
+      if (authWrap) authWrap.style.display = "flex";
+      if (appEl)    appEl.style.display    = "none";
+      updatePrivateCoachVisibility();
+    }
   }
 });
+
+function bypassLoginDev() {
+  console.log("Developer Bypass triggered.");
+  window.isLocalDevBypassActive = true;
+  currentUserData = { uid: "JYrkTqn63HcHj5k0PfFhyHDexSo1", email: "marvin@enfoapp.io" };
+  enfoRef = db.collection("users").doc(currentUserData.uid).collection("app").doc("main");
+  showMainApp();
+  updatePrivateCoachVisibility();
+}
 
 Object.assign(window, {
   loginUser, registerUser, forgotPassword, nav, openFinanzas, closeFinanzas, setFinanzasTab, saveFinanzasConfig, openPortafolio, closePortafolio, openCalendario, closeCalendario, openRegistroGlobal, closeRegistroGlobal, openEstrategiasNotasInTito, openEstrategiasNotasPanel, closeEstrategiasNotasPanel, saveEstrategiasNotas, clearEstrategiasNotasAll, estrategiasNotasOnInput, flushEstrategiasNotasPendingSave, openEstrategiasCalculator, toggleCalculator, estrategiasCalcDigit, estrategiasCalcDot, estrategiasCalcInputOp, estrategiasCalcEquals, estrategiasCalcClearAll, estrategiasCalcBackspace, calcOpResult,
@@ -12940,7 +13276,7 @@ Object.assign(window, {
   closeUserMenu, openProfile, refreshApp, logoutUser, toggleDay, toggleVerTodos,
   openStats, closeStats, toggleMindHistory, closeDetail,
   togglePrivateCoach, sendPrivateCoachMessage, sendTitoPanelChatMessage, titoChatAuthorInputKeydown, openTitoFromDiario, openTitoFromEstrategias,
-  openDaySticky, closeDaySticky, dayStickyEditorInput
+  openDaySticky, closeDaySticky, dayStickyEditorInput, bypassLoginDev
 });
 
 

@@ -34,6 +34,32 @@ Saludos casuales: respuesta breve sin mandar órdenes.
 Nunca digas que no tienes acceso al diario ni a datos internos de ENFO: cuando el cliente envía bloque DIARIO RECIENTE o contexto de diario, son datos reales de la app; si indica vacío o sin entradas, trabaja con el mensaje del usuario sin negar acceso.
 `.trim();
 
+const TITO_ACTION_INSTRUCTIONS = `
+REGLAS DE ACCIÓN Y CONTROL DE LA APLICACIÓN (MÁXIMA PRIORIDAD):
+Tienes el control de la aplicación ENFO. Si el usuario te pide explícitamente registrar, agregar, guardar, borrar o actualizar un elemento que corresponda a una de las siguientes categorías, DEBES incluir exactamente una sola etiqueta "[ACTION:...]" al final de tu respuesta en una nueva línea (sin texto después). 
+
+Acciones admitidas y formato JSON exacto:
+1. Agregar bloque de horario:
+[ACTION:{"type":"ADD_BLOCK","payload":{"name":"Nombre del bloque","start":"HH:MM","end":"HH:MM","emoji":"🟢","days":"today"}}]
+(Donde "days" puede ser "today", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
+
+2. Borrar bloque de horario por nombre:
+[ACTION:{"type":"DELETE_BLOCK","payload":{"name":"Nombre del bloque"}}]
+
+3. Registrar operación (trade) en bitácora:
+[ACTION:{"type":"ADD_OP","payload":{"stratName":"Nombre de la Estrategia","asset":"AAPL","result":"win"|"lose","pnl":150,"learn":"lección opcional"}}]
+(Usa "win" para ganancias, "lose" para pérdidas. El PnL debe ser un número positivo).
+
+4. Agregar nota/reflexión al diario:
+[ACTION:{"type":"ADD_DIARY","payload":{"text":"Contenido de la nota..."}}]
+
+5. Actualizar mentalidad o pensamiento del día:
+[ACTION:{"type":"UPDATE_MINDSET","payload":{"thought":"Enfoque de hoy","notes":"Estado mental de hoy","learn":"Lección del día"}}]
+
+Ejemplo: Si el usuario te dice: "Agrégame un bloque de trading de 9 a 10 am hoy", tu respuesta debe terminar exactamente con:
+[ACTION:{"type":"ADD_BLOCK","payload":{"name":"Trading","start":"09:00","end":"10:00","emoji":"🟢","days":"today"}}]
+`.trim();
+
 /** Bloque Deseo (parte de coachMemory fijo en servidor; ver COACH_MEMORY_FIXED_BLOCKS). */
 const ENFO_BASE_COACH_MEMORY_TEXT = `
 BASE PRIVADA ENFO — DESEO ARDIENTE
@@ -344,9 +370,9 @@ function buildTitoSystemPrompt(titoCore, contextoModulo, contextoDiario, opts) {
     "Reglas finales: español. Modo Mente/Diario o bloque DIARIO RECIENTE: con tacto, detecta si encajan emociones (frustración, miedo, impulsividad) y patrones de error (sobreoperar, entrar sin plan, reaccionar emocionalmente); no inventes lo que no esté implícito. Sin listas ni titulares. Ordena la respuesta en tres partes seguidas, sin etiquetas: qué está pasando; por qué ocurre; qué debes hacer (corrección directa y acción concreta). 1–2 párrafos breves en total. No repitas el diario literalmente ni cites párrafos enteros. Nunca digas que no ves el diario. Respeta el módulo activo ENFO.";
   const ops = diaryMode ? opsDiario : opsDefault;
   if (base === SYSTEM_PROMPT) {
-    return (base + "\n\n---\n\n" + anchor + "\n\n" + ops).trim();
+    return (base + "\n\n---\n\n" + anchor + "\n\n" + ops + "\n\n---\n\n" + TITO_ACTION_INSTRUCTIONS).trim();
   }
-  return (base + "\n\n---\n\n" + anchor + "\n\n---\n\n" + ops).trim();
+  return (base + "\n\n---\n\n" + anchor + "\n\n---\n\n" + ops + "\n\n---\n\n" + TITO_ACTION_INSTRUCTIONS).trim();
 }
 
 function extractResponsesText(data) {
